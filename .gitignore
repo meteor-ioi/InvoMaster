@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Large data files
+data/
+backend/data/
+backend/runs/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+.gemini/
+.agent/
+.system_generated/
