@@ -73,11 +73,56 @@ const DocumentEditor = ({
 
     const startTableLineMove = (e, type, index, val) => {
         e.stopPropagation();
+        e.preventDefault();
         // Prevent moving outer borders (index 0 and length-1)
         if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
         if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
 
-        setInteraction({ type: 'tableLine', lineType: type, index, startVal: val });
+        // Use document-level listeners for reliable drag handling
+        const handleDocMouseMove = (moveE) => {
+            if (!containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            const x = (moveE.clientX - rect.left) / rect.width;
+            const y = (moveE.clientY - rect.top) / rect.height;
+
+            const reg = regions.find(r => r.id === tableRefining.id);
+            if (!reg) return;
+
+            if (type === 'col') {
+                const relX = (x - reg.x) / reg.width;
+                const newVal = Math.max(0.01, Math.min(0.99, relX));
+                const newCols = [...tableRefining.cols];
+                newCols[index] = newVal;
+                setTableRefining(prev => ({ ...prev, cols: newCols }));
+            } else {
+                const relY = (y - reg.y) / reg.height;
+                const newVal = Math.max(0.01, Math.min(0.99, relY));
+                const newRows = [...tableRefining.rows];
+                newRows[index] = newVal;
+                setTableRefining(prev => ({ ...prev, rows: newRows }));
+            }
+        };
+
+        const handleDocMouseUp = () => {
+            document.removeEventListener('mousemove', handleDocMouseMove);
+            document.removeEventListener('mouseup', handleDocMouseUp);
+
+            // Commit the change by re-analyzing with explicit lines
+            if (tableRefining && onAnalyze) {
+                const newSettings = {
+                    ...tableRefining.settings,
+                    vertical_strategy: "explicit",
+                    horizontal_strategy: "explicit",
+                    explicit_vertical_lines: tableRefining.cols,
+                    explicit_horizontal_lines: tableRefining.rows
+                };
+                onAnalyze(newSettings);
+                if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+            }
+        };
+
+        document.addEventListener('mousemove', handleDocMouseMove);
+        document.addEventListener('mouseup', handleDocMouseUp);
     };
 
     const handleMouseMove = (e) => {
@@ -93,33 +138,6 @@ const DocumentEditor = ({
         }
 
         if (!interaction) return;
-
-        if (interaction.type === 'tableLine' && tableRefining) {
-            const reg = regions.find(r => r.id === tableRefining.id);
-            if (!reg) return;
-
-            let newVal;
-            if (interaction.lineType === 'col') {
-                // Ensure within bounds (0-1 relative to bbox)
-                const relX = (x - reg.x) / reg.width;
-                newVal = Math.max(0.01, Math.min(0.99, relX));
-
-                const newCols = [...tableRefining.cols];
-                newCols[interaction.index] = newVal;
-                // Maintain sort? Actually pdfplumber expects sorted, but let's sort on release or just keep dragging index
-                // It's better to update visuals instantly. 
-                // Don't sort while dragging to avoid index jumping
-                setTableRefining({ ...tableRefining, cols: newCols });
-            } else {
-                const relY = (y - reg.y) / reg.height;
-                newVal = Math.max(0.01, Math.min(0.99, relY));
-
-                const newRows = [...tableRefining.rows];
-                newRows[interaction.index] = newVal;
-                setTableRefining({ ...tableRefining, rows: newRows });
-            }
-            return;
-        }
 
         if (interaction.type === 'move') {
             const dx = x - interaction.startX;
@@ -184,19 +202,7 @@ const DocumentEditor = ({
     };
 
     const handleMouseUp = () => {
-        if (interaction?.type === 'tableLine' && tableRefining && onAnalyze) {
-            // Commit the change by re-analyzing with explicit lines
-            const newSettings = {
-                ...tableRefining.settings,
-                vertical_strategy: "explicit",
-                horizontal_strategy: "explicit",
-                explicit_vertical_lines: tableRefining.cols,
-                explicit_horizontal_lines: tableRefining.rows
-            };
-            onAnalyze(newSettings);
-            // Notify parent to update dropdown to Explicit
-            if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
-        }
+        // Note: tableLine interactions are now handled by document-level events in startTableLineMove
 
         if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005) {
             const normalized = {
