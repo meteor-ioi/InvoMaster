@@ -73,6 +73,12 @@ const DocumentEditor = ({
         setInteraction({ type: 'move', id, startX: x, startY: y, initialRegion: { ...region } });
     };
 
+    // Use a ref to track the latest tableRefining state to avoid stale closures in event listeners
+    const tableRefiningRef = useRef(tableRefining);
+    useEffect(() => {
+        tableRefiningRef.current = tableRefining;
+    }, [tableRefining]);
+
     const startTableLineMove = (e, type, index, val) => {
         e.stopPropagation();
         e.preventDefault();
@@ -83,23 +89,26 @@ const DocumentEditor = ({
         // Use document-level listeners for reliable drag handling
         const handleDocMouseMove = (moveE) => {
             if (!containerRef.current) return;
+            const currentRefining = tableRefiningRef.current;
+            if (!currentRefining) return;
+
             const rect = containerRef.current.getBoundingClientRect();
             const x = (moveE.clientX - rect.left) / rect.width;
             const y = (moveE.clientY - rect.top) / rect.height;
 
-            const reg = regions.find(r => r.id === tableRefining.id);
+            const reg = regions.find(r => r.id === currentRefining.id);
             if (!reg) return;
 
             if (type === 'col') {
                 const relX = (x - reg.x) / reg.width;
                 const newVal = Math.max(0.01, Math.min(0.99, relX));
-                const newCols = [...tableRefining.cols];
+                const newCols = [...currentRefining.cols];
                 newCols[index] = newVal;
                 setTableRefining(prev => ({ ...prev, cols: newCols }));
             } else {
                 const relY = (y - reg.y) / reg.height;
                 const newVal = Math.max(0.01, Math.min(0.99, relY));
-                const newRows = [...tableRefining.rows];
+                const newRows = [...currentRefining.rows];
                 newRows[index] = newVal;
                 setTableRefining(prev => ({ ...prev, rows: newRows }));
             }
@@ -109,14 +118,16 @@ const DocumentEditor = ({
             document.removeEventListener('mousemove', handleDocMouseMove);
             document.removeEventListener('mouseup', handleDocMouseUp);
 
+            const finalRefining = tableRefiningRef.current;
+
             // Commit the change by re-analyzing with explicit lines
-            if (tableRefining && onAnalyze) {
+            if (finalRefining && onAnalyze) {
                 const newSettings = {
-                    ...tableRefining.settings,
+                    ...finalRefining.settings,
                     vertical_strategy: "explicit",
                     horizontal_strategy: "explicit",
-                    explicit_vertical_lines: tableRefining.cols,
-                    explicit_horizontal_lines: tableRefining.rows
+                    explicit_vertical_lines: finalRefining.cols,
+                    explicit_horizontal_lines: finalRefining.rows
                 };
                 onAnalyze(newSettings);
                 if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
