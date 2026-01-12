@@ -154,6 +154,37 @@ function App() {
         }
     };
 
+    // Handle table re-analysis (used by DocumentEditor in Explicit mode)
+    const handleAnalyzeTable = async (regionId, newSettings) => {
+        const region = regions.find(r => r.id === regionId);
+        if (!region || !analysis) return;
+
+        try {
+            const res = await axios.post(`${API_BASE}/table/analyze`, {
+                id: analysis.id,
+                filename: analysis.filename,
+                region_id: region.id,
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height,
+                settings: newSettings
+            });
+
+            // Update tableRefining with new data including cells and preview
+            setTableRefining(prev => ({
+                ...prev,
+                rows: res.data.rows,
+                cols: res.data.cols,
+                cells: res.data.cells,
+                preview: res.data.preview,
+                settings: newSettings
+            }));
+        } catch (err) {
+            console.error('表格重新分析失败:', err);
+        }
+    };
+
     const handleApplyTableSettings = () => {
         if (selectedRegion) {
             setRegions(prev => prev.map(r => r.id === selectedRegion.id ? {
@@ -585,7 +616,14 @@ function App() {
                                             </p>
                                             <select
                                                 value={tableSettings.vertical_strategy}
-                                                onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === 'explicit') {
+                                                        setTableSettings({ ...tableSettings, vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+                                                    } else {
+                                                        setTableSettings({ ...tableSettings, vertical_strategy: value });
+                                                    }
+                                                }}
                                                 style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                             >
                                                 <option value="lines">Lines (基于线)</option>
@@ -599,7 +637,14 @@ function App() {
                                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
                                             <select
                                                 value={tableSettings.horizontal_strategy}
-                                                onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === 'explicit') {
+                                                        setTableSettings({ ...tableSettings, vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+                                                    } else {
+                                                        setTableSettings({ ...tableSettings, horizontal_strategy: value });
+                                                    }
+                                                }}
                                                 style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                             >
                                                 <option value="lines">Lines (基于线)</option>
@@ -609,7 +654,7 @@ function App() {
                                             </select>
                                         </div>
 
-                                        <div>
+                                        <div style={{ opacity: tableSettings.vertical_strategy === 'explicit' ? 0.5 : 1 }}>
                                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
                                                 容差 (Snap): <span>{tableSettings.snap_tolerance}px</span>
                                             </p>
@@ -617,12 +662,27 @@ function App() {
                                                 type="range" min="1" max="10" step="1"
                                                 value={tableSettings.snap_tolerance}
                                                 onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
-                                                style={{ width: '100%', accentColor: 'var(--success-color)' }}
+                                                disabled={tableSettings.vertical_strategy === 'explicit'}
+                                                style={{ width: '100%', accentColor: 'var(--success-color)', cursor: tableSettings.vertical_strategy === 'explicit' ? 'not-allowed' : 'pointer' }}
                                             />
+                                            {tableSettings.vertical_strategy === 'explicit' && (
+                                                <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>手动模式下不可用</p>
+                                            )}
                                         </div>
 
                                         <button
-                                            onClick={handleApplyTableSettings}
+                                            onClick={() => {
+                                                if (tableSettings.vertical_strategy === 'explicit' && tableRefining) {
+                                                    // Explicit mode: use current explicit lines
+                                                    handleAnalyzeTable(tableRefining.id, {
+                                                        ...tableSettings,
+                                                        explicit_vertical_lines: tableRefining.cols,
+                                                        explicit_horizontal_lines: tableRefining.rows
+                                                    });
+                                                } else {
+                                                    handleApplyTableSettings();
+                                                }
+                                            }}
                                             disabled={loading}
                                             className="btn-primary"
                                             style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}
