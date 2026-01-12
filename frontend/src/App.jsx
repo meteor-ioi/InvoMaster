@@ -105,7 +105,14 @@ function App() {
 
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
-        const s = settingsOverride || tableSettings;
+        // Priority: settingsOverride > region.table_settings (saved) > tableSettings (current UI state)
+        const s = settingsOverride || region.table_settings || tableSettings;
+
+        // Update the UI dropdown to reflect the loaded settings
+        if (region.table_settings && !settingsOverride) {
+            setTableSettings(region.table_settings);
+        }
+
         try {
             const res = await axios.post(`${API_BASE}/table/analyze`, {
                 id: analysis.id,
@@ -117,6 +124,7 @@ function App() {
                 height: region.height,
                 settings: s
             });
+
 
             if (res.data.snapped_bbox) {
                 setRegions(prev => prev.map(r => r.id === region.id ? {
