@@ -22,7 +22,9 @@ const DocumentEditor = ({
     image, regions, setRegions, selectedId, setSelectedId, editorMode = 'view',
     tableRefining = null, setTableRefining = null, onAnalyze = null, onSettingsChange = null,
     zoom = 1.0,
-    showRegions = true
+    showRegions = true,
+    onDelete = null,
+    onHistorySnapshot = null
 }) => {
 
     const [interaction, setInteraction] = useState(null);
@@ -212,8 +214,21 @@ const DocumentEditor = ({
                 width: Math.abs(currentRect.width),
                 height: Math.abs(currentRect.height)
             };
-            setRegions([...regions, normalized]);
+            const newRegions = [...regions, normalized];
+            setRegions(newRegions);
             setSelectedId(normalized.id);
+            if (onHistorySnapshot) onHistorySnapshot(newRegions);
+        } else if (interaction && (interaction.type === 'move' || interaction.type === 'resize')) {
+            // Logic to get the current regions state after move/resize
+            // Since setRegions is called during move/resize, the current regions in this scope might be stale
+            // However, in handleMouseUp, we can use a callback to capture the final state if we pass it through.
+            // But wait, setRegions in DocumentEditor is called with (prev => ...) usually?
+            // Let's check my previous edit.
+            // Oh, I used prev => prev.map...
+
+            // Actually, I'll just notify that an interaction ended, 
+            // and App.jsx can record the current state of regions.
+            if (onHistorySnapshot) onHistorySnapshot();
         }
         setIsDrawing(false);
         setCurrentRect(null);
@@ -439,6 +454,33 @@ const DocumentEditor = ({
                                         />
                                     );
                                 })}
+
+                                {isSelected && !tableRefining && onDelete && (
+                                    <g
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(reg.id);
+                                        }}
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                    >
+                                        <circle
+                                            cx={`${(reg.x + reg.width) * 100}%`}
+                                            cy={`${reg.y * 100}%`}
+                                            r={8 / zoom}
+                                            fill="#ef4444"
+                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
+                                        />
+                                        <text
+                                            x={`${(reg.x + reg.width) * 100}%`}
+                                            y={`${reg.y * 100}%`}
+                                            fill="white"
+                                            fontSize={12 / zoom}
+                                            fontWeight="bold"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                        >-</text>
+                                    </g>
+                                )}
 
                                 {!tableRefining && (
                                     <foreignObject

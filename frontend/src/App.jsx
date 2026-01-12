@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Upload, CheckCircle, Settings, RefreshCw, ChevronLeft, ChevronRight, Layout, Star, Trash2, Edit3, Save, Sun, Moon, Plus, Minus, Grid, X, HelpCircle, Eye, EyeOff } from 'lucide-react';
+import { Upload, CheckCircle, Settings, RefreshCw, ChevronLeft, ChevronRight, Layout, Star, Trash2, Edit3, Save, Sun, Moon, Plus, Minus, Grid, X, HelpCircle, Eye, EyeOff, RotateCcw, RotateCw } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './components/DocumentEditor';
 
 const API_BASE = 'http://localhost:8000';
@@ -26,6 +26,33 @@ function App() {
     });
 
     const [regions, setRegions] = useState([]);
+    const [history, setHistory] = useState([[]]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+
+    const recordHistory = (newRegions) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(JSON.parse(JSON.stringify(newRegions)));
+        if (newHistory.length > 50) newHistory.shift();
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    };
+
+    const undo = () => {
+        if (historyIndex > 0) {
+            const nextIndex = historyIndex - 1;
+            setHistoryIndex(nextIndex);
+            setRegions(JSON.parse(JSON.stringify(history[nextIndex])));
+        }
+    };
+
+    const redo = () => {
+        if (historyIndex < history.length - 1) {
+            const nextIndex = historyIndex + 1;
+            setHistoryIndex(nextIndex);
+            setRegions(JSON.parse(JSON.stringify(history[nextIndex])));
+        }
+    };
+
     const [selectedId, setSelectedId] = useState(null);
     const [confidence, setConfidence] = useState(0.25);
     const [device, setDevice] = useState('mps');
@@ -146,6 +173,7 @@ function App() {
                 preview: res.data.preview,
                 settings: s // Store the settings used for this analysis
             });
+            // Record history when entering refinement as it might change labels or something (though usually it doesn't)
         } catch (err) {
             console.error(err);
             alert('获取表格结构分析失败');
@@ -212,16 +240,23 @@ function App() {
     };
 
     const deleteRegion = (id) => {
-        setRegions(regions.filter(r => r.id !== id));
+        const newRegions = regions.filter(r => r.id !== id);
+        setRegions(newRegions);
+        recordHistory(newRegions);
         if (selectedId === id) setSelectedId(null);
     };
 
     const updateRegionLabel = (id, label) => {
-        setRegions(regions.map(r => r.id === id ? { ...r, label } : r));
+        const newRegions = regions.map(r => r.id === id ? { ...r, label } : r);
+        setRegions(newRegions);
+        // Note: We might want to debounce label history, but for simplicity:
+        recordHistory(newRegions);
     };
 
     const updateRegionType = (id, type) => {
-        setRegions(regions.map(r => r.id === id ? { ...r, type } : r));
+        const newRegions = regions.map(r => r.id === id ? { ...r, type } : r);
+        setRegions(newRegions);
+        recordHistory(newRegions);
     };
 
     const selectedRegion = useMemo(() => regions.find(r => r.id === selectedId), [regions, selectedId]);
@@ -241,19 +276,27 @@ function App() {
     }
 
     return (
-        <div className="container" style={{ maxWidth: '1440px', margin: '0 auto', padding: '40px 20px' }}>
-            <header style={{ position: 'relative', textAlign: 'center', marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
-                    <span className="gradient-text">影刀</span> 制造业单据识别
-                </h1>
-                <p style={{ color: 'var(--text-secondary)' }}>基于 AI 的交互式数据采集与模板沉淀平台</p>
+        <div className="container" style={{ maxWidth: '1440px', margin: '0 auto', padding: step === 'review' ? '0 20px 40px' : '40px 20px', position: 'relative' }}>
+            <header style={{ position: 'relative', textAlign: 'center', marginBottom: step === 'review' ? '50px' : '40px' }}>
+                {step !== 'review' && (
+                    <>
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
+                            <span className="gradient-text">影刀</span> 离线单据识别
+                        </h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>基于 AI 的交互式数据采集与模板沉淀平台</p>
+                    </>
+                )}
 
                 <button
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     style={{
-                        position: 'absolute', top: 0, right: 0,
+                        position: 'fixed',
+                        bottom: '30px',
+                        right: '30px',
                         background: 'var(--input-bg)', border: '1px solid var(--glass-border)',
-                        padding: '10px', borderRadius: '12px', cursor: 'pointer', color: 'var(--text-primary)'
+                        padding: '10px', borderRadius: '12px', cursor: 'pointer', color: 'var(--text-primary)',
+                        zIndex: 1000,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}
                 >
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
@@ -469,6 +512,8 @@ function App() {
                                     onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
                                     zoom={zoom}
                                     showRegions={showRegions}
+                                    onDelete={deleteRegion}
+                                    onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
                                 />
                             </div>
 
@@ -583,10 +628,17 @@ function App() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         {!tableRefining && (
                                             <>
-                                                <button onClick={(e) => { e.stopPropagation(); setEditorMode(editorMode === 'add' ? 'view' : 'add'); }} style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: editorMode === 'add' ? 'var(--primary-color)' : 'var(--input-bg)', color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                                <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
+                                                    <RotateCcw size={12} />
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); redo(); }} disabled={historyIndex >= history.length - 1} title="重做" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex < history.length - 1 ? 'pointer' : 'not-allowed', opacity: historyIndex < history.length - 1 ? 1 : 0.5 }}>
+                                                    <RotateCw size={12} />
+                                                </button>
+                                                <div style={{ width: '1px', height: '12px', background: 'var(--glass-border)', margin: '0 4px' }} />
+                                                <button onClick={(e) => { e.stopPropagation(); setEditorMode(editorMode === 'add' ? 'view' : 'add'); }} title="新增区块" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: editorMode === 'add' ? 'var(--primary-color)' : 'var(--input-bg)', color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                                     <Plus size={12} />
                                                 </button>
-                                                <button disabled={!selectedId} onClick={(e) => { e.stopPropagation(); deleteRegion(selectedId); }} style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: '#ef4444', opacity: selectedId ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: selectedId ? 'pointer' : 'not-allowed' }}>
+                                                <button disabled={!selectedId} onClick={(e) => { e.stopPropagation(); deleteRegion(selectedId); }} title="删除区块" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: '#ef4444', opacity: selectedId ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: selectedId ? 'pointer' : 'not-allowed' }}>
                                                     <Minus size={12} />
                                                 </button>
                                             </>
@@ -748,11 +800,23 @@ function App() {
                                         <div>
                                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                                {Object.entries(TYPE_CONFIG).map(([type, config]) => (
-                                                    <button key={type} onClick={() => updateRegionType(selectedId, type)} style={{ padding: '6px 8px', borderRadius: '6px', fontSize: '10px', border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`, background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)', color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)', fontWeight: selectedRegion.type === type ? 'bold' : 'normal', cursor: 'pointer', textAlign: 'center' }}>
-                                                        {config.label}
-                                                    </button>
-                                                ))}
+                                                {[
+                                                    'title', 'plain text',
+                                                    'table caption', 'table',
+                                                    'figure caption', 'figure',
+                                                    'header', 'footer',
+                                                    'list', 'equation',
+                                                    'text', 'abandon',
+                                                    'custom'
+                                                ].map(type => {
+                                                    const config = TYPE_CONFIG[type];
+                                                    if (!config) return null;
+                                                    return (
+                                                        <button key={type} onClick={() => updateRegionType(selectedId, type)} style={{ padding: '6px 8px', borderRadius: '6px', fontSize: '10px', border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`, background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)', color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)', fontWeight: selectedRegion.type === type ? 'bold' : 'normal', cursor: 'pointer', textAlign: 'center' }}>
+                                                            {config.label}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
