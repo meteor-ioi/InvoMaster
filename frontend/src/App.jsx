@@ -626,6 +626,37 @@ function App() {
                                         <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {tableRefining && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const defaultSettings = {
+                                                        vertical_strategy: 'text',
+                                                        horizontal_strategy: 'text',
+                                                        snap_tolerance: 3,
+                                                        join_tolerance: 3
+                                                    };
+                                                    setTableSettings(defaultSettings);
+                                                    const region = regions.find(r => r.id === tableRefining?.id);
+                                                    if (region) handleEnterTableRefine(region, defaultSettings);
+                                                }}
+                                                style={{
+                                                    padding: '2px 8px',
+                                                    height: '24px',
+                                                    borderRadius: '6px',
+                                                    border: 'none',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#ef4444',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center'
+                                                }}
+                                            >
+                                                重置
+                                            </button>
+                                        )}
                                         {!tableRefining && (
                                             <>
                                                 <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
@@ -771,23 +802,7 @@ function App() {
                                             退出编辑模式
                                         </button>
 
-                                        <button
-                                            onClick={() => {
-                                                // Reset to default text mode
-                                                const defaultSettings = {
-                                                    vertical_strategy: 'text',
-                                                    horizontal_strategy: 'text',
-                                                    snap_tolerance: 3,
-                                                    join_tolerance: 3
-                                                };
-                                                setTableSettings(defaultSettings);
-                                                const region = regions.find(r => r.id === tableRefining?.id);
-                                                if (region) handleEnterTableRefine(region, defaultSettings);
-                                            }}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--error-color)', background: 'transparent', color: 'var(--error-color)', fontSize: '12px', cursor: 'pointer' }}
-                                        >
-                                            重置为默认
-                                        </button>
+
                                     </div>
                                 ) : selectedRegion ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
