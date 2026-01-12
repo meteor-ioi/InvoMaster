@@ -105,14 +105,7 @@ function App() {
 
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
-        // Priority: settingsOverride > region.table_settings > tableSettings (default)
-        const s = settingsOverride || region.table_settings || tableSettings;
-
-        // Update the UI state to reflect loaded settings
-        if (region.table_settings && !settingsOverride) {
-            setTableSettings(region.table_settings);
-        }
-
+        const s = settingsOverride || tableSettings;
         try {
             const res = await axios.post(`${API_BASE}/table/analyze`, {
                 id: analysis.id,
@@ -148,7 +141,6 @@ function App() {
             setLoading(false);
         }
     };
-
 
     const handleApplyTableSettings = () => {
         if (selectedRegion) {
