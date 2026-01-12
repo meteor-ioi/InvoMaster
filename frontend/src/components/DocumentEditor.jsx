@@ -30,7 +30,6 @@ const DocumentEditor = ({
     const [interaction, setInteraction] = useState(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentRect, setCurrentRect] = useState(null);
-    const [hoverAdd, setHoverAdd] = useState(null); // { type: 'col' | 'row', val: number }
     const containerRef = useRef(null);
     const viewportRef = useRef(null);
 
@@ -139,6 +138,35 @@ const DocumentEditor = ({
         document.addEventListener('mouseup', handleDocMouseUp);
     };
 
+    const [addLineHover, setAddLineHover] = useState(null);
+
+    const addTableLine = (e, type, val) => {
+        e.stopPropagation();
+        if (!tableRefining || !onAnalyze) return;
+
+        let newSettings = {
+            ...tableRefining.settings,
+            vertical_strategy: "explicit",
+            horizontal_strategy: "explicit"
+        };
+
+        if (type === 'col') {
+            const newCols = [...tableRefining.cols, val].sort((a, b) => a - b);
+            setTableRefining({ ...tableRefining, cols: newCols });
+            newSettings.explicit_vertical_lines = newCols;
+            newSettings.explicit_horizontal_lines = tableRefining.rows;
+        } else {
+            const newRows = [...tableRefining.rows, val].sort((a, b) => a - b);
+            setTableRefining({ ...tableRefining, rows: newRows });
+            newSettings.explicit_horizontal_lines = newRows;
+            newSettings.explicit_vertical_lines = tableRefining.cols;
+        }
+
+        onAnalyze(newSettings);
+        if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+        setAddLineHover(null);
+    };
+
     const handleMouseMove = (e) => {
         const { x, y } = getCoordinates(e);
 
@@ -149,6 +177,30 @@ const DocumentEditor = ({
                 height: y - prev.y
             }));
             return;
+        }
+
+        // Hover detection for adding table lines
+        if (tableRefining && !interaction) {
+            const reg = regions.find(r => r.id === tableRefining.id);
+            if (reg) {
+                const hoverThreshold = 0.02; // Threshold for hover detection (relative to image)
+
+                // Check for Left Border (row add)
+                if (x >= reg.x - hoverThreshold && x <= reg.x + hoverThreshold / 2 && y >= reg.y && y <= reg.y + reg.height) {
+                    const relY = (y - reg.y) / reg.height;
+                    setAddLineHover({ type: 'row', val: relY, x: reg.x, y: y });
+                }
+                // Check for Top Border (col add)
+                else if (y >= reg.y - hoverThreshold && y <= reg.y + hoverThreshold / 2 && x >= reg.x && x <= reg.x + reg.width) {
+                    const relX = (x - reg.x) / reg.width;
+                    setAddLineHover({ type: 'col', val: relX, x: x, y: reg.y });
+                }
+                else {
+                    setAddLineHover(null);
+                }
+            }
+        } else {
+            setAddLineHover(null);
         }
 
         if (!interaction) return;
@@ -213,34 +265,6 @@ const DocumentEditor = ({
         onAnalyze(newSettings);
         // Notify parent to update dropdown to Explicit
         if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
-    };
-
-    const addTableLine = (e) => {
-        if (!hoverAdd || !tableRefining || !onAnalyze) return;
-        e.stopPropagation();
-
-        const { type, val } = hoverAdd;
-        let newSettings = {
-            ...tableRefining.settings,
-            vertical_strategy: "explicit",
-            horizontal_strategy: "explicit"
-        };
-
-        if (type === 'col') {
-            const newCols = [...tableRefining.cols, val].sort((a, b) => a - b);
-            setTableRefining({ ...tableRefining, cols: newCols });
-            newSettings.explicit_vertical_lines = newCols;
-            newSettings.explicit_horizontal_lines = tableRefining.rows;
-        } else {
-            const newRows = [...tableRefining.rows, val].sort((a, b) => a - b);
-            setTableRefining({ ...tableRefining, rows: newRows });
-            newSettings.explicit_horizontal_lines = newRows;
-            newSettings.explicit_vertical_lines = tableRefining.cols;
-        }
-
-        onAnalyze(newSettings);
-        if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
-        setHoverAdd(null);
     };
 
     const handleMouseUp = () => {
@@ -366,19 +390,9 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + colX * reg.width) * 100}%`}
                                                         y2={`${(reg.y + reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={20 / zoom} // Proximity range: 10px each side
+                                                        strokeWidth={10 / zoom}
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
-                                                        onMouseMove={(e) => {
-                                                            if (idx === 0) { // Left border, but we want to add a ROW if we hover here? 
-                                                                // Wait, user said "左侧或顶部".
-                                                                // Hovering Left border (vertical) should add a ROW (horizontal).
-                                                                const { y } = getCoordinates(e);
-                                                                const relY = (y - reg.y) / reg.height;
-                                                                if (relY > 0 && relY < 1) setHoverAdd({ type: 'row', val: relY });
-                                                            }
-                                                        }}
-                                                        onMouseLeave={() => idx === 0 && setHoverAdd(null)}
                                                     />
                                                     {/* Visible line */}
                                                     <line
@@ -431,17 +445,9 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + reg.width) * 100}%`}
                                                         y2={`${(reg.y + rowY * reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={20 / zoom} // Proximity range: 10px each side
+                                                        strokeWidth={10 / zoom}
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
-                                                        onMouseMove={(e) => {
-                                                            if (idx === 0) { // Top border (horizontal). Hovering here adds a COLUMN (vertical).
-                                                                const { x } = getCoordinates(e);
-                                                                const relX = (x - reg.x) / reg.width;
-                                                                if (relX > 0 && relX < 1) setHoverAdd({ type: 'col', val: relX });
-                                                            }
-                                                        }}
-                                                        onMouseLeave={() => idx === 0 && setHoverAdd(null)}
                                                     />
                                                     {/* Visible line */}
                                                     <line
@@ -484,32 +490,6 @@ const DocumentEditor = ({
                                                 </g>
                                             );
                                         })}
-
-                                        {/* Hover Add Button */}
-                                        {hoverAdd && (
-                                            <g
-                                                onClick={addTableLine}
-                                                style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                            >
-                                                <circle
-                                                    cx={hoverAdd.type === 'col' ? `${(reg.x + hoverAdd.val * reg.width) * 100}%` : `${reg.x * 100}%`}
-                                                    cy={hoverAdd.type === 'row' ? `${(reg.y + hoverAdd.val * reg.height) * 100}%` : `${reg.y * 100}%`}
-                                                    r={8 / zoom}
-                                                    fill="#3b82f6"
-                                                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
-                                                />
-                                                <text
-                                                    x={hoverAdd.type === 'col' ? `${(reg.x + hoverAdd.val * reg.width) * 100}%` : `${reg.x * 100}%`}
-                                                    y={hoverAdd.type === 'row' ? `${(reg.y + hoverAdd.val * reg.height) * 100}%` : `${reg.y * 100}%`}
-                                                    fill="white"
-                                                    fontSize={12 / zoom}
-                                                    fontWeight="bold"
-                                                    textAnchor="middle"
-                                                    dominantBaseline="middle"
-                                                    style={{ pointerEvents: 'none' }}
-                                                >+</text>
-                                            </g>
-                                        )}
                                     </g>
                                 )}
 
@@ -606,6 +586,45 @@ const DocumentEditor = ({
                             strokeWidth={2 / zoom}
                             strokeDasharray={`${4 / zoom} ${4 / zoom}`}
                         />
+                    )}
+
+                    {addLineHover && tableRefining && (
+                        <g
+                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                            onClick={(e) => addTableLine(e, addLineHover.type, addLineHover.val)}
+                        >
+                            <circle
+                                cx={`${addLineHover.x * 100}%`}
+                                cy={`${addLineHover.y * 100}%`}
+                                r={8 / zoom}
+                                fill="#3b82f6"
+                                stroke="#fff"
+                                strokeWidth={1.5 / zoom}
+                                style={{ filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' }}
+                            />
+                            <text
+                                x={`${addLineHover.x * 100}%`}
+                                y={`${addLineHover.y * 100}%`}
+                                fill="white"
+                                fontSize={12 / zoom}
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                style={{ pointerEvents: 'none' }}
+                            >+</text>
+                            {/* Visual guide line */}
+                            <line
+                                x1={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${regions.find(r => r.id === tableRefining.id).x * 100}%`}
+                                y1={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${regions.find(r => r.id === tableRefining.id).y * 100}%`}
+                                x2={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${(regions.find(r => r.id === tableRefining.id).x + regions.find(r => r.id === tableRefining.id).width) * 100}%`}
+                                y2={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${(regions.find(r => r.id === tableRefining.id).y + regions.find(r => r.id === tableRefining.id).height) * 100}%`}
+                                stroke="#3b82f6"
+                                strokeWidth={1 / zoom}
+                                strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+                                opacity={0.6}
+                                pointerEvents="none"
+                            />
+                        </g>
                     )}
                 </svg>
             </div>
