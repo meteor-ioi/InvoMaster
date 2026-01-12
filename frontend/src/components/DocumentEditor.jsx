@@ -366,7 +366,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + colX * reg.width) * 100}%`}
                                                         y2={`${(reg.y + reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={10 / zoom}
+                                                        strokeWidth={20 / zoom} // Proximity range: 10px each side
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
                                                         onMouseMove={(e) => {
@@ -431,7 +431,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + reg.width) * 100}%`}
                                                         y2={`${(reg.y + rowY * reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={10 / zoom}
+                                                        strokeWidth={20 / zoom} // Proximity range: 10px each side
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
                                                         onMouseMove={(e) => {
@@ -495,7 +495,7 @@ const DocumentEditor = ({
                                                     cx={hoverAdd.type === 'col' ? `${(reg.x + hoverAdd.val * reg.width) * 100}%` : `${reg.x * 100}%`}
                                                     cy={hoverAdd.type === 'row' ? `${(reg.y + hoverAdd.val * reg.height) * 100}%` : `${reg.y * 100}%`}
                                                     r={8 / zoom}
-                                                    fill="#10b981"
+                                                    fill="#3b82f6"
                                                     style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
                                                 />
                                                 <text
