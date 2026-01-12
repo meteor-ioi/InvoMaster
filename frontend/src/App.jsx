@@ -29,7 +29,7 @@ function App() {
     const [selectedId, setSelectedId] = useState(null);
     const [confidence, setConfidence] = useState(0.25);
     const [device, setDevice] = useState('mps');
-    const [zoom, setZoom] = useState(0.7);
+    const [zoom, setZoom] = useState(1.0);
     const [dragActive, setDragActive] = useState(false);
     const [showRegions, setShowRegions] = useState(true);
 
@@ -105,7 +105,14 @@ function App() {
 
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
-        const s = settingsOverride || tableSettings;
+        // Priority: settingsOverride > region.table_settings > tableSettings (default)
+        const s = settingsOverride || region.table_settings || tableSettings;
+
+        // Update the UI state to reflect loaded settings
+        if (region.table_settings && !settingsOverride) {
+            setTableSettings(region.table_settings);
+        }
+
         try {
             const res = await axios.post(`${API_BASE}/table/analyze`, {
                 id: analysis.id,
@@ -131,7 +138,8 @@ function App() {
                 rows: res.data.rows,
                 cols: res.data.cols,
                 cells: res.data.cells,
-                preview: res.data.preview
+                preview: res.data.preview,
+                settings: s // Store the settings used for this analysis
             });
         } catch (err) {
             console.error(err);
@@ -140,6 +148,7 @@ function App() {
             setLoading(false);
         }
     };
+
 
     const handleApplyTableSettings = () => {
         if (selectedRegion) {
@@ -272,7 +281,19 @@ function App() {
                                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px' }} title="缩小"><Minus size={14} /></button>
                                         <span style={{ fontSize: '12px', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
                                         <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px' }} title="放大"><Plus size={14} /></button>
-                                        <button onClick={() => setZoom(0.7)} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}>自适应</button>
+                                        <button onClick={() => {
+                                            // Auto-fit to selected table or region
+                                            if (tableRefining) {
+                                                const reg = regions.find(r => r.id === tableRefining.id);
+                                                if (reg) {
+                                                    // Calculate zoom to fit the table region
+                                                    const fitZoom = Math.min(0.9 / reg.width, 0.9 / reg.height, 2.0);
+                                                    setZoom(Math.max(0.5, Math.min(fitZoom, 2.0)));
+                                                    return;
+                                                }
+                                            }
+                                            setZoom(1.0);
+                                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}>自适应</button>
                                     </div>
 
                                     {!tableRefining && (
@@ -331,9 +352,13 @@ function App() {
                                     setSelectedId={setSelectedId}
                                     editorMode={editorMode}
                                     tableRefining={tableRefining}
+                                    setTableRefining={setTableRefining}
+                                    onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
+                                    onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
                                     zoom={zoom}
                                     showRegions={showRegions}
                                 />
+
                             </div>
 
                             {tableRefining && tableRefining.preview && (
@@ -429,6 +454,7 @@ function App() {
                                             <option value="lines">Lines (基于线)</option>
                                             <option value="text">Text (基于文字对齐)</option>
                                             <option value="rects">Rects (基于块)</option>
+                                            <option value="explicit">Explicit (手动模式)</option>
                                         </select>
                                     </div>
 
@@ -442,6 +468,7 @@ function App() {
                                             <option value="lines">Lines (基于线)</option>
                                             <option value="text">Text (基于文字对齐)</option>
                                             <option value="rects">Rects (基于块)</option>
+                                            <option value="explicit">Explicit (手动模式)</option>
                                         </select>
                                     </div>
 
@@ -467,10 +494,50 @@ function App() {
                                     </button>
 
                                     <button
+                                        onClick={() => {
+                                            // Save the current explicit lines to the region
+                                            if (tableRefining) {
+                                                setRegions(prev => prev.map(r => r.id === tableRefining.id ? {
+                                                    ...r,
+                                                    table_settings: {
+                                                        ...tableSettings,
+                                                        vertical_strategy: 'explicit',
+                                                        horizontal_strategy: 'explicit',
+                                                        explicit_vertical_lines: tableRefining.cols,
+                                                        explicit_horizontal_lines: tableRefining.rows
+                                                    }
+                                                } : r));
+                                                alert('表格识别规则已保存！');
+                                            }
+                                        }}
+                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--success-color)', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                                    >
+                                        <Save size={14} /> 保存识别规则
+                                    </button>
+
+                                    <button
                                         onClick={() => setTableRefining(null)}
                                         style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', cursor: 'pointer' }}
                                     >
                                         退出编辑模式
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            // Reset to default text mode
+                                            const defaultSettings = {
+                                                vertical_strategy: 'text',
+                                                horizontal_strategy: 'text',
+                                                snap_tolerance: 3,
+                                                join_tolerance: 3
+                                            };
+                                            setTableSettings(defaultSettings);
+                                            const region = regions.find(r => r.id === tableRefining?.id);
+                                            if (region) handleEnterTableRefine(region, defaultSettings);
+                                        }}
+                                        style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--error-color)', background: 'transparent', color: 'var(--error-color)', fontSize: '12px', cursor: 'pointer' }}
+                                    >
+                                        重置为默认
                                     </button>
                                 </div>
                             ) : selectedRegion ? (

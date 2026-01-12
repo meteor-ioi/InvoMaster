@@ -201,6 +201,20 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                 "snap_tolerance": 3,
                 "join_tolerance": 3,
             }
+
+            # Handle explicit lines conversion (Front-end sends 0-1 relative coords)
+            # pdfplumber expects explicit lines in absolute page coordinates
+            if s.get("vertical_strategy") == "explicit":
+                # Convert relative X to absolute Page X
+                rel_cols = s.get("explicit_vertical_lines", [])
+                abs_cols = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
+                s["explicit_vertical_lines"] = abs_cols
+            
+            if s.get("horizontal_strategy") == "explicit":
+                # Convert relative Y to absolute Page Y
+                rel_rows = s.get("explicit_horizontal_lines", [])
+                abs_rows = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
+                s["explicit_horizontal_lines"] = abs_rows
             
             # Find table using the requested strategy
             finder = cropped.debug_tablefinder(s)

@@ -20,10 +20,11 @@ const HANDLE_SIZE = 8;
 
 const DocumentEditor = ({
     image, regions, setRegions, selectedId, setSelectedId, editorMode = 'view',
-    tableRefining = null,
+    tableRefining = null, setTableRefining = null, onAnalyze = null, onSettingsChange = null,
     zoom = 1.0,
-    showRegions = true // Add showRegions prop
+    showRegions = true
 }) => {
+
     const [interaction, setInteraction] = useState(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentRect, setCurrentRect] = useState(null);
@@ -40,7 +41,7 @@ const DocumentEditor = ({
 
     const handleMouseDown = (e) => {
         const { x, y } = getCoordinates(e);
-        if (tableRefining) return;
+        if (tableRefining) return; // Interaction handled by lines if refining
 
         if (editorMode === 'add' && (e.target === containerRef.current || e.target.tagName === 'svg')) {
             setIsDrawing(true);
@@ -70,6 +71,15 @@ const DocumentEditor = ({
         setInteraction({ type: 'move', id, startX: x, startY: y, initialRegion: { ...region } });
     };
 
+    const startTableLineMove = (e, type, index, val) => {
+        e.stopPropagation();
+        // Prevent moving outer borders (index 0 and length-1)
+        if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
+        if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
+
+        setInteraction({ type: 'tableLine', lineType: type, index, startVal: val });
+    };
+
     const handleMouseMove = (e) => {
         const { x, y } = getCoordinates(e);
 
@@ -83,6 +93,33 @@ const DocumentEditor = ({
         }
 
         if (!interaction) return;
+
+        if (interaction.type === 'tableLine' && tableRefining) {
+            const reg = regions.find(r => r.id === tableRefining.id);
+            if (!reg) return;
+
+            let newVal;
+            if (interaction.lineType === 'col') {
+                // Ensure within bounds (0-1 relative to bbox)
+                const relX = (x - reg.x) / reg.width;
+                newVal = Math.max(0.01, Math.min(0.99, relX));
+
+                const newCols = [...tableRefining.cols];
+                newCols[interaction.index] = newVal;
+                // Maintain sort? Actually pdfplumber expects sorted, but let's sort on release or just keep dragging index
+                // It's better to update visuals instantly. 
+                // Don't sort while dragging to avoid index jumping
+                setTableRefining({ ...tableRefining, cols: newCols });
+            } else {
+                const relY = (y - reg.y) / reg.height;
+                newVal = Math.max(0.01, Math.min(0.99, relY));
+
+                const newRows = [...tableRefining.rows];
+                newRows[interaction.index] = newVal;
+                setTableRefining({ ...tableRefining, rows: newRows });
+            }
+            return;
+        }
 
         if (interaction.type === 'move') {
             const dx = x - interaction.startX;
@@ -115,7 +152,52 @@ const DocumentEditor = ({
         }
     };
 
+    const deleteTableLine = (e, type, index) => {
+        e.stopPropagation();
+        if (!tableRefining || !onAnalyze) return;
+
+        // Cannot delete borders
+        if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
+        if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
+
+        let newSettings = {
+            ...tableRefining.settings,
+            vertical_strategy: "explicit",
+            horizontal_strategy: "explicit"
+        };
+
+        if (type === 'col') {
+            const newCols = tableRefining.cols.filter((_, i) => i !== index);
+            setTableRefining({ ...tableRefining, cols: newCols });
+            newSettings.explicit_vertical_lines = newCols;
+            newSettings.explicit_horizontal_lines = tableRefining.rows; // Keep rows as is
+        } else {
+            const newRows = tableRefining.rows.filter((_, i) => i !== index);
+            setTableRefining({ ...tableRefining, rows: newRows });
+            newSettings.explicit_horizontal_lines = newRows;
+            newSettings.explicit_vertical_lines = tableRefining.cols; // Keep cols as is
+        }
+
+        onAnalyze(newSettings);
+        // Notify parent to update dropdown to Explicit
+        if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+    };
+
     const handleMouseUp = () => {
+        if (interaction?.type === 'tableLine' && tableRefining && onAnalyze) {
+            // Commit the change by re-analyzing with explicit lines
+            const newSettings = {
+                ...tableRefining.settings,
+                vertical_strategy: "explicit",
+                horizontal_strategy: "explicit",
+                explicit_vertical_lines: tableRefining.cols,
+                explicit_horizontal_lines: tableRefining.rows
+            };
+            onAnalyze(newSettings);
+            // Notify parent to update dropdown to Explicit
+            if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
+        }
+
         if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005) {
             const normalized = {
                 ...currentRect,
@@ -212,28 +294,117 @@ const DocumentEditor = ({
                                                 strokeWidth={0.5 / zoom}
                                             />
                                         ))}
-                                        {tableRefining.cols.map((colX, idx) => (
-                                            <line
-                                                key={`col-${idx}`}
-                                                x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y1={`${reg.y * 100}%`}
-                                                x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y2={`${(reg.y + reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.6)"
-                                                strokeWidth={1.5 / zoom}
-                                            />
-                                        ))}
-                                        {tableRefining.rows.map((rowY, idx) => (
-                                            <line
-                                                key={`row-${idx}`}
-                                                x1={`${reg.x * 100}%`}
-                                                y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                x2={`${(reg.x + reg.width) * 100}%`}
-                                                y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.6)"
-                                                strokeWidth={1.5 / zoom}
-                                            />
-                                        ))}
+                                        {tableRefining.cols.map((colX, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                            return (
+                                                <g key={`col-${idx}`}>
+                                                    {/* Invisible hit area */}
+                                                    <line
+                                                        x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y1={`${reg.y * 100}%`}
+                                                        x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y2={`${(reg.y + reg.height) * 100}%`}
+                                                        stroke="transparent"
+                                                        strokeWidth={10 / zoom}
+                                                        style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
+                                                        onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
+                                                    />
+                                                    {/* Visible line */}
+                                                    <line
+                                                        x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y1={`${reg.y * 100}%`}
+                                                        x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y2={`${(reg.y + reg.height) * 100}%`}
+                                                        stroke="rgba(16, 185, 129, 0.8)"
+                                                        strokeWidth={1.5 / zoom}
+                                                        style={{ pointerEvents: 'none' }}
+                                                    />
+                                                    {/* Delete button (only for inner lines) */}
+                                                    {!isBorder && (
+                                                        <g
+                                                            onMouseDown={(e) => {
+                                                                e.stopPropagation();
+                                                                e.preventDefault();
+                                                                deleteTableLine(e, 'col', idx);
+                                                            }}
+                                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                        >
+                                                            <circle
+                                                                cx={`${(reg.x + colX * reg.width) * 100}%`}
+                                                                cy={`${(reg.y + reg.height) * 100}%`}
+                                                                r={6 / zoom}
+                                                                fill="#ef4444"
+                                                            />
+                                                            <text
+                                                                x={`${(reg.x + colX * reg.width) * 100}%`}
+                                                                y={`${(reg.y + reg.height) * 100}%`}
+                                                                fill="white"
+                                                                fontSize={10 / zoom}
+                                                                textAnchor="middle"
+                                                                dominantBaseline="middle"
+                                                                style={{ pointerEvents: 'none' }}
+                                                            >-</text>
+                                                        </g>
+                                                    )}
+                                                </g>
+                                            );
+                                        })}
+                                        {tableRefining.rows.map((rowY, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                            return (
+                                                <g key={`row-${idx}`}>
+                                                    {/* Invisible hit area */}
+                                                    <line
+                                                        x1={`${reg.x * 100}%`}
+                                                        y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        x2={`${(reg.x + reg.width) * 100}%`}
+                                                        y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        stroke="transparent"
+                                                        strokeWidth={10 / zoom}
+                                                        style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
+                                                        onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
+                                                    />
+                                                    {/* Visible line */}
+                                                    <line
+                                                        x1={`${reg.x * 100}%`}
+                                                        y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        x2={`${(reg.x + reg.width) * 100}%`}
+                                                        y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        stroke="rgba(16, 185, 129, 0.8)"
+                                                        strokeWidth={1.5 / zoom}
+                                                        style={{ pointerEvents: 'none' }}
+                                                    />
+                                                    {/* Delete button */}
+                                                    {!isBorder && (
+                                                        <g
+                                                            onMouseDown={(e) => {
+                                                                e.stopPropagation();
+                                                                e.preventDefault();
+                                                                deleteTableLine(e, 'row', idx);
+                                                            }}
+                                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                        >
+                                                            <circle
+                                                                cx={`${(reg.x + reg.width) * 100}%`}
+                                                                cy={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                                r={6 / zoom}
+                                                                fill="#ef4444"
+                                                            />
+                                                            <text
+                                                                x={`${(reg.x + reg.width) * 100}%`}
+                                                                y={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                                fill="white"
+                                                                fontSize={10 / zoom}
+                                                                textAnchor="middle"
+                                                                dominantBaseline="middle"
+                                                                style={{ pointerEvents: 'none' }}
+                                                            >-</text>
+                                                        </g>
+                                                    )}
+
+                                                </g>
+                                            );
+                                        })}
                                     </g>
                                 )}
 
