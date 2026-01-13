@@ -98,7 +98,11 @@ async def root():
 async def analyze_document(
     file: UploadFile = File(...), 
     device: Optional[str] = None, 
-    conf: float = 0.25
+    conf: float = 0.25,
+    imgsz: int = 1024,
+    iou: float = 0.45,
+    agnostic_nms: bool = False,
+    refresh: bool = False
 ):
     # Save uploaded file
     file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -112,24 +116,23 @@ async def analyze_document(
     template_found = False
     matching_regions = []
     
-    # For re-identify calls, we might want to skip template match if specific params are sent
-    # But for now, let's keep it simple.
-    for t_file in os.listdir(TEMPLATES_DIR):
-        if t_file.endswith(".json"):
-            t_path = os.path.join(TEMPLATES_DIR, t_file)
-            try:
-                if os.path.getsize(t_path) == 0:
+    if not refresh:
+        for t_file in os.listdir(TEMPLATES_DIR):
+            if t_file.endswith(".json"):
+                t_path = os.path.join(TEMPLATES_DIR, t_file)
+                try:
+                    if os.path.getsize(t_path) == 0:
+                        continue
+                    with open(t_path, "r", encoding="utf-8") as f:
+                        t_data = json.load(f)
+                        if t_data.get("fingerprint") == fingerprint:
+                            template_found = True
+                            regions_objs = [Region(**r) for r in t_data.get("regions", [])]
+                            matching_regions = extract_text_from_regions(file_path, regions_objs)
+                            break
+                except Exception as e:
+                    print(f"Error checking template {t_file}: {e}")
                     continue
-                with open(t_path, "r", encoding="utf-8") as f:
-                    t_data = json.load(f)
-                    if t_data.get("fingerprint") == fingerprint:
-                        template_found = True
-                        regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-                        matching_regions = extract_text_from_regions(file_path, regions_objs)
-                        break
-            except Exception as e:
-                print(f"Error checking template {t_file}: {e}")
-                continue
     
     # 3. Convert to images
     img_subdir = f"images_{fingerprint[:8]}"
@@ -141,9 +144,19 @@ async def analyze_document(
     engine = get_layout_engine()
     try:
         # Override with layout inference even if template exists if we want to "re-identify"
-        ai_regions = engine.predict(image_paths[0], device=device, conf=conf)
-        if not template_found:
+        ai_regions = engine.predict(
+            image_paths[0], 
+            device=device, 
+            conf=conf,
+            imgsz=imgsz,
+            iou=iou,
+            agnostic_nms=agnostic_nms
+        )
+        # If refreshing or no template found, use AI results
+        if refresh or not template_found:
             matching_regions = ai_regions
+            if refresh:
+                template_found = False # Reset flag for UI feedback
     except Exception as e:
         print(f"Inference error: {e}")
         if not template_found:

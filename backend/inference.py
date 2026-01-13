@@ -36,14 +36,21 @@ class LayoutEngine:
             from ultralytics import YOLO as StandardYOLO
             self.model = StandardYOLO(model_path)
 
-    def predict(self, image_path, device=None, conf=0.25):
+    def predict(self, image_path, device=None, conf=0.25, imgsz=1024, iou=0.45, agnostic_nms=False):
         """
         Predict layout regions for a single image with custom parameters.
         """
         target_device = device or self.device
-        print(f"Running prediction on {target_device} (conf={conf})")
+        print(f"Running prediction on {target_device} (conf={conf}, imgsz={imgsz}, iou={iou}, agnostic_nms={agnostic_nms})")
         
-        results = self.model.predict(image_path, device=target_device, conf=conf)
+        results = self.model.predict(
+            image_path, 
+            device=target_device, 
+            conf=conf,
+            imgsz=imgsz,
+            iou=iou,
+            agnostic_nms=agnostic_nms
+        )
         regions = []
         
         # DocLayout-YOLO classes

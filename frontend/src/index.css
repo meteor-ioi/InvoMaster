@@ -107,6 +107,10 @@ body {
   animation: spin 1s linear infinite;
 }
 
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -132,6 +136,11 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--primary-color);
+}
+
+/* 策略切换按钮悬停效果 */
+.strategy-toggle button:hover:not([style*="background: var(--primary-color)"]) {
+  background: var(--glass-border);
 }
 
 /* 绿色扫过交互特效 */
@@ -164,6 +173,16 @@ body {
   100% {
     left: 100%;
   }
+}
+
+/* 输入框优化 */
+input[type="range"] {
+  accent-color: var(--primary-color);
+}
+
+select {
+  cursor: pointer;
+  outline: none;
 }
 
 .hidden {

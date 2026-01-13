@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Upload, CheckCircle, Settings, RefreshCw, ChevronLeft, ChevronRight, Layout, Star, Trash2, Edit3, Save, Sun, Moon, Plus, Minus, Grid, X, HelpCircle, Eye, EyeOff, RotateCcw, RotateCw } from 'lucide-react';
+import { Upload, CheckCircle, Settings, RefreshCw, ChevronLeft, ChevronRight, Layout, Star, Trash2, Edit3, Save, Sun, Moon, Plus, Minus, Grid, X, HelpCircle, Eye, EyeOff, RotateCcw, RotateCw, Filter, Zap, ShieldCheck, Microscope } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './components/DocumentEditor';
 
 const API_BASE = 'http://localhost:8000';
@@ -15,6 +15,32 @@ function App() {
 
     const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
     const [editorMode, setEditorMode] = useState('view');
+
+    // --- 版面识别增强状态 ---
+    const [layoutSettings, setLayoutSettings] = useState({
+        strategy: 'balanced',
+        imgsz: 1024,
+        iou: 0.45,
+        agnostic_nms: false
+    });
+    const [viewFilters, setViewFilters] = useState({
+        // Default all visible
+    });
+
+    const applyStrategy = (strategy) => {
+        let settings = { strategy };
+        if (strategy === 'fast') {
+            settings = { ...settings, imgsz: 640, iou: 0.5, agnostic_nms: false };
+            setConfidence(0.35);
+        } else if (strategy === 'balanced') {
+            settings = { ...settings, imgsz: 1024, iou: 0.45, agnostic_nms: false };
+            setConfidence(0.25);
+        } else if (strategy === 'precise') {
+            settings = { ...settings, imgsz: 1600, iou: 0.35, agnostic_nms: true };
+            setConfidence(0.15);
+        }
+        setLayoutSettings(prev => ({ ...prev, ...settings }));
+    };
 
     // --- 表格深度编辑状态 ---
     const [tableRefining, setTableRefining] = useState(null);
@@ -117,8 +143,16 @@ function App() {
         setLoading(true);
         try {
             const currentConf = forceParams.conf !== undefined ? forceParams.conf : confidence;
+            const isRefresh = forceParams.refresh || false;
             const res = await axios.post(`${API_BASE}/analyze`, formData, {
-                params: { device: device, conf: currentConf }
+                params: {
+                    device: device,
+                    conf: currentConf,
+                    imgsz: layoutSettings.imgsz,
+                    iou: layoutSettings.iou,
+                    agnostic_nms: layoutSettings.agnostic_nms,
+                    refresh: isRefresh
+                }
             });
             setAnalysis(res.data);
             setRegions(res.data.regions || []);
@@ -136,10 +170,8 @@ function App() {
 
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
-        // Priority: settingsOverride > region.table_settings (saved) > tableSettings (current UI state)
         const s = settingsOverride || region.table_settings || tableSettings;
 
-        // Update the UI dropdown to reflect the loaded settings
         if (region.table_settings && !settingsOverride) {
             setTableSettings(region.table_settings);
         }
@@ -171,9 +203,8 @@ function App() {
                 cols: res.data.cols,
                 cells: res.data.cells,
                 preview: res.data.preview,
-                settings: s // Store the settings used for this analysis
+                settings: s
             });
-            // Record history when entering refinement as it might change labels or something (though usually it doesn't)
         } catch (err) {
             console.error(err);
             alert('获取表格结构分析失败');
@@ -182,7 +213,6 @@ function App() {
         }
     };
 
-    // Handle table re-analysis (used by DocumentEditor in Explicit mode)
     const handleAnalyzeTable = async (regionId, newSettings) => {
         const region = regions.find(r => r.id === regionId);
         if (!region || !analysis) return;
@@ -199,7 +229,6 @@ function App() {
                 settings: newSettings
             });
 
-            // Update tableRefining with new data including cells and preview
             setTableRefining(prev => ({
                 ...prev,
                 rows: res.data.rows,
@@ -249,7 +278,6 @@ function App() {
     const updateRegionLabel = (id, label) => {
         const newRegions = regions.map(r => r.id === id ? { ...r, label } : r);
         setRegions(newRegions);
-        // Note: We might want to debounce label history, but for simplicity:
         recordHistory(newRegions);
     };
 
@@ -270,14 +298,15 @@ function App() {
         });
     }, [templates, analysis]);
 
-    const ticks = [];
-    for (let i = 0.05; i <= 0.61; i += 0.05) {
-        ticks.push(i.toFixed(2));
-    }
+    const filteredRegions = useMemo(() => {
+        const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
+        if (activeFilters.length === 0) return regions;
+        return regions.filter(r => activeFilters.includes(r.type.toLowerCase()));
+    }, [regions, viewFilters]);
 
     return (
         <div className="container" style={{ maxWidth: '1440px', margin: '0 auto', padding: step === 'review' ? '0 20px 40px' : '40px 20px', position: 'relative' }}>
-            <header style={{ position: 'relative', textAlign: 'center', marginBottom: step === 'review' ? '50px' : '40px' }}>
+            <header style={{ position: 'relative', textAlign: 'center', marginBottom: step === 'review' ? '30px' : '40px' }}>
                 {step !== 'review' && (
                     <>
                         <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
@@ -311,7 +340,7 @@ function App() {
                 gap: '20px',
                 alignItems: 'start'
             }}>
-                {/* Left Panel - Templates (only show in review step) */}
+                {/* Left Panel - Templates */}
                 {step === 'review' && analysis && (
                     <aside
                         className="glass-card"
@@ -348,13 +377,6 @@ function App() {
                             )}
                         </div>
 
-                        {leftPanelCollapsed && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <Layout size={18} color="var(--primary-color)" />
-                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', writingMode: 'vertical-rl' }}>模板</span>
-                            </div>
-                        )}
-
                         {!leftPanelCollapsed && (
                             <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="custom-scrollbar">
                                 {sortedTemplates.length > 0 ? sortedTemplates.map(t => {
@@ -374,9 +396,8 @@ function App() {
                 )}
 
                 {/* Center Panel - Main Content */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', minWidth: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
                     {step === 'upload' && (
-                        /* ... same as before, no changes needed for upload step ... */
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', maxWidth: '600px', margin: '0 auto' }}>
                             <div
                                 className={`glass-card ${dragActive ? 'drag-active' : ''}`}
@@ -412,172 +433,223 @@ function App() {
                     )}
 
                     {step === 'review' && analysis && (
-                        <div className="glass-card" style={{ padding: '20px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', marginBottom: '20px', justifyContent: 'space-between' }}>
-                                <button
-                                    onClick={() => {
-                                        if (tableRefining) setTableRefining(null);
-                                        else setStep('upload');
-                                    }}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px' }}
-                                >
-                                    <ChevronLeft size={16} /> {tableRefining ? '返回' : '重选'}
-                                </button>
+                        <>
+                            {/* Layered Control Panel (Option 2) */}
+                            {!tableRefining && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {/* Layer 1: Identification Settings */}
+                                    <div className="glass-card" style={{ padding: '12px 20px', borderBottom: '2px solid var(--glass-border)', overflow: 'hidden' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, minWidth: 0 }}>
+                                                {/* Strategy Toggle */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                                    <Zap size={16} color="var(--primary-color)" />
+                                                    <span style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>识别策略:</span>
+                                                    <div className="strategy-toggle" style={{ display: 'flex', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                                        {['fast', 'balanced', 'precise'].map(s => (
+                                                            <button
+                                                                key={s}
+                                                                onClick={() => applyStrategy(s)}
+                                                                style={{
+                                                                    padding: '4px 12px', borderRadius: '6px', fontSize: '11px', border: 'none', cursor: 'pointer',
+                                                                    background: layoutSettings.strategy === s ? 'var(--primary-color)' : 'transparent',
+                                                                    color: layoutSettings.strategy === s ? '#fff' : 'var(--text-secondary)',
+                                                                    fontWeight: layoutSettings.strategy === s ? 'bold' : 'normal',
+                                                                    transition: 'all 0.2s', whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                {s === 'fast' ? '极速' : s === 'balanced' ? '平衡' : '精细'}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
 
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '2px' }} title="缩小"><Minus size={14} /></button>
-                                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-                                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '2px' }} title="放大"><Plus size={14} /></button>
-                                        <button onClick={() => {
-                                            if (tableRefining) {
-                                                const reg = regions.find(r => r.id === tableRefining.id);
-                                                if (reg) {
-                                                    // Calculate zoom to fit the table region width in container
-                                                    // Assuming container width is roughly 70% of viewport for 3-column layout
-                                                    const containerWidth = window.innerWidth * 0.5; // Estimate center panel width
-                                                    const imgWidth = 800; // Approximate image width in pixels
-                                                    const tableWidth = reg.width * imgWidth;
-                                                    const fitZoom = Math.min((containerWidth - 40) / tableWidth, 2.0);
-                                                    setZoom(Math.max(0.5, Math.min(fitZoom, 2.0)));
-                                                    return;
-                                                }
-                                            }
-                                            setZoom(1.0);
-                                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 4px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}>自适应</button>
-                                    </div>
-
-                                    {!tableRefining && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--input-bg)', padding: '5px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                                <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: '600', whiteSpace: 'nowrap' }}>置信度: {confidence.toFixed(2)}</span>
-                                                <input
-                                                    type="range" min="0.05" max="0.6" step="0.05"
-                                                    value={confidence} onChange={(e) => setConfidence(parseFloat(e.target.value))}
-                                                    style={{ width: '100px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
-                                                />
+                                                {/* Parameters Area */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingLeft: '20px', borderLeft: '1px solid var(--glass-border)', flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>分辨率:</span>
+                                                        <select
+                                                            value={layoutSettings.imgsz}
+                                                            onChange={(e) => setLayoutSettings({ ...layoutSettings, imgsz: parseInt(e.target.value), strategy: 'custom' })}
+                                                            style={{ background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '11px', outline: 'none' }}
+                                                        >
+                                                            {[640, 800, 1024, 1280, 1600, 2048].map(size => <option key={size} value={size}>{size}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
+                                                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>置信度:</span>
+                                                        <input
+                                                            type="range" min="0.05" max="0.6" step="0.05"
+                                                            value={confidence} onChange={(e) => setConfidence(parseFloat(e.target.value))}
+                                                            style={{ flex: 1, minWidth: '80px', maxWidth: '300px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
+                                                        />
+                                                        <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{confidence.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <button onClick={() => analyze(file)} disabled={loading} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer' }}>
-                                                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                                                重新识别
+
+                                            <button
+                                                onClick={() => analyze(file, { refresh: true })}
+                                                disabled={loading}
+                                                className="btn-primary"
+                                                style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-color)', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析
                                             </button>
                                         </div>
-                                    )}
-
-                                    <button
-                                        onClick={() => setShowRegions(!showRegions)}
-                                        style={{
-                                            padding: '6px 12px', borderRadius: '8px', fontSize: '13px',
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            background: showRegions ? 'var(--input-bg)' : 'var(--success-color)',
-                                            color: showRegions ? 'var(--text-primary)' : 'white',
-                                            border: '1px solid var(--glass-border)',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {showRegions ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        <span style={{ whiteSpace: 'nowrap' }}>{showRegions ? "隐藏预览" : "显示预览"}</span>
-                                    </button>
-
-                                    {tableRefining && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '13px' }}>
-                                            <Grid size={16} /> 表格微调模式
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div
-                                style={{
-                                    position: 'relative',
-                                    minWidth: 0,
-                                    height: `${previewPanelHeight}px`,
-                                    minHeight: '200px',
-                                    maxHeight: '1000px',
-                                    overflow: 'auto',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--glass-border)'
-                                }}
-                            >
-                                <DocumentEditor
-                                    image={`${API_BASE}/static/${analysis.images[0]}`}
-                                    regions={regions}
-                                    setRegions={setRegions}
-                                    selectedId={selectedId}
-                                    setSelectedId={setSelectedId}
-                                    editorMode={editorMode}
-                                    tableRefining={tableRefining}
-                                    setTableRefining={setTableRefining}
-                                    onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
-                                    onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
-                                    zoom={zoom}
-                                    showRegions={showRegions}
-                                    onDelete={deleteRegion}
-                                    onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
-                                />
-                            </div>
-
-                            {/* Resize Handle */}
-                            <div
-                                style={{
-                                    height: '12px',
-                                    cursor: 'ns-resize',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'var(--input-bg)',
-                                    borderRadius: '0 0 8px 8px',
-                                    marginTop: '4px',
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    setIsResizingPanel(true);
-                                    const startY = e.clientY;
-                                    const startHeight = previewPanelHeight;
-
-                                    const handleMouseMove = (moveE) => {
-                                        const delta = moveE.clientY - startY;
-                                        const newHeight = Math.max(200, Math.min(1000, startHeight + delta));
-                                        setPreviewPanelHeight(newHeight);
-                                    };
-
-                                    const handleMouseUp = () => {
-                                        setIsResizingPanel(false);
-                                        document.removeEventListener('mousemove', handleMouseMove);
-                                        document.removeEventListener('mouseup', handleMouseUp);
-                                    };
-
-                                    document.addEventListener('mousemove', handleMouseMove);
-                                    document.addEventListener('mouseup', handleMouseUp);
-                                }}
-                                title="拖拽调整预览区域高度"
-                            >
-                                <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
-                            </div>
-
-                            {tableRefining && tableRefining.preview && (
-                                <div style={{ marginTop: '20px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <h4 style={{ fontSize: '14px', margin: 0, color: 'var(--text-secondary)' }}>实时数据提取 (单元格级预览):</h4>
-                                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>共探测到 {tableRefining.cells?.length || 0} 个物理单元格</span>
-                                    </div>
-                                    <div style={{ width: '100%', overflowX: 'auto', background: 'var(--input-bg)', borderRadius: '12px', padding: '15px', border: '1px solid var(--glass-border)' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                                            <tbody>
-                                                {tableRefining.preview.map((row, ridx) => (
-                                                    <tr key={ridx} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                                                        {row.map((cell, cidx) => (
-                                                            <td key={cidx} style={{ padding: '8px 15px', color: 'var(--text-primary)', whiteSpace: 'nowrap', borderRight: '1px solid var(--glass-border)' }}>{cell || '-'}</td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
                                     </div>
                                 </div>
                             )}
-                        </div>
+
+                            {/* Layer 2: View Tools - Always visible */}
+                            <div className="glass-card" style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: tableRefining ? '0' : '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
+                                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
+                                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+                                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
+                                        <button onClick={() => {
+                                            if (zoom < 1.49) setZoom(1.5);
+                                            else if (zoom < 1.99) setZoom(2.0);
+                                            else setZoom(1.0);
+                                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
+                                    </div>
+                                    {!tableRefining && (
+                                        <>
+                                            <div style={{ height: '16px', width: '1px', background: 'var(--glass-border)' }} />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Filter size={14} color="var(--text-secondary)" />
+                                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
+                                                {['table', 'title', 'figure', 'header', 'footer', 'text'].map(type => (
+                                                    <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!viewFilters[type]}
+                                                            onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
+                                                            style={{ accentColor: 'var(--success-color)' }}
+                                                        />
+                                                        {TYPE_CONFIG[type]?.label || type}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <button
+                                        onClick={() => setShowRegions(!showRegions)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px',
+                                            borderRadius: '6px', border: '1px solid var(--glass-border)',
+                                            background: 'transparent', color: 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer'
+                                        }}
+                                    >
+                                        {showRegions ? <Eye size={12} /> : <EyeOff size={12} />}
+                                        {showRegions ? '隐藏预览' : '显示预览'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="glass-card" style={{ padding: '20px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                {tableRefining && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <button onClick={() => setTableRefining(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px' }}>
+                                            <ChevronLeft size={16} /> 返回版面分析
+                                        </button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '13px' }}>
+                                            <Grid size={16} /> 表格微调模式
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div
+                                    style={{
+                                        position: 'relative',
+                                        minWidth: 0,
+                                        height: `${previewPanelHeight}px`,
+                                        minHeight: '200px',
+                                        maxHeight: '1000px',
+                                        overflow: 'auto',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--glass-border)'
+                                    }}
+                                >
+                                    <DocumentEditor
+                                        image={`${API_BASE}/static/${analysis.images[0]}`}
+                                        regions={regions}
+                                        viewFilters={viewFilters}
+                                        setRegions={setRegions}
+                                        selectedId={selectedId}
+                                        setSelectedId={setSelectedId}
+                                        editorMode={editorMode}
+                                        tableRefining={tableRefining}
+                                        setTableRefining={setTableRefining}
+                                        onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
+                                        onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
+                                        zoom={zoom}
+                                        showRegions={showRegions}
+                                        onDelete={deleteRegion}
+                                        onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
+                                    />
+                                </div>
+
+                                {/* Resize Handle */}
+                                <div
+                                    style={{
+                                        height: '12px',
+                                        cursor: 'ns-resize',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'var(--input-bg)',
+                                        borderRadius: '0 0 8px 8px',
+                                        marginTop: '4px'
+                                    }}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setIsResizingPanel(true);
+                                        const startY = e.clientY;
+                                        const startHeight = previewPanelHeight;
+                                        const handleMouseMove = (moveE) => {
+                                            const delta = moveE.clientY - startY;
+                                            setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
+                                        };
+                                        const handleMouseUp = () => {
+                                            setIsResizingPanel(false);
+                                            document.removeEventListener('mousemove', handleMouseMove);
+                                            document.removeEventListener('mouseup', handleMouseUp);
+                                        };
+                                        document.addEventListener('mousemove', handleMouseMove);
+                                        document.addEventListener('mouseup', handleMouseUp);
+                                    }}
+                                >
+                                    <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
+                                </div>
+
+                                {tableRefining && tableRefining.preview && (
+                                    <div style={{ marginTop: '20px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <h4 style={{ fontSize: '14px', margin: 0, color: 'var(--text-secondary)' }}>实时数据提取 (单元格级预览):</h4>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>共探测到 {tableRefining.cells?.length || 0} 个物理单元格</span>
+                                        </div>
+                                        <div style={{ width: '100%', overflowX: 'auto', background: 'var(--input-bg)', borderRadius: '12px', padding: '15px', border: '1px solid var(--glass-border)' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                                <tbody>
+                                                    {tableRefining.preview.map((row, ridx) => (
+                                                        <tr key={ridx} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                                                            {row.map((cell, cidx) => (
+                                                                <td key={cidx} style={{ padding: '8px 15px', color: 'var(--text-primary)', whiteSpace: 'nowrap', borderRight: '1px solid var(--glass-border)' }}>{cell || '-'}</td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {step === 'complete' && (
@@ -592,9 +664,8 @@ function App() {
                     )}
                 </div>
 
-                {/* Right Panel - Editor (only show in review step) */}
+                {/* Right Panel - Editor */}
                 {step === 'review' && analysis && (
-
                     <aside
                         className="glass-card"
                         style={{
@@ -626,37 +697,6 @@ function App() {
                                         <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {tableRefining && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const defaultSettings = {
-                                                        vertical_strategy: 'text',
-                                                        horizontal_strategy: 'text',
-                                                        snap_tolerance: 3,
-                                                        join_tolerance: 3
-                                                    };
-                                                    setTableSettings(defaultSettings);
-                                                    const region = regions.find(r => r.id === tableRefining?.id);
-                                                    if (region) handleEnterTableRefine(region, defaultSettings);
-                                                }}
-                                                style={{
-                                                    padding: '2px 8px',
-                                                    height: '24px',
-                                                    borderRadius: '6px',
-                                                    border: 'none',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                    color: '#ef4444',
-                                                    fontSize: '12px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                    display: 'flex',
-                                                    alignItems: 'center'
-                                                }}
-                                            >
-                                                重置
-                                            </button>
-                                        )}
                                         {!tableRefining && (
                                             <>
                                                 <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
@@ -680,17 +720,8 @@ function App() {
                             )}
                         </div>
 
-                        {rightPanelCollapsed && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                                <Edit3 size={18} color="var(--accent-color)" />
-                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', writingMode: 'vertical-rl' }}>编辑</span>
-                            </div>
-                        )}
-
                         {!rightPanelCollapsed && (
                             <>
-
-
                                 {tableRefining ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                         <div>
@@ -699,14 +730,7 @@ function App() {
                                             </p>
                                             <select
                                                 value={tableSettings.vertical_strategy}
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (value === 'explicit') {
-                                                        setTableSettings({ ...tableSettings, vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
-                                                    } else {
-                                                        setTableSettings({ ...tableSettings, vertical_strategy: value });
-                                                    }
-                                                }}
+                                                onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
                                                 style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                             >
                                                 <option value="lines">Lines (基于线)</option>
@@ -720,14 +744,7 @@ function App() {
                                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
                                             <select
                                                 value={tableSettings.horizontal_strategy}
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (value === 'explicit') {
-                                                        setTableSettings({ ...tableSettings, vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
-                                                    } else {
-                                                        setTableSettings({ ...tableSettings, horizontal_strategy: value });
-                                                    }
-                                                }}
+                                                onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
                                                 style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                             >
                                                 <option value="lines">Lines (基于线)</option>
@@ -737,72 +754,30 @@ function App() {
                                             </select>
                                         </div>
 
-                                        <div style={{ opacity: tableSettings.vertical_strategy === 'explicit' ? 0.5 : 1 }}>
-                                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                                容差 (Snap): <span>{tableSettings.snap_tolerance}px</span>
-                                            </p>
-                                            <input
-                                                type="range" min="1" max="10" step="1"
-                                                value={tableSettings.snap_tolerance}
-                                                onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
-                                                disabled={tableSettings.vertical_strategy === 'explicit'}
-                                                style={{ width: '100%', accentColor: 'var(--success-color)', cursor: tableSettings.vertical_strategy === 'explicit' ? 'not-allowed' : 'pointer' }}
-                                            />
-                                            {tableSettings.vertical_strategy === 'explicit' && (
-                                                <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>手动模式下不可用</p>
-                                            )}
+                                        <div>
+                                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差 (Snap)</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <input
+                                                    type="range" min="1" max="10" step="1"
+                                                    value={tableSettings.snap_tolerance || 3}
+                                                    onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
+                                                    style={{ flex: 1, accentColor: 'var(--primary-color)', height: '4px' }}
+                                                />
+                                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '15px' }}>{tableSettings.snap_tolerance || 3}</span>
+                                            </div>
                                         </div>
 
-                                        <button
-                                            onClick={() => {
-                                                if (tableSettings.vertical_strategy === 'explicit' && tableRefining) {
-                                                    // Explicit mode: use current explicit lines
-                                                    handleAnalyzeTable(tableRefining.id, {
-                                                        ...tableSettings,
-                                                        explicit_vertical_lines: tableRefining.cols,
-                                                        explicit_horizontal_lines: tableRefining.rows
-                                                    });
-                                                } else {
-                                                    handleApplyTableSettings();
-                                                }
-                                            }}
-                                            disabled={loading}
-                                            className="btn-primary"
-                                            style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}
-                                        >
+                                        <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}>
                                             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析结构
                                         </button>
 
-                                        <button
-                                            onClick={() => {
-                                                // Save the current explicit lines to the region
-                                                if (tableRefining) {
-                                                    setRegions(prev => prev.map(r => r.id === tableRefining.id ? {
-                                                        ...r,
-                                                        table_settings: {
-                                                            ...tableSettings,
-                                                            vertical_strategy: 'explicit',
-                                                            horizontal_strategy: 'explicit',
-                                                            explicit_vertical_lines: tableRefining.cols,
-                                                            explicit_horizontal_lines: tableRefining.rows
-                                                        }
-                                                    } : r));
-                                                    alert('表格识别规则已保存！');
-                                                }
-                                            }}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--success-color)', color: 'white', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-                                        >
+                                        <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', background: 'var(--success-color)', fontSize: '12px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                                             <Save size={14} /> 保存识别规则
                                         </button>
 
-                                        <button
-                                            onClick={() => setTableRefining(null)}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', cursor: 'pointer' }}
-                                        >
-                                            退出编辑模式
+                                        <button onClick={() => setTableRefining(null)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', cursor: 'pointer' }}>
+                                            退出微调模式
                                         </button>
-
-
                                     </div>
                                 ) : selectedRegion ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -816,18 +791,12 @@ function App() {
                                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                                                 {[
-                                                    'title', 'plain text',
-                                                    'table caption', 'table',
-                                                    'figure caption', 'figure',
-                                                    'header', 'footer',
-                                                    'list', 'equation',
-                                                    'text', 'abandon',
-                                                    'custom'
+                                                    'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'text', 'abandon', 'custom'
                                                 ].map(type => {
                                                     const config = TYPE_CONFIG[type];
                                                     if (!config) return null;
                                                     return (
-                                                        <button key={type} onClick={() => updateRegionType(selectedId, type)} style={{ padding: '6px 8px', borderRadius: '6px', fontSize: '10px', border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`, background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)', color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)', fontWeight: selectedRegion.type === type ? 'bold' : 'normal', cursor: 'pointer', textAlign: 'center' }}>
+                                                        <button key={type} onClick={() => updateRegionType(selectedId, type)} style={{ padding: '6px 8px', borderRadius: '6px', fontSize: '10px', border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`, background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)', color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)', fontWeight: selectedRegion.type === type ? 'bold' : 'normal', cursor: 'pointer' }}>
                                                             {config.label}
                                                         </button>
                                                     );
@@ -860,7 +829,6 @@ function App() {
                     </aside>
                 )}
             </main>
-
         </div>
     );
 }

@@ -19,7 +19,7 @@ const TYPE_CONFIG = {
 const HANDLE_SIZE = 8;
 
 const DocumentEditor = ({
-    image, regions, setRegions, selectedId, setSelectedId, editorMode = 'view',
+    image, regions, viewFilters = {}, setRegions, selectedId, setSelectedId, editorMode = 'view',
     tableRefining = null, setTableRefining = null, onAnalyze = null, onSettingsChange = null,
     zoom = 1.0,
     showRegions = true,
@@ -345,6 +345,11 @@ const DocumentEditor = ({
                     transition: 'opacity 0.2s'
                 }}>
                     {regions.map(reg => {
+                        // Apply View Filters
+                        const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
+                        const isFiltered = activeFilters.length > 0 && !activeFilters.includes(reg.type.toLowerCase());
+                        if (isFiltered) return null;
+
                         const config = TYPE_CONFIG[reg.type?.toLowerCase()] || TYPE_CONFIG['custom'];
                         const isSelected = selectedId === reg.id;
                         const isFaded = tableRefining && tableRefining.id !== reg.id;
