@@ -183,7 +183,7 @@ const DocumentEditor = ({
         if (tableRefining && !interaction) {
             const reg = regions.find(r => r.id === tableRefining.id);
             if (reg) {
-                const hoverThreshold = 0.02; // Threshold for hover detection (relative to image)
+                const hoverThreshold = 0.04; // Increased threshold for hover detection
 
                 // Check for Left Border (row add)
                 if (x >= reg.x - hoverThreshold && x <= reg.x + hoverThreshold / 2 && y >= reg.y && y <= reg.y + reg.height) {
@@ -422,14 +422,16 @@ const DocumentEditor = ({
                                                             <circle
                                                                 cx={`${(reg.x + colX * reg.width) * 100}%`}
                                                                 cy={`${(reg.y + reg.height) * 100}%`}
-                                                                r={6 / zoom}
+                                                                r={11 / zoom}
                                                                 fill="#ef4444"
+                                                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                                                             />
                                                             <text
                                                                 x={`${(reg.x + colX * reg.width) * 100}%`}
                                                                 y={`${(reg.y + reg.height) * 100}%`}
                                                                 fill="white"
-                                                                fontSize={10 / zoom}
+                                                                fontSize={15 / zoom}
+                                                                fontWeight="bold"
                                                                 textAnchor="middle"
                                                                 dominantBaseline="middle"
                                                                 style={{ pointerEvents: 'none' }}
@@ -477,14 +479,16 @@ const DocumentEditor = ({
                                                             <circle
                                                                 cx={`${(reg.x + reg.width) * 100}%`}
                                                                 cy={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                                r={6 / zoom}
+                                                                r={11 / zoom}
                                                                 fill="#ef4444"
+                                                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                                                             />
                                                             <text
                                                                 x={`${(reg.x + reg.width) * 100}%`}
                                                                 y={`${(reg.y + rowY * reg.height) * 100}%`}
                                                                 fill="white"
-                                                                fontSize={10 / zoom}
+                                                                fontSize={15 / zoom}
+                                                                fontWeight="bold"
                                                                 textAnchor="middle"
                                                                 dominantBaseline="middle"
                                                                 style={{ pointerEvents: 'none' }}
@@ -601,17 +605,17 @@ const DocumentEditor = ({
                             <circle
                                 cx={`${addLineHover.x * 100}%`}
                                 cy={`${addLineHover.y * 100}%`}
-                                r={8 / zoom}
+                                r={13 / zoom}
                                 fill="#3b82f6"
                                 stroke="#fff"
-                                strokeWidth={1.5 / zoom}
-                                style={{ filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' }}
+                                strokeWidth={2 / zoom}
+                                style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
                             />
                             <text
                                 x={`${addLineHover.x * 100}%`}
                                 y={`${addLineHover.y * 100}%`}
                                 fill="white"
-                                fontSize={12 / zoom}
+                                fontSize={18 / zoom}
                                 fontWeight="bold"
                                 textAnchor="middle"
                                 dominantBaseline="middle"
