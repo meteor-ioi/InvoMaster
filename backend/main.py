@@ -44,13 +44,41 @@ class Region(BaseModel):
     height: float
     label: Optional[str] = None
     text: Optional[str] = None # For extracted text
+    memo: Optional[str] = None # For business logic context
     table_settings: Optional[dict] = None # For table-specific logic
+    structured_data: Optional[List[List[Optional[str]]]] = None # For table 2D array
+
+class ExtractRequest(BaseModel):
+    template_id: str
+    file_name: Optional[str] = None # Used for logging
+
+class HistoryItem(BaseModel):
+    timestamp: str
+    filename: str
+    template_name: str
+    result_summary: dict
+
 
 class Template(BaseModel):
     id: str
     fingerprint: str
     name: str
     regions: List[Region]
+
+HISTORY_FILE = "data/history.jsonl"
+
+def append_history(item: dict):
+    with open(HISTORY_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+def read_history(limit: int = 50):
+    if not os.path.exists(HISTORY_FILE):
+        return []
+    lines = []
+    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    # Return last N lines reversed
+    return [json.loads(line) for line in reversed(lines[-limit:])]
 
 def get_file_fingerprint(file_path):
     """
@@ -65,7 +93,7 @@ def get_file_fingerprint(file_path):
 
 def extract_text_from_regions(pdf_path, regions: List[Region]):
     """
-    Uses pdfplumber to extract text from specific normalized coordinates.
+    Uses pdfplumber to extract text and structured table data.
     """
     results = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -86,6 +114,34 @@ def extract_text_from_regions(pdf_path, regions: List[Region]):
             
             reg_dict = reg.dict()
             reg_dict["text"] = text.strip() if text else ""
+            
+            # Special handling for Tables: Extract structured 2D array
+            if reg.type == 'table':
+                try:
+                    s = reg.table_settings or {
+                        "vertical_strategy": "text",
+                        "horizontal_strategy": "text"
+                    }
+                    
+                    # Handle explicit lines coordinate conversion (Relative -> Absolute)
+                    # Note: This logic duplicates /table/analyze a bit, could be refactored to a helper
+                    table_op_settings = s.copy()
+                    if table_op_settings.get("vertical_strategy") == "explicit":
+                        rel_cols = table_op_settings.get("explicit_vertical_lines", [])
+                        abs_cols = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
+                        table_op_settings["explicit_vertical_lines"] = abs_cols
+                    
+                    if table_op_settings.get("horizontal_strategy") == "explicit":
+                        rel_rows = table_op_settings.get("explicit_horizontal_lines", [])
+                        abs_rows = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
+                        table_op_settings["explicit_horizontal_lines"] = abs_rows
+
+                    table_data = cropped.extract_table(table_op_settings)
+                    reg_dict["structured_data"] = table_data
+                except Exception as e:
+                    print(f"Table extraction failed for region {reg.id}: {e}")
+                    reg_dict["structured_data"] = None
+
             results.append(reg_dict)
             
     return results
@@ -319,6 +375,73 @@ async def save_template(template: Template):
         # Use Pydantic v2 compatible JSON export
         f.write(template.model_dump_json(indent=2))
     return {"status": "success", "id": template.id}
+
+@app.post("/extract")
+async def extract_from_template(
+    template_id: str,
+    file: UploadFile = File(...)
+):
+    # 1. Load Template
+    t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+    if not os.path.exists(t_path):
+        raise HTTPException(status_code=404, detail="Template not found")
+        
+    with open(t_path, "r", encoding="utf-8") as f:
+        t_data = json.load(f)
+        
+    template = Template(**t_data)
+    
+    # 2. Save Uploaded File
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # 3. Extract Text/Data
+    try:
+        # For tables: we need to handle table regions specifically if we want robust extraction
+        # Current extract_text_from_regions is capable of text.
+        # For this POC, we reuse it. Enhancements for tables can be added.
+        extracted_regions = extract_text_from_regions(file_path, template.regions)
+        
+        # 4. Format Output Structure
+        result_map = {}
+        for r in extracted_regions:
+            key = r.get("label") or r.get("id")
+            # If table data exists, use it as the primary value for this key
+            if r.get("structured_data"):
+                result_map[key] = r.get("structured_data")
+            else:
+                result_map[key] = r.get("text", "")
+            
+        # 5. Log History
+        import datetime
+        timestamp = datetime.datetime.now().isoformat()
+        append_history({
+            "timestamp": timestamp,
+            "filename": file.filename,
+            "template_name": template.name,
+            "template_id": template.id,
+            "result_preview": str(result_map)[:200] + "..." if len(str(result_map)) > 200 else str(result_map) # Summary
+        })
+            
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "template_name": template.name,
+            "data": result_map,
+            "raw_regions": extracted_regions
+        }
+        
+    except Exception as e:
+        print(f"Extraction error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/history")
+async def get_history():
+    return read_history()
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
