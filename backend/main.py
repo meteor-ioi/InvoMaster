@@ -19,8 +19,9 @@ app = FastAPI(title="HITL Document Extraction API")
 # Storage paths
 UPLOAD_DIR = "data/uploads"
 TEMPLATES_DIR = "data/templates"
+TEMPLATES_SOURCE_DIR = "data/template_sources"
 
-for d in [UPLOAD_DIR, TEMPLATES_DIR]:
+for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_SOURCE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Enable CORS
@@ -43,8 +44,7 @@ class Region(BaseModel):
     width: float
     height: float
     label: Optional[str] = None
-    text: Optional[str] = None # For extracted text
-    label: Optional[str] = None
+    remarks: Optional[str] = None # Added: User notes
     text: Optional[str] = None # For extracted text
     table_settings: Optional[dict] = None # For table-specific logic
 
@@ -64,6 +64,7 @@ class Template(BaseModel):
     fingerprint: str
     name: str
     regions: List[Region]
+    filename: Optional[str] = None # Added: Original filename for source tracking
 
 HISTORY_FILE = "data/history.jsonl"
 
@@ -197,7 +198,54 @@ async def analyze_document(
         "images": relative_images,
         "regions": matching_regions,
         "ai_regions": ai_regions if template_found else [], # Also send AI results for reference
-        "template_found": template_found
+        "template_found": template_found,
+        "is_source": False
+    }
+
+@app.get("/templates/{template_id}/analyze")
+async def analyze_from_source(template_id: str):
+    """
+    Re-analyze a document using the preserved source PDF in the library.
+    """
+    # 1. Look for the source file
+    source_path = os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.pdf")
+    if not os.path.exists(source_path):
+        # Fallback to check if a template exists and try to find its recorded filename in uploads (less reliable)
+        t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+        if not os.path.exists(t_path):
+            raise HTTPException(status_code=404, detail="Template not found")
+        with open(t_path, "r", encoding="utf-8") as f:
+            t_data = json.load(f)
+            filename = t_data.get("filename")
+            source_path = os.path.join(UPLOAD_DIR, filename) if filename else None
+            
+        if not source_path or not os.path.exists(source_path):
+            raise HTTPException(status_code=404, detail="Template source file not found in library or uploads")
+
+    # 2. Get fingerprint
+    fingerprint = get_file_fingerprint(source_path)
+    
+    # 3. Convert to images (as usual)
+    img_subdir = f"images_{fingerprint[:8]}"
+    img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
+    image_paths = pdf_to_images(source_path, img_save_path)
+    relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
+
+    # 4. Load template regions
+    t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+    with open(t_path, "r", encoding="utf-8") as f:
+        t_data = json.load(f)
+        regions_objs = [Region(**r) for r in t_data.get("regions", [])]
+        matching_regions = extract_text_from_regions(source_path, regions_objs)
+
+    return {
+        "id": template_id,
+        "fingerprint": fingerprint,
+        "filename": t_data.get("filename", f"{template_id}.pdf"),
+        "images": relative_images,
+        "regions": matching_regions,
+        "template_found": True,
+        "is_source": True
     }
 
 class TableAnalysisRequest(BaseModel):
@@ -342,10 +390,27 @@ async def list_templates():
 
 @app.post("/templates")
 async def save_template(template: Template):
+    # 1. Save JSON definition
     template_path = os.path.join(TEMPLATES_DIR, f"{template.id}.json")
     with open(template_path, "w", encoding="utf-8") as f:
-        # Use Pydantic v2 compatible JSON export
         f.write(template.model_dump_json(indent=2))
+    
+    # 2. Preserved PDF source library
+    if template.filename:
+        # Check if it already exists in source library
+        dest_filename = f"{template.id}.pdf"
+        dest_path = os.path.join(TEMPLATES_SOURCE_DIR, dest_filename)
+        
+        if not os.path.exists(dest_path):
+            # Try to copy from uploads
+            src_path = os.path.join(UPLOAD_DIR, template.filename)
+            if os.path.exists(src_path):
+                shutil.copy2(src_path, dest_path)
+                print(f"Archived template source: {dest_path}")
+            else:
+                # If it's already a re-analysis from source, it might already be there (or not in uploads)
+                pass
+
     return {"status": "success", "id": template.id}
 
 @app.post("/extract")

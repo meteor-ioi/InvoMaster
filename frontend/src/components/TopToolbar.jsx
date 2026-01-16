@@ -17,13 +17,19 @@ const TopToolbar = ({
     setViewFilters,
     showRegions,
     setShowRegions,
-    typeConfig
+    typeConfig,
+    isIntegrated = false
 }) => {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isIntegrated ? '0' : '10px' }}>
             {/* Layer 1: Identification Settings */}
             {!tableRefining && (
-                <div className="glass-card" style={{ padding: '12px 20px', borderBottom: '2px solid var(--glass-border)', overflow: 'hidden' }}>
+                <div className={isIntegrated ? "" : "glass-card"} style={{
+                    padding: '12px 20px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    overflow: 'hidden',
+                    background: isIntegrated ? 'rgba(255,255,255,0.03)' : ''
+                }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, minWidth: 0 }}>
                             {/* Strategy Toggle */}
@@ -86,7 +92,14 @@ const TopToolbar = ({
             )}
 
             {/* Layer 2: View Tools - Always visible */}
-            <div className="glass-card" style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: tableRefining ? '0' : '0' }}>
+            <div className={isIntegrated ? "" : "glass-card"} style={{
+                padding: '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
+                background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Upload, CheckCircle, ChevronLeft, Sun, Moon, Grid, Home } from 'lucide-react'; // Added Home icon
+import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './DocumentEditor';
 import TopToolbar from './TopToolbar';
 import LeftPanel from './LeftPanel';
@@ -9,18 +9,18 @@ import DataPreview from './DataPreview';
 
 const API_BASE = 'http://localhost:8000';
 
-export default function TemplateCreator({ onBack }) { // Accept onBack prop
+export default function TemplateCreator({ theme, setTheme }) {
     const [file, setFile] = useState(null);
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState('upload');
+    const [step, setStep] = useState('review'); // Default to review mode directly
     const [templates, setTemplates] = useState([]);
     const [templateName, setTemplateName] = useState('');
 
-    const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
     const [editorMode, setEditorMode] = useState('view');
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [toast, setToast] = useState(null);
+    const [emptyDragActive, setEmptyDragActive] = useState(false);
 
     // --- 版面识别增强状态 ---
     const [layoutSettings, setLayoutSettings] = useState({
@@ -29,9 +29,7 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
         iou: 0.45,
         agnostic_nms: false
     });
-    const [viewFilters, setViewFilters] = useState({
-        // Default all visible
-    });
+    const [viewFilters, setViewFilters] = useState({});
 
     const applyStrategy = (strategy) => {
         let settings = { strategy };
@@ -89,17 +87,11 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
     const [confidence, setConfidence] = useState(0.25);
     const [device, setDevice] = useState('mps');
     const [zoom, setZoom] = useState(1.0);
-    const [dragActive, setDragActive] = useState(false);
     const [showRegions, setShowRegions] = useState(true);
     const [previewPanelHeight, setPreviewPanelHeight] = useState(500);
     const [isResizingPanel, setIsResizingPanel] = useState(false);
-    const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false); // Templates expanded by default
-    const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false); // Editor expanded by default
-
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('babeldoc-theme', theme);
-    }, [theme]);
+    const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+    const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
     useEffect(() => {
         fetchTemplates();
@@ -114,39 +106,35 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
         }
     };
 
+    // --- 拖拽处理 ---
     const handleDrag = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (e.type === "dragenter" || e.type === "dragover") {
-            setDragActive(true);
+            setEmptyDragActive(true);
         } else if (e.type === "dragleave") {
-            setDragActive(false);
+            setEmptyDragActive(false);
         }
     };
 
-    const handleDrop = async (e) => {
+    const handleDrop = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        setDragActive(false);
+        setEmptyDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const droppedFile = e.dataTransfer.files[0];
-            setFile(droppedFile);
-            await analyze(droppedFile);
+            analyze(e.dataTransfer.files[0]);
         }
-    };
-
-    const handleFileUpload = async (e) => {
-        const uploadedFile = e.target.files[0];
-        if (!uploadedFile) return;
-        setFile(uploadedFile);
-        await analyze(uploadedFile);
     };
 
     const analyze = async (targetFile, forceParams = {}) => {
-        const formData = new FormData();
-        formData.append('file', targetFile || file);
+        const currentFile = targetFile || file;
+        if (!currentFile) return;
 
         setLoading(true);
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        if (targetFile) setFile(targetFile);
+
         try {
             const currentConf = forceParams.conf !== undefined ? forceParams.conf : confidence;
             const isRefresh = forceParams.refresh || false;
@@ -173,6 +161,29 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
         } catch (err) {
             console.error(err);
             alert('识别失败，请检查后端服务状态');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSelectTemplate = async (template) => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE}/templates/${template.id}/analyze`);
+            setAnalysis(res.data);
+            const mappedRegions = (res.data.regions || []).map(r => ({
+                ...r,
+                label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
+            }));
+            setRegions(mappedRegions);
+            setTemplateName(template.name);
+            setFile(null); // Clear local file as we are using server source
+            setStep('review');
+            setEditorMode('view');
+            setTableRefining(null);
+        } catch (err) {
+            console.error('从源文件库加载失败', err);
+            alert('加载模板源文件失败，可能是源文件已被移除');
         } finally {
             setLoading(false);
         }
@@ -248,7 +259,6 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                 settings: newSettings
             }));
 
-            // CRITICAL: Update the global regions state so that "Save Recognition Rules" picks up the new settings
             setRegions(prev => prev.map(r => r.id === regionId ? {
                 ...r,
                 table_settings: newSettings
@@ -271,13 +281,11 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
     const handleCommitTableRules = () => {
         if (!tableRefining) return;
 
-        // Update the regions with the latest table refinement data
         setRegions(prev => prev.map(r => r.id === tableRefining.id ? {
             ...r,
             table_settings: tableRefining.settings
         } : r));
 
-        // Provide success feedback
         setSaveSuccess(true);
         setToast({ type: 'success', text: '表格规则已暂存 (草稿)' });
         setTimeout(() => {
@@ -292,7 +300,8 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                 id: analysis.id,
                 fingerprint: analysis.fingerprint,
                 name: templateName,
-                regions: regions
+                regions: regions,
+                filename: analysis.filename // Pass current filename for archiving
             });
             fetchTemplates();
             setStep('complete');
@@ -355,204 +364,180 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
     }, [regions, viewFilters]);
 
     return (
-        <div style={{ padding: step === 'review' ? '0 20px 40px' : '40px 20px', position: 'relative' }}>
-            <button
-                onClick={onBack}
-                style={{
-                    position: 'absolute', top: '20px', left: '20px',
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-secondary)', zIndex: 10
-                }}
-            >
-                <Home size={18} /> 回到首页
-            </button>
-
-            <header style={{ position: 'relative', textAlign: 'center', marginBottom: step === 'review' ? '30px' : '40px' }}>
-                {step !== 'review' && (
-                    <>
-                        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
-                            模板制作工作台
-                        </h1>
-                        <p style={{ color: 'var(--text-secondary)' }}>基于 AI 的文档标注与规则定义</p>
-                    </>
-                )}
-
-                <button
-                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    style={{
-                        position: 'fixed',
-                        bottom: '30px',
-                        right: '30px',
-                        background: 'var(--input-bg)', border: '1px solid var(--glass-border)',
-                        padding: '10px', borderRadius: '12px', cursor: 'pointer', color: 'var(--text-primary)',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }}
-                >
-                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-            </header>
-
+        <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: step === 'review' && analysis
-                    ? `${leftPanelCollapsed ? '48px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '48px' : '340px'}`
-                    : '1fr',
+                gridTemplateColumns: `${leftPanelCollapsed ? '48px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '40px' : '300px'}`,
                 gap: '20px',
-                alignItems: 'start'
+                alignItems: 'start',
+                marginTop: '20px'
             }}>
                 {/* Left Panel - Templates */}
-                {step === 'review' && analysis && (
-                    <LeftPanel
-                        collapsed={leftPanelCollapsed}
-                        setCollapsed={setLeftPanelCollapsed}
-                        templates={templates}
-                        sortedTemplates={sortedTemplates}
-                        analysis={analysis}
-                    />
-                )}
+                <LeftPanel
+                    collapsed={leftPanelCollapsed}
+                    setCollapsed={setLeftPanelCollapsed}
+                    templates={templates}
+                    sortedTemplates={sortedTemplates}
+                    analysis={analysis}
+                    onAnalyze={analyze}
+                    onSelectTemplate={handleSelectTemplate}
+                />
 
                 {/* Center Panel - Main Content */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
-                    {step === 'upload' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', maxWidth: '600px', margin: '0 auto' }}>
-                            <div
-                                className={`glass-card ${dragActive ? 'drag-active' : ''}`}
-                                style={{
-                                    width: '100%', padding: '80px 40px', textAlign: 'center',
-                                    border: dragActive ? '2px solid var(--primary-color)' : '2px dashed var(--glass-border)',
-                                    background: dragActive ? 'rgba(59, 130, 246, 0.05)' : 'var(--glass-bg)',
-                                    transition: 'all 0.2s ease'
-                                }}
-                                onDragEnter={handleDrag}
-                                onDragOver={handleDrag}
-                                onDragLeave={handleDrag}
-                                onDrop={handleDrop}
-                            >
-                                {loading ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-                                        <div className="loading-spinner" />
-                                        <p>正在运用 AI 执行版面分析与要素识别...</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Upload size={48} color={dragActive ? "var(--primary-color)" : "var(--text-secondary)"} style={{ marginBottom: '20px', opacity: 0.8 }} />
-                                        <h2 style={{ marginBottom: '10px' }}>{dragActive ? "松开放置文件" : "上传 PDF 单据"}</h2>
-                                        <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>支持拖拽文件或点击上传（补料单、装箱单、发票等）</p>
-                                        <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-block', padding: '12px 32px' }}>
-                                            立即上传并识别
-                                            <input type="file" className="hidden" accept="application/pdf" onChange={handleFileUpload} />
-                                        </label>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 'review' && analysis && (
+                    {step === 'review' && (
                         <>
-                            {/* Layered Control Panel (Option 2) */}
-                            {/* Layered Control Panel (TopToolbar) */}
-                            <TopToolbar
-                                tableRefining={tableRefining}
-                                layoutSettings={layoutSettings}
-                                applyStrategy={applyStrategy}
-                                setLayoutSettings={setLayoutSettings}
-                                confidence={confidence}
-                                setConfidence={setConfidence}
-                                analyze={analyze}
-                                file={file}
-                                loading={loading}
-                                zoom={zoom}
-                                setZoom={setZoom}
-                                viewFilters={viewFilters}
-                                setViewFilters={setViewFilters}
-                                showRegions={showRegions}
-                                setShowRegions={setShowRegions}
-                                typeConfig={TYPE_CONFIG}
-                            />
+                            <div className="glass-card" style={{ padding: '0', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '600px', background: 'var(--glass-bg)', overflow: 'hidden' }}>
+                                <TopToolbar
+                                    tableRefining={tableRefining}
+                                    layoutSettings={layoutSettings}
+                                    applyStrategy={applyStrategy}
+                                    setLayoutSettings={setLayoutSettings}
+                                    confidence={confidence}
+                                    setConfidence={setConfidence}
+                                    analyze={analyze}
+                                    file={file}
+                                    loading={loading}
+                                    zoom={zoom}
+                                    setZoom={setZoom}
+                                    viewFilters={viewFilters}
+                                    setViewFilters={setViewFilters}
+                                    showRegions={showRegions}
+                                    setShowRegions={setShowRegions}
+                                    typeConfig={TYPE_CONFIG}
+                                    isIntegrated={true}
+                                />
 
-                            <div className="glass-card" style={{ padding: '20px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                                {tableRefining && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                        <button onClick={() => setTableRefining(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px' }}>
-                                            <ChevronLeft size={16} /> 返回版面分析
-                                        </button>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '13px' }}>
-                                            <Grid size={16} /> 表格微调模式
+                                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                                    {loading && (
+                                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', borderRadius: '12px' }}>
+                                            <div className="loading-spinner" />
+                                            <p style={{ color: 'white' }}>正在处理 PDF 单据...</p>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                <div
-                                    style={{
-                                        position: 'relative',
-                                        minWidth: 0,
-                                        height: `${previewPanelHeight}px`,
-                                        minHeight: '200px',
-                                        maxHeight: '1000px',
-                                        overflow: 'auto',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--glass-border)'
-                                    }}
-                                >
-                                    <DocumentEditor
-                                        image={`${API_BASE}/static/${analysis.images[0]}`}
-                                        regions={regions}
-                                        viewFilters={viewFilters}
-                                        setRegions={setRegions}
-                                        selectedId={selectedId}
-                                        setSelectedId={setSelectedId}
-                                        editorMode={editorMode}
-                                        tableRefining={tableRefining}
-                                        setTableRefining={setTableRefining}
-                                        onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
-                                        onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
-                                        zoom={zoom}
-                                        showRegions={showRegions}
-                                        onDelete={deleteRegion}
-                                        onToggleLock={toggleRegionLock}
-                                        onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
-                                    />
+                                    {!analysis ? (
+                                        <div
+                                            onDragEnter={handleDrag}
+                                            onDragOver={handleDrag}
+                                            onDragLeave={handleDrag}
+                                            onDrop={handleDrop}
+                                            style={{
+                                                flex: 1,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: emptyDragActive ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                gap: '20px',
+                                                padding: '40px',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                        >
+                                            <div style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                aspectRatio: '1/1',
+                                                height: '400px',
+                                                border: emptyDragActive ? '3px dashed var(--primary-color)' : '2px dashed var(--glass-border)',
+                                                borderRadius: '24px',
+                                                textAlign: 'center',
+                                                background: emptyDragActive ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+                                                transition: 'all 0.3s ease',
+                                                transform: emptyDragActive ? 'scale(1.02)' : 'scale(1)'
+                                            }}>
+                                                <Upload size={64} style={{ opacity: emptyDragActive ? 1 : 0.3, marginBottom: '25px', transition: 'all 0.3s ease' }} />
+                                                <h2 style={{ marginBottom: '10px' }}>工作台就绪</h2>
+                                                <p style={{ fontSize: '15px' }}>
+                                                    {emptyDragActive ? '松开即刻识别' : '拖拽 PDF 到此处开始制作'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {tableRefining && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                                    <button onClick={() => setTableRefining(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px' }}>
+                                                        <ChevronLeft size={16} /> 返回版面分析
+                                                    </button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '13px' }}>
+                                                        <Grid size={16} /> 表格微调模式
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div
+                                                style={{
+                                                    position: 'relative',
+                                                    minWidth: 0,
+                                                    height: `${previewPanelHeight}px`,
+                                                    minHeight: '200px',
+                                                    maxHeight: '1000px',
+                                                    overflow: 'auto',
+                                                    borderRadius: '16px',
+                                                    border: '1px solid var(--glass-border)'
+                                                }}
+                                            >
+                                                <DocumentEditor
+                                                    image={`${API_BASE}/static/${analysis.images[0]}`}
+                                                    regions={regions}
+                                                    viewFilters={viewFilters}
+                                                    setRegions={setRegions}
+                                                    selectedId={selectedId}
+                                                    setSelectedId={setSelectedId}
+                                                    editorMode={editorMode}
+                                                    tableRefining={tableRefining}
+                                                    setTableRefining={setTableRefining}
+                                                    onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
+                                                    onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
+                                                    zoom={zoom}
+                                                    showRegions={showRegions}
+                                                    onDelete={deleteRegion}
+                                                    onToggleLock={toggleRegionLock}
+                                                    onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
+                                                />
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    height: '12px',
+                                                    cursor: 'ns-resize',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: 'var(--input-bg)',
+                                                    borderRadius: '0 0 8px 8px',
+                                                    marginTop: '4px'
+                                                }}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setIsResizingPanel(true);
+                                                    const startY = e.clientY;
+                                                    const startHeight = previewPanelHeight;
+                                                    const handleMouseMove = (moveE) => {
+                                                        const delta = moveE.clientY - startY;
+                                                        setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
+                                                    };
+                                                    const handleMouseUp = () => {
+                                                        setIsResizingPanel(false);
+                                                        document.removeEventListener('mousemove', handleMouseMove);
+                                                        document.removeEventListener('mouseup', handleMouseUp);
+                                                    };
+                                                    document.addEventListener('mousemove', handleMouseMove);
+                                                    document.addEventListener('mouseup', handleMouseUp);
+                                                }}
+                                            >
+                                                <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
+                                            </div>
+
+                                            {tableRefining && (
+                                                <DataPreview tableRefining={tableRefining} />
+                                            )}
+                                        </>
+                                    )}
                                 </div>
-
-                                {/* Resize Handle */}
-                                <div
-                                    style={{
-                                        height: '12px',
-                                        cursor: 'ns-resize',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: 'var(--input-bg)',
-                                        borderRadius: '0 0 8px 8px',
-                                        marginTop: '4px'
-                                    }}
-                                    onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        setIsResizingPanel(true);
-                                        const startY = e.clientY;
-                                        const startHeight = previewPanelHeight;
-                                        const handleMouseMove = (moveE) => {
-                                            const delta = moveE.clientY - startY;
-                                            setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
-                                        };
-                                        const handleMouseUp = () => {
-                                            setIsResizingPanel(false);
-                                            document.removeEventListener('mousemove', handleMouseMove);
-                                            document.removeEventListener('mouseup', handleMouseUp);
-                                        };
-                                        document.addEventListener('mousemove', handleMouseMove);
-                                        document.addEventListener('mouseup', handleMouseUp);
-                                    }}
-                                >
-                                    <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
-                                </div>
-
-                                {tableRefining && (
-                                    <DataPreview tableRefining={tableRefining} />
-                                )}
                             </div>
                         </>
                     )}
@@ -563,47 +548,45 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                                 <CheckCircle size={40} />
                             </div>
                             <h2 style={{ marginBottom: '10px' }}>识别模板已沉淀</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>该单据的指纹与布局规则已关联。后续同类单据将实现自动提取。</p>
-                            <button className="btn-primary" onClick={() => setStep('upload')} style={{ padding: '12px 32px' }}>处理下一张</button>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>该单据的指纹与布局规则已关联，且源 PDF 已备份至库中。后续可随时从列表中再次加载修改。</p>
+                            <button className="btn-primary" onClick={() => setStep('review')} style={{ padding: '12px 32px' }}>返回工作台</button>
                         </div>
                     )}
                 </div>
 
                 {/* Right Panel - Editor */}
-                {step === 'review' && analysis && (
-                    <RightSidebar
-                        collapsed={rightPanelCollapsed}
-                        setCollapsed={setRightPanelCollapsed}
-                        tableRefining={tableRefining}
-                        setTableRefining={setTableRefining}
-                        selectedRegion={selectedRegion}
-                        selectedId={selectedId}
-                        setSelectedId={setSelectedId}
-                        editorMode={editorMode}
-                        setEditorMode={setEditorMode}
-                        historyIndex={historyIndex}
-                        historyLength={history.length}
-                        undo={undo}
-                        redo={redo}
-                        deleteRegion={deleteRegion}
-                        updateRegionType={updateRegionType}
-                        updateRegionLabel={updateRegionLabel}
-                        updateRegionRemarks={updateRegionRemarks}
-                        toggleRegionLock={toggleRegionLock}
-                        tableSettings={tableSettings}
-                        setTableSettings={setTableSettings}
-                        handleApplyTableSettings={handleApplyTableSettings}
-                        handleCommitTableRules={handleCommitTableRules}
-                        handleEnterTableRefine={handleEnterTableRefine}
-                        templateName={templateName}
-                        setTemplateName={setTemplateName}
-                        handleSaveTemplate={handleSaveTemplate}
-                        saveSuccess={saveSuccess}
-                        loading={loading}
-                        typeConfig={TYPE_CONFIG}
-                        theme={theme}
-                    />
-                )}
+                <RightSidebar
+                    collapsed={rightPanelCollapsed}
+                    setCollapsed={setRightPanelCollapsed}
+                    tableRefining={tableRefining}
+                    setTableRefining={setTableRefining}
+                    selectedRegion={selectedRegion}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    editorMode={editorMode}
+                    setEditorMode={setEditorMode}
+                    historyIndex={historyIndex}
+                    historyLength={history.length}
+                    undo={undo}
+                    redo={redo}
+                    deleteRegion={deleteRegion}
+                    updateRegionType={updateRegionType}
+                    updateRegionLabel={updateRegionLabel}
+                    updateRegionRemarks={updateRegionRemarks}
+                    toggleRegionLock={toggleRegionLock}
+                    tableSettings={tableSettings}
+                    setTableSettings={setTableSettings}
+                    handleApplyTableSettings={handleApplyTableSettings}
+                    handleCommitTableRules={handleCommitTableRules}
+                    handleEnterTableRefine={handleEnterTableRefine}
+                    templateName={templateName}
+                    setTemplateName={setTemplateName}
+                    handleSaveTemplate={handleSaveTemplate}
+                    saveSuccess={saveSuccess}
+                    loading={loading || !analysis} // Disable some buttons if no analysis
+                    typeConfig={TYPE_CONFIG}
+                    theme={theme}
+                />
             </main>
 
             {/* Toast Message */}

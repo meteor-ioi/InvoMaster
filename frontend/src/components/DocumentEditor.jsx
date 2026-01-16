@@ -311,7 +311,7 @@ const DocumentEditor = ({
                 minHeight: '600px', // Maintain minimum height
                 overflow: 'auto',
                 background: '#1a1a1a',
-                borderRadius: '12px',
+                borderRadius: '16px',
                 border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
                 position: 'relative'
@@ -375,6 +375,7 @@ const DocumentEditor = ({
 
                                 {tableRefining && tableRefining.id === reg.id && (
                                     <g>
+                                        {/* 1. 表格单元格背景 */}
                                         {tableRefining.cells?.map((cell, idx) => (
                                             <rect
                                                 key={`cell-${idx}`}
@@ -387,118 +388,131 @@ const DocumentEditor = ({
                                                 strokeWidth={1}
                                             />
                                         ))}
+
+                                        {/* 2. 所有可见线段 */}
+                                        {tableRefining.cols.map((colX, idx) => (
+                                            <line
+                                                key={`col-line-${idx}`}
+                                                x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                y1={`${reg.y * 100}%`}
+                                                x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                y2={`${(reg.y + reg.height) * 100}%`}
+                                                stroke="rgba(16, 185, 129, 0.8)"
+                                                strokeWidth={1.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        ))}
+                                        {tableRefining.rows.map((rowY, idx) => (
+                                            <line
+                                                key={`row-line-${idx}`}
+                                                x1={`${reg.x * 100}%`}
+                                                y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                x2={`${(reg.x + reg.width) * 100}%`}
+                                                y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                stroke="rgba(16, 185, 129, 0.8)"
+                                                strokeWidth={1.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        ))}
+
+                                        {/* 3. 拖拽响应热区 (不可见) */}
                                         {tableRefining.cols.map((colX, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
                                             return (
-                                                <g key={`col-${idx}`}>
-                                                    {/* Invisible hit area */}
-                                                    <line
-                                                        x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y1={`${reg.y * 100}%`}
-                                                        x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y2={`${(reg.y + reg.height) * 100}%`}
-                                                        stroke="transparent"
-                                                        strokeWidth={10}
-                                                        style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
-                                                        onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
-                                                    />
-                                                    {/* Visible line */}
-                                                    <line
-                                                        x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y1={`${reg.y * 100}%`}
-                                                        x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y2={`${(reg.y + reg.height) * 100}%`}
-                                                        stroke="rgba(16, 185, 129, 0.8)"
-                                                        strokeWidth={1.5}
-                                                        style={{ pointerEvents: 'none' }}
-                                                    />
-                                                    {/* Delete button (only for inner lines) */}
-                                                    {!isBorder && (
-                                                        <g
-                                                            onMouseDown={(e) => {
-                                                                e.stopPropagation();
-                                                                e.preventDefault();
-                                                                deleteTableLine(e, 'col', idx);
-                                                            }}
-                                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                        >
-                                                            <circle
-                                                                cx={`${(reg.x + colX * reg.width) * 100}%`}
-                                                                cy={`${(reg.y + reg.height) * 100}%`}
-                                                                r={9}
-                                                                fill="#ef4444"
-                                                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
-                                                            />
-                                                            <text
-                                                                x={`${(reg.x + colX * reg.width) * 100}%`}
-                                                                y={`${(reg.y + reg.height) * 100}%`}
-                                                                fill="white"
-                                                                fontSize={14}
-                                                                fontWeight="bold"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="middle"
-                                                                style={{ pointerEvents: 'none' }}
-                                                            >-</text>
-                                                        </g>
-                                                    )}
-                                                </g>
+                                                <line
+                                                    key={`col-hit-${idx}`}
+                                                    x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                    y1={`${reg.y * 100}%`}
+                                                    x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                    y2={`${(reg.y + reg.height) * 100}%`}
+                                                    stroke="transparent"
+                                                    strokeWidth={10}
+                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
+                                                    onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
+                                                />
                                             );
                                         })}
                                         {tableRefining.rows.map((rowY, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
                                             return (
-                                                <g key={`row-${idx}`}>
-                                                    {/* Invisible hit area */}
-                                                    <line
-                                                        x1={`${reg.x * 100}%`}
-                                                        y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        x2={`${(reg.x + reg.width) * 100}%`}
-                                                        y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        stroke="transparent"
-                                                        strokeWidth={10}
-                                                        style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
-                                                        onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
-                                                    />
-                                                    {/* Visible line */}
-                                                    <line
-                                                        x1={`${reg.x * 100}%`}
-                                                        y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        x2={`${(reg.x + reg.width) * 100}%`}
-                                                        y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        stroke="rgba(16, 185, 129, 0.8)"
-                                                        strokeWidth={1.5}
-                                                        style={{ pointerEvents: 'none' }}
-                                                    />
-                                                    {/* Delete button */}
-                                                    {!isBorder && (
-                                                        <g
-                                                            onMouseDown={(e) => {
-                                                                e.stopPropagation();
-                                                                e.preventDefault();
-                                                                deleteTableLine(e, 'row', idx);
-                                                            }}
-                                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                        >
-                                                            <circle
-                                                                cx={`${(reg.x + reg.width) * 100}%`}
-                                                                cy={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                                r={9}
-                                                                fill="#ef4444"
-                                                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
-                                                            />
-                                                            <text
-                                                                x={`${(reg.x + reg.width) * 100}%`}
-                                                                y={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                                fill="white"
-                                                                fontSize={14}
-                                                                fontWeight="bold"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="middle"
-                                                                style={{ pointerEvents: 'none' }}
-                                                            >-</text>
-                                                        </g>
-                                                    )}
+                                                <line
+                                                    key={`row-hit-${idx}`}
+                                                    x1={`${reg.x * 100}%`}
+                                                    y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                    x2={`${(reg.x + reg.width) * 100}%`}
+                                                    y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                    stroke="transparent"
+                                                    strokeWidth={10}
+                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
+                                                    onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
+                                                />
+                                            );
+                                        })}
 
+                                        {/* 4. 删除按钮 (最顶层) */}
+                                        {tableRefining.cols.map((colX, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                            if (isBorder) return null;
+                                            return (
+                                                <g
+                                                    key={`col-del-${idx}`}
+                                                    onMouseDown={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        deleteTableLine(e, 'col', idx);
+                                                    }}
+                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                >
+                                                    <circle
+                                                        cx={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        cy={`${(reg.y + reg.height) * 100}%`}
+                                                        r={9}
+                                                        fill="#ef4444"
+                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                    />
+                                                    <text
+                                                        x={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y={`${(reg.y + reg.height) * 100}%`}
+                                                        fill="white"
+                                                        fontSize={14}
+                                                        fontWeight="bold"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        style={{ pointerEvents: 'none' }}
+                                                    >-</text>
+                                                </g>
+                                            );
+                                        })}
+                                        {tableRefining.rows.map((rowY, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                            if (isBorder) return null;
+                                            return (
+                                                <g
+                                                    key={`row-del-${idx}`}
+                                                    onMouseDown={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        deleteTableLine(e, 'row', idx);
+                                                    }}
+                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                >
+                                                    <circle
+                                                        cx={`${(reg.x + reg.width) * 100}%`}
+                                                        cy={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        r={9}
+                                                        fill="#ef4444"
+                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                    />
+                                                    <text
+                                                        x={`${(reg.x + reg.width) * 100}%`}
+                                                        y={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        fill="white"
+                                                        fontSize={14}
+                                                        fontWeight="bold"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        style={{ pointerEvents: 'none' }}
+                                                    >-</text>
                                                 </g>
                                             );
                                         })}

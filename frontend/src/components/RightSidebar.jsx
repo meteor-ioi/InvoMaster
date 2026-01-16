@@ -233,7 +233,7 @@ const RightSidebar = ({
                             </div>
 
                             <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注 (Remarks)</p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注</p>
                                 <textarea
                                     value={selectedRegion.remarks || ''}
                                     onChange={(e) => updateRegionRemarks(selectedId, e.target.value)}
