@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload } from 'lucide-react';
+import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
     collapsed,
     setCollapsed,
     templates,
-    sortedTemplates,
     analysis,
     onAnalyze,
     onSelectTemplate,
@@ -14,6 +13,10 @@ const LeftPanel = ({
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
     const [dragActive, setDragActive] = useState(false);
+    const [activeTab, setActiveTab] = useState('auto');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTags, setSelectedTags] = useState([]);
+    const [showSearch, setShowSearch] = useState(false);
 
     const toggleExpand = (id, e) => {
         e.stopPropagation();
@@ -161,77 +164,186 @@ const LeftPanel = ({
                             overflow: 'hidden'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '10px', borderBottom: '1px solid var(--glass-border)' }}>
-                            <Star size={14} color="var(--accent-color)" />
-                            <span style={{ fontSize: '12px', fontWeight: 'bold' }}>已存模板 ({templates.length})</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px' }}>
+                            {showSearch ? (
+                                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px' }}>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="搜索模板或标签..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '4px 12px',
+                                            borderRadius: '20px',
+                                            border: '1px solid var(--primary-color)',
+                                            background: 'var(--input-bg)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '11px',
+                                            outline: 'none',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                        }}
+                                    />
+                                    <X
+                                        size={14}
+                                        color="var(--text-secondary)"
+                                        style={{ cursor: 'pointer', flexShrink: 0 }}
+                                        onClick={() => {
+                                            setShowSearch(false);
+                                            setSearchQuery('');
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Star size={14} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>模板仓库</span>
+                                    </div>
+                                    <Search
+                                        size={14}
+                                        color="var(--text-secondary)"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setShowSearch(true)}
+                                    />
+                                </>
+                            )}
                         </div>
 
+                        {/* Mode Tabs */}
+                        <div style={{ display: 'flex', borderRadius: '8px', background: 'var(--input-bg)', padding: '3px' }}>
+                            <button
+                                onClick={() => setActiveTab('auto')}
+                                style={{
+                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                                    background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                    color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)'
+                                }}
+                            >
+                                标准模式
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('custom')}
+                                style={{
+                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                                    background: activeTab === 'custom' ? 'var(--primary-color)' : 'transparent',
+                                    color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)'
+                                }}
+                            >
+                                自定义模式
+                            </button>
+                        </div>
+
+
+
                         <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
-                            {sortedTemplates.length > 0 ? sortedTemplates.map(t => {
-                                const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
-                                const IsSelected = analysis && t.id === analysis.id;
+                            {(() => {
+                                // Filter logic
+                                const filtered = templates.filter(t => {
+                                    const matchMode = t.mode === activeTab;
+                                    const matchSearch = !searchQuery ||
+                                        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
+                                    return matchMode && matchSearch;
+                                });
 
-                                return (
-                                    <div
-                                        key={t.id}
-                                        className={IsMatched ? 'matched-scan-effect' : ''}
-                                        onClick={() => onSelectTemplate && onSelectTemplate(t)}
-                                        style={{
-                                            padding: '8px',
-                                            borderRadius: '8px',
-                                            background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
-                                            border: IsMatched ? '1.5px solid var(--success-color)' : (IsSelected ? '1.5px solid var(--primary-color)' : '1px solid var(--glass-border)'),
-                                            marginBottom: '8px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
+                                // Sorting (matched first)
+                                const sorted = [...filtered].sort((a, b) => {
+                                    const aMatch = analysis && a.fingerprint === analysis.fingerprint;
+                                    const bMatch = analysis && b.fingerprint === analysis.fingerprint;
+                                    if (aMatch && !bMatch) return -1;
+                                    if (!aMatch && bMatch) return 1;
+                                    return 0;
+                                });
+
+                                if (sorted.length === 0) {
+                                    return <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
+                                        {searchQuery ? '未找到相关模板' : `暂无${activeTab === 'auto' ? '标准' : '自定义'}模式模板`}
+                                    </p>;
+                                }
+
+                                return sorted.map(t => {
+                                    const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
+                                    const IsSelected = analysis && t.id === analysis.id;
+
+                                    return (
                                         <div
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                            key={t.id}
+                                            className={IsMatched ? 'matched-scan-effect' : ''}
+                                            onClick={() => onSelectTemplate && onSelectTemplate(t)}
+                                            style={{
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
+                                                border: IsMatched ? '1.5px solid var(--success-color)' : (IsSelected ? '1.5px solid var(--primary-color)' : '1px solid var(--glass-border)'),
+                                                marginBottom: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                                                <div
-                                                    style={{ padding: '4px' }}
-                                                    onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
-                                                >
-                                                    {expandedIds.includes(t.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                            <div
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                                    <div
+                                                        style={{ padding: '4px' }}
+                                                        onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
+                                                    >
+                                                        {expandedIds.includes(t.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold',
+                                                        color: IsMatched ? 'var(--success-color)' : 'var(--text-primary)',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {t.name}
+                                                    </span>
                                                 </div>
-                                                <span style={{
-                                                    fontSize: '11px',
-                                                    fontWeight: 'bold',
-                                                    color: IsMatched ? 'var(--success-color)' : 'var(--text-primary)',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {t.name}
-                                                </span>
+                                                {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
                                             </div>
-                                            {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
-                                        </div>
 
-                                        {expandedIds.includes(t.id) && (
-                                            <div style={{ marginTop: '8px', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--glass-border)', marginLeft: '10px' }}>
-                                                {t.regions && t.regions.length > 0 ? t.regions.map(r => {
-                                                    const config = typeConfig[r.type.toLowerCase()] || { label: r.type, color: '#ccc' };
-                                                    return (
-                                                        <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '4px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-primary)' }}>
-                                                                <span style={{ color: config.color, display: 'flex' }}>{getIcon(r.type)}</span>
-                                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
-                                                                    {r.label || config.label}
-                                                                </span>
+                                            {/* Tags Display */}
+                                            {t.tags && t.tags.length > 0 && (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', paddingLeft: '22px' }}>
+                                                    {t.tags.map(tag => (
+                                                        <span key={tag} style={{
+                                                            fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
+                                                            background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)',
+                                                            border: '0.5px solid rgba(59, 130, 246, 0.2)'
+                                                        }}>
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {expandedIds.includes(t.id) && (
+                                                <div style={{ marginTop: '8px', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--glass-border)', marginLeft: '10px' }}>
+                                                    {t.regions && t.regions.length > 0 ? t.regions.map(r => {
+                                                        const config = typeConfig[r.type.toLowerCase()] || { label: r.type, color: '#ccc' };
+                                                        return (
+                                                            <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '4px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-primary)' }}>
+                                                                    <span style={{ color: config.color, display: 'flex' }}>{getIcon(r.type)}</span>
+                                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
+                                                                        {r.label || config.label}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                }) : (
-                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>无定义要素</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            }) : <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>暂无已存模板</p>}
+                                                        );
+                                                    }) : (
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>无定义要素</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            })()}
                         </div>
                     </div>
                 </>

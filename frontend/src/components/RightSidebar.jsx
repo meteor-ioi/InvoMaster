@@ -31,7 +31,9 @@ const RightSidebar = ({
     saveSuccess,
     loading,
     typeConfig,
-    theme
+    theme,
+    templateMode,
+    setTemplateMode
 }) => {
     return (
         <aside
@@ -130,10 +132,10 @@ const RightSidebar = ({
                                     onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
                                     style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                 >
-                                    <option value="lines">Lines (基于线)</option>
-                                    <option value="text">Text (基于文字对齐)</option>
-                                    <option value="rects">Rects (基于块)</option>
-                                    <option value="explicit">Explicit (手动模式)</option>
+                                    <option value="lines">基于线</option>
+                                    <option value="text">基于文字对齐</option>
+                                    <option value="rects">基于块</option>
+                                    <option value="explicit">手动模式</option>
                                 </select>
                             </div>
 
@@ -144,10 +146,10 @@ const RightSidebar = ({
                                     onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
                                     style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                                 >
-                                    <option value="lines">Lines (基于线)</option>
-                                    <option value="text">Text (基于文字对齐)</option>
-                                    <option value="rects">Rects (基于块)</option>
-                                    <option value="explicit">Explicit (手动模式)</option>
+                                    <option value="lines">基于线</option>
+                                    <option value="text">基于文字对齐</option>
+                                    <option value="rects">基于块</option>
+                                    <option value="explicit">手动模式</option>
                                 </select>
                             </div>
 
@@ -262,6 +264,44 @@ const RightSidebar = ({
 
                     {!tableRefining && (
                         <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', background: 'var(--input-bg)', padding: '4px', borderRadius: '6px' }}>
+                                <button
+                                    onClick={() => setTemplateMode('auto')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '6px',
+                                        borderRadius: '4px',
+                                        border: 'none',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                        color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    标准模式
+                                </button>
+                                <button
+                                    onClick={() => setTemplateMode('custom')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '6px',
+                                        borderRadius: '4px',
+                                        border: 'none',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                        color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    自定义模式
+                                </button>
+                            </div>
+
                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>保存模板名称</p>
                             <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '15px' }} />
                             <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>

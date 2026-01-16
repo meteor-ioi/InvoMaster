@@ -13,15 +13,19 @@ from typing import List, Optional
 # Local imports
 from utils import pdf_to_images
 from inference import get_layout_engine
+from database import db # SQLite integration
+from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 
 app = FastAPI(title="HITL Document Extraction API")
 
 # Storage paths
 UPLOAD_DIR = "data/uploads"
-TEMPLATES_DIR = "data/templates"
+TEMPLATES_DIR = "data/templates" # Root dir
+TEMPLATES_AUTO_DIR = "data/templates/auto"
+TEMPLATES_CUSTOM_DIR = "data/templates/custom"
 TEMPLATES_SOURCE_DIR = "data/template_sources"
 
-for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_SOURCE_DIR]:
+for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 # Enable CORS
@@ -61,10 +65,13 @@ class HistoryItem(BaseModel):
 
 class Template(BaseModel):
     id: str
-    fingerprint: str
+    mode: str = "auto" # 'auto' or 'custom'
+    fingerprint: Optional[str] = None # Required for auto, optional for custom
+    fingerprint_text: Optional[str] = None # Added: Cached text features
     name: str
     regions: List[Region]
-    filename: Optional[str] = None # Added: Original filename for source tracking
+    tags: List[str] = [] # Added for metadata
+    filename: Optional[str] = None
 
 HISTORY_FILE = "data/history.jsonl"
 
@@ -141,27 +148,34 @@ async def analyze_document(
     # 1. Calculate Fingerprint
     fingerprint = get_file_fingerprint(file_path)
     
-    # 2. Check for existing template (FINGERPRINT MATCH)
+    # 2. Check for existing template (ENHANCED MATCH - AUTO MODE ONLY)
     template_found = False
     matching_regions = []
+    matched_template_info = None
     
     if not refresh:
-        for t_file in os.listdir(TEMPLATES_DIR):
-            if t_file.endswith(".json"):
-                t_path = os.path.join(TEMPLATES_DIR, t_file)
-                try:
-                    if os.path.getsize(t_path) == 0:
-                        continue
-                    with open(t_path, "r", encoding="utf-8") as f:
-                        t_data = json.load(f)
-                        if t_data.get("fingerprint") == fingerprint:
+        # Get all candidates
+        candidates = db.get_all_auto_templates()
+        if candidates:
+            # Match using engine
+            match_cand, score = fp_engine.find_best_match(file_path, candidates, threshold=0.85)
+            
+            if match_cand:
+                print(f"Matched template {match_cand['id']} with score {score}")
+                t_path = os.path.join(TEMPLATES_AUTO_DIR, f"{match_cand['id']}.json")
+                if os.path.exists(t_path):
+                     try:
+                        with open(t_path, "r", encoding="utf-8") as f:
+                            t_data = json.load(f)
                             template_found = True
+                            matched_template_info = match_cand
+                            # Apply regions to current file
                             regions_objs = [Region(**r) for r in t_data.get("regions", [])]
                             matching_regions = extract_text_from_regions(file_path, regions_objs)
-                            break
-                except Exception as e:
-                    print(f"Error checking template {t_file}: {e}")
-                    continue
+                     except Exception as e:
+                         print(f"Error loading matched template {match_cand['id']}: {e}")
+            else:
+                print("No template matched (score too low)")
     
     # 3. Convert to images
     img_subdir = f"images_{fingerprint[:8]}"
@@ -197,8 +211,9 @@ async def analyze_document(
         "filename": file.filename,
         "images": relative_images,
         "regions": matching_regions,
-        "ai_regions": ai_regions if template_found else [], # Also send AI results for reference
+        "ai_regions": ai_regions if template_found else [], 
         "template_found": template_found,
+        "matched_template": matched_template_info,
         "is_source": False
     }
 
@@ -232,7 +247,22 @@ async def analyze_from_source(template_id: str):
     relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
 
     # 4. Load template regions
-    t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+    # 4. Load template regions
+    # Determine path based on DB or try both
+    t_record = db.get_template(template_id)
+    if t_record:
+        mode_dir = TEMPLATES_AUTO_DIR if t_record['mode'] == 'auto' else TEMPLATES_CUSTOM_DIR
+        t_path = os.path.join(mode_dir, f"{template_id}.json")
+    else:
+        # Fallback for old system or missing DB record
+        t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+        if not os.path.exists(t_path):
+             # Try subdirs explicitly if DB missed it
+             if os.path.exists(os.path.join(TEMPLATES_AUTO_DIR, f"{template_id}.json")):
+                 t_path = os.path.join(TEMPLATES_AUTO_DIR, f"{template_id}.json")
+             elif os.path.exists(os.path.join(TEMPLATES_CUSTOM_DIR, f"{template_id}.json")):
+                 t_path = os.path.join(TEMPLATES_CUSTOM_DIR, f"{template_id}.json")
+
     with open(t_path, "r", encoding="utf-8") as f:
         t_data = json.load(f)
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
@@ -245,7 +275,8 @@ async def analyze_from_source(template_id: str):
         "images": relative_images,
         "regions": matching_regions,
         "template_found": True,
-        "is_source": True
+        "is_source": True,
+        "mode": t_record['mode'] if t_record else 'unknown'
     }
 
 class TableAnalysisRequest(BaseModel):
@@ -372,30 +403,48 @@ async def analyze_table_structure(req: TableAnalysisRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/templates")
-async def list_templates():
-    templates = []
-    if not os.path.exists(TEMPLATES_DIR):
-        return []
-    for t_file in os.listdir(TEMPLATES_DIR):
-        if t_file.endswith(".json"):
-            t_path = os.path.join(TEMPLATES_DIR, t_file)
-            try:
-                if os.path.getsize(t_path) == 0:
-                    continue
-                with open(t_path, "r", encoding="utf-8") as f:
-                    templates.append(json.load(f))
-            except Exception as e:
-                print(f"Error loading template {t_file}: {e}")
-    return templates
+async def list_templates(mode: Optional[str] = None, tag: Optional[str] = None):
+    return db.list_templates(mode=mode, tag=tag)
 
 @app.post("/templates")
 async def save_template(template: Template):
-    # 1. Save JSON definition
-    template_path = os.path.join(TEMPLATES_DIR, f"{template.id}.json")
+    # 1. Determine storage path
+    # Default to auto if not specified (backward compatibility)
+    mode = template.mode if template.mode in ['auto', 'custom'] else 'auto'
+    
+    target_dir = TEMPLATES_AUTO_DIR if mode == 'auto' else TEMPLATES_CUSTOM_DIR
+    template_path = os.path.join(target_dir, f"{template.id}.json")
+    
+    # Extract features if auto mode or if requested (actually always good to have)
+    # Be careful: template.filename is the UPLOADED source file path, which might be in uploads
+    # We need that file to extract features. 
+    # Front-end sends 'filename' which is relative to UPLOAD_DIR usually.
+    
+    f_features = {}
+    if template.filename:
+        src_full_path = os.path.join(UPLOAD_DIR, template.filename)
+        if os.path.exists(src_full_path):
+            f_features = fp_engine.extract_features(src_full_path)
+    
+    # 2. Save JSON definition
+    # Update template object with extracted features so it is also in the JSON
+    template.fingerprint_text = json.dumps(f_features)
+    
     with open(template_path, "w", encoding="utf-8") as f:
         f.write(template.model_dump_json(indent=2))
+        
+    # 3. Save to DB
+    db.save_template(
+        t_id=template.id,
+        mode=mode,
+        name=template.name,
+        filename=template_path,
+        fingerprint=template.fingerprint,
+        fingerprint_text=json.dumps(f_features),
+        tags=template.tags
+    )
     
-    # 2. Preserved PDF source library
+    # 4. Preserved PDF source library
     if template.filename:
         # Check if it already exists in source library
         dest_filename = f"{template.id}.pdf"
@@ -408,37 +457,41 @@ async def save_template(template: Template):
                 shutil.copy2(src_path, dest_path)
                 print(f"Archived template source: {dest_path}")
             else:
-                # If it's already a re-analysis from source, it might already be there (or not in uploads)
                 pass
 
-    return {"status": "success", "id": template.id}
+    return {"status": "success", "id": template.id, "mode": mode}
 
-@app.post("/extract")
-async def extract_from_template(
+@app.post("/extract/{template_id}")
+async def extract_with_custom_template(
     template_id: str,
     file: UploadFile = File(...)
 ):
-    # 1. Load Template
-    t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+    """
+    CUSTOM MODE: Explicitly apply a template to an uploaded file, ignoring fingerprint.
+    """
+    # 1. Look up template
+    t_record = db.get_template(template_id)
+    if not t_record:
+        raise HTTPException(status_code=404, detail="Template not found in DB")
+        
+    mode_dir = TEMPLATES_AUTO_DIR if t_record['mode'] == 'auto' else TEMPLATES_CUSTOM_DIR
+    t_path = os.path.join(mode_dir, f"{template_id}.json")
+    
     if not os.path.exists(t_path):
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Template definition file missing")
         
     with open(t_path, "r", encoding="utf-8") as f:
         t_data = json.load(f)
         
-    template = Template(**t_data)
-    
-    # 2. Save Uploaded File
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # 3. Extract Text/Data
     try:
-        # For tables: we need to handle table regions specifically if we want robust extraction
-        # Current extract_text_from_regions is capable of text.
-        # For this POC, we reuse it. Enhancements for tables can be added.
-        extracted_regions = extract_text_from_regions(file_path, template.regions)
+        # 2. Save Uploaded File for processing
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # 3. Extract using forced regions
+        regions_objs = [Region(**r) for r in t_data.get("regions", [])]
+        extracted_regions = extract_text_from_regions(file_path, regions_objs)
         
         # 4. Format Output Structure
         result_map = {}
@@ -452,15 +505,17 @@ async def extract_from_template(
         append_history({
             "timestamp": timestamp,
             "filename": file.filename,
-            "template_name": template.name,
-            "template_id": template.id,
-            "result_preview": str(result_map)[:200] + "..." if len(str(result_map)) > 200 else str(result_map) # Summary
+            "template_name": t_data.get("name", "Unknown"),
+            "template_id": template_id,
+            "mode": "custom_forced",
+            "result_summary": result_map
         })
             
         return {
             "status": "success",
             "filename": file.filename,
-            "template_name": template.name,
+            "template_name": t_data.get("name"),
+            "mode": t_record['mode'],
             "data": result_map,
             "raw_regions": extracted_regions
         }
@@ -470,6 +525,16 @@ async def extract_from_template(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/extract")
+async def extract_from_template_legacy(
+    template_id: str,
+    file: UploadFile = File(...)
+):
+    # Deprecated or strictly Auto-mode compatible
+    # Forward to new handler for now
+    return await extract_with_custom_template(template_id, file)
 
 @app.get("/history")
 async def get_history():

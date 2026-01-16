@@ -21,6 +21,7 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [toast, setToast] = useState(null);
     const [emptyDragActive, setEmptyDragActive] = useState(false);
+    const [templateMode, setTemplateMode] = useState('auto'); // 'auto' or 'custom'
 
     // --- 版面识别增强状态 ---
     const [layoutSettings, setLayoutSettings] = useState({
@@ -155,6 +156,8 @@ export default function TemplateCreator({ theme, setTheme }) {
             }));
             setRegions(mappedRegions);
             setTemplateName(res.data.template_found ? `识别_${res.data.filename}` : `模型_${res.data.filename}`);
+            // If template found, use its mode, otherwise default to auto
+            setTemplateMode(res.data.matched_template?.mode || 'auto');
             setStep('review');
             setEditorMode('view');
             setTableRefining(null);
@@ -301,7 +304,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                 fingerprint: analysis.fingerprint,
                 name: templateName,
                 regions: regions,
-                filename: analysis.filename // Pass current filename for archiving
+                filename: analysis.filename, // Pass current filename for archiving
+                mode: templateMode // 'auto' or 'custom'
             });
             fetchTemplates();
             setStep('complete');
@@ -348,14 +352,6 @@ export default function TemplateCreator({ theme, setTheme }) {
 
     const selectedRegion = useMemo(() => regions.find(r => r.id === selectedId), [regions, selectedId]);
 
-    const sortedTemplates = useMemo(() => {
-        if (!analysis) return templates;
-        return [...templates].sort((a, b) => {
-            if (a.fingerprint === analysis.fingerprint) return -1;
-            if (b.fingerprint === analysis.fingerprint) return 1;
-            return 0;
-        });
-    }, [templates, analysis]);
 
     const filteredRegions = useMemo(() => {
         const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
@@ -377,7 +373,6 @@ export default function TemplateCreator({ theme, setTheme }) {
                     collapsed={leftPanelCollapsed}
                     setCollapsed={setLeftPanelCollapsed}
                     templates={templates}
-                    sortedTemplates={sortedTemplates}
                     analysis={analysis}
                     onAnalyze={analyze}
                     onSelectTemplate={handleSelectTemplate}
@@ -583,6 +578,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                     setTemplateName={setTemplateName}
                     handleSaveTemplate={handleSaveTemplate}
                     saveSuccess={saveSuccess}
+                    templateMode={templateMode}
+                    setTemplateMode={setTemplateMode}
                     loading={loading || !analysis} // Disable some buttons if no analysis
                     typeConfig={TYPE_CONFIG}
                     theme={theme}
