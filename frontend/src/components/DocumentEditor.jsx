@@ -368,7 +368,7 @@ const DocumentEditor = ({
                                     height={`${reg.height * 100}%`}
                                     fill={isSelected ? `${config.color}33` : `${config.color}11`}
                                     stroke={config.color}
-                                    strokeWidth={isSelected ? (2 / zoom) : (1.5 / zoom)} // Adjust stroke weight for zoom
+                                    strokeWidth={isSelected ? 3 : 2} // Fixed width, ignored zoom
                                     style={{ pointerEvents: 'auto', cursor: tableRefining ? 'default' : 'move' }}
                                     onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
                                 />
@@ -384,7 +384,7 @@ const DocumentEditor = ({
                                                 height={`${cell.h * reg.height * 100}%`}
                                                 fill="rgba(59, 130, 246, 0.05)"
                                                 stroke="rgba(59, 130, 246, 0.2)"
-                                                strokeWidth={0.5 / zoom}
+                                                strokeWidth={1}
                                             />
                                         ))}
                                         {tableRefining.cols.map((colX, idx) => {
@@ -398,7 +398,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + colX * reg.width) * 100}%`}
                                                         y2={`${(reg.y + reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={10 / zoom}
+                                                        strokeWidth={10}
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
                                                     />
@@ -409,7 +409,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + colX * reg.width) * 100}%`}
                                                         y2={`${(reg.y + reg.height) * 100}%`}
                                                         stroke="rgba(16, 185, 129, 0.8)"
-                                                        strokeWidth={1.5 / zoom}
+                                                        strokeWidth={1.5}
                                                         style={{ pointerEvents: 'none' }}
                                                     />
                                                     {/* Delete button (only for inner lines) */}
@@ -425,7 +425,7 @@ const DocumentEditor = ({
                                                             <circle
                                                                 cx={`${(reg.x + colX * reg.width) * 100}%`}
                                                                 cy={`${(reg.y + reg.height) * 100}%`}
-                                                                r={11 / zoom}
+                                                                r={9}
                                                                 fill="#ef4444"
                                                                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                                                             />
@@ -433,7 +433,7 @@ const DocumentEditor = ({
                                                                 x={`${(reg.x + colX * reg.width) * 100}%`}
                                                                 y={`${(reg.y + reg.height) * 100}%`}
                                                                 fill="white"
-                                                                fontSize={15 / zoom}
+                                                                fontSize={14}
                                                                 fontWeight="bold"
                                                                 textAnchor="middle"
                                                                 dominantBaseline="middle"
@@ -455,7 +455,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + reg.width) * 100}%`}
                                                         y2={`${(reg.y + rowY * reg.height) * 100}%`}
                                                         stroke="transparent"
-                                                        strokeWidth={10 / zoom}
+                                                        strokeWidth={10}
                                                         style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
                                                         onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
                                                     />
@@ -466,7 +466,7 @@ const DocumentEditor = ({
                                                         x2={`${(reg.x + reg.width) * 100}%`}
                                                         y2={`${(reg.y + rowY * reg.height) * 100}%`}
                                                         stroke="rgba(16, 185, 129, 0.8)"
-                                                        strokeWidth={1.5 / zoom}
+                                                        strokeWidth={1.5}
                                                         style={{ pointerEvents: 'none' }}
                                                     />
                                                     {/* Delete button */}
@@ -482,7 +482,7 @@ const DocumentEditor = ({
                                                             <circle
                                                                 cx={`${(reg.x + reg.width) * 100}%`}
                                                                 cy={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                                r={11 / zoom}
+                                                                r={9}
                                                                 fill="#ef4444"
                                                                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                                                             />
@@ -490,7 +490,7 @@ const DocumentEditor = ({
                                                                 x={`${(reg.x + reg.width) * 100}%`}
                                                                 y={`${(reg.y + rowY * reg.height) * 100}%`}
                                                                 fill="white"
-                                                                fontSize={15 / zoom}
+                                                                fontSize={14}
                                                                 fontWeight="bold"
                                                                 textAnchor="middle"
                                                                 dominantBaseline="middle"
@@ -524,7 +524,7 @@ const DocumentEditor = ({
                                             height={scaledHandleSize}
                                             fill="#fff"
                                             stroke={config.color}
-                                            strokeWidth={1 / zoom}
+                                            strokeWidth={1}
                                             style={{ pointerEvents: 'auto', cursor: `${handle}-resize` }}
                                             onMouseDown={(e) => startResize(e, reg.id, handle)}
                                         />
@@ -542,7 +542,7 @@ const DocumentEditor = ({
                                         <circle
                                             cx={`${(reg.x + reg.width) * 100}%`}
                                             cy={`${reg.y * 100}%`}
-                                            r={8 / zoom}
+                                            r={7}
                                             fill="#ef4444"
                                             style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
                                         />
@@ -550,7 +550,7 @@ const DocumentEditor = ({
                                             x={`${(reg.x + reg.width) * 100}%`}
                                             y={`${reg.y * 100}%`}
                                             fill="white"
-                                            fontSize={12 / zoom}
+                                            fontSize={11}
                                             fontWeight="bold"
                                             textAnchor="middle"
                                             dominantBaseline="middle"
@@ -561,8 +561,8 @@ const DocumentEditor = ({
                                 <foreignObject
                                     x={`${reg.x * 100}%`}
                                     y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
-                                    width={200 / zoom}
-                                    height={30 / zoom}
+                                    width={200}
+                                    height={30}
                                     style={{ overflow: 'visible', pointerEvents: 'auto' }}
                                 >
                                     <div
@@ -570,17 +570,17 @@ const DocumentEditor = ({
                                         style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
-                                            padding: `${1 / zoom}px ${6 / zoom}px`,
+                                            padding: `2px 8px`,
                                             background: config.color,
                                             color: '#fff',
-                                            fontSize: `${10 / zoom}px`,
+                                            fontSize: `11px`,
                                             fontWeight: 'bold',
                                             borderRadius: '3px 3px 3px 0',
                                             whiteSpace: 'nowrap',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                                             opacity: 0.9,
                                             transformOrigin: 'top left',
-                                            gap: `${6 / zoom}px`,
+                                            gap: `6px`,
                                             cursor: 'default'
                                         }}
                                     >
@@ -593,8 +593,8 @@ const DocumentEditor = ({
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                width: `${16 / zoom}px`,
-                                                height: `${16 / zoom}px`,
+                                                width: `18px`,
+                                                height: `18px`,
                                                 borderRadius: '50%',
                                                 background: reg.locked ? '#8b5cf6' : 'rgba(255,255,255,0.2)',
                                                 cursor: 'pointer',
@@ -603,12 +603,12 @@ const DocumentEditor = ({
                                             }}
                                         >
                                             {reg.locked ? (
-                                                <svg width={10 / zoom} height={10 / zoom} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                                 </svg>
                                             ) : (
-                                                <svg width={10 / zoom} height={10 / zoom} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                                     <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
                                                 </svg>
@@ -635,8 +635,8 @@ const DocumentEditor = ({
                             height={`${Math.abs(currentRect.height) * 100}%`}
                             fill="rgba(59, 130, 246, 0.1)"
                             stroke="var(--primary-color)"
-                            strokeWidth={2 / zoom}
-                            strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+                            strokeWidth={2}
+                            strokeDasharray={`4 4`}
                         />
                     )}
 
@@ -648,17 +648,17 @@ const DocumentEditor = ({
                             <circle
                                 cx={`${addLineHover.x * 100}%`}
                                 cy={`${addLineHover.y * 100}%`}
-                                r={13 / zoom}
+                                r={11}
                                 fill="#3b82f6"
                                 stroke="#fff"
-                                strokeWidth={2 / zoom}
+                                strokeWidth={2}
                                 style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
                             />
                             <text
                                 x={`${addLineHover.x * 100}%`}
                                 y={`${addLineHover.y * 100}%`}
                                 fill="white"
-                                fontSize={18 / zoom}
+                                fontSize={16}
                                 fontWeight="bold"
                                 textAnchor="middle"
                                 dominantBaseline="middle"
@@ -671,8 +671,8 @@ const DocumentEditor = ({
                                 x2={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${(regions.find(r => r.id === tableRefining.id).x + regions.find(r => r.id === tableRefining.id).width) * 100}%`}
                                 y2={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${(regions.find(r => r.id === tableRefining.id).y + regions.find(r => r.id === tableRefining.id).height) * 100}%`}
                                 stroke="#3b82f6"
-                                strokeWidth={1 / zoom}
-                                strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+                                strokeWidth={1}
+                                strokeDasharray={`4 4`}
                                 opacity={0.6}
                                 pointerEvents="none"
                             />
