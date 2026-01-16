@@ -5,7 +5,7 @@ const TYPE_CONFIG = {
     'table': { label: '表格', color: '#10b981' },
     'plain text': { label: '普通正文', color: '#94a3b8' },
     'text': { label: '文字', color: '#94a3b8' },
-    'abandon': { label: '无效区域', color: '#ef4444' },
+    'abandon': { label: '无效区域', color: '#808080' },
     'figure': { label: '图片/插图', color: '#f59e0b' },
     'list': { label: '列表', color: '#ec4899' },
     'header': { label: '页眉', color: '#8b5cf6' },
@@ -24,6 +24,7 @@ const DocumentEditor = ({
     zoom = 1.0,
     showRegions = true,
     onDelete = null,
+    onToggleLock = null,
     onHistorySnapshot = null
 }) => {
 
@@ -60,16 +61,18 @@ const DocumentEditor = ({
 
     const startResize = (e, id, handle) => {
         e.stopPropagation();
-        const { x, y } = getCoordinates(e);
         const region = regions.find(r => r.id === id);
+        if (region && region.locked) return; // Prevent resizing if locked
+        const { x, y } = getCoordinates(e);
         setInteraction({ type: 'resize', id, handle, startX: x, startY: y, initialRegion: { ...region } });
     };
 
     const startMove = (e, id) => {
         e.stopPropagation();
         setSelectedId(id);
-        const { x, y } = getCoordinates(e);
         const region = regions.find(r => r.id === id);
+        if (region && region.locked) return; // Prevent moving if locked
+        const { x, y } = getCoordinates(e);
         setInteraction({ type: 'move', id, startX: x, startY: y, initialRegion: { ...region } });
     };
 
@@ -502,7 +505,7 @@ const DocumentEditor = ({
                                     </g>
                                 )}
 
-                                {isSelected && !tableRefining && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
+                                {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
                                     let hx = reg.x, hy = reg.y;
                                     if (handle.includes('e')) hx += reg.width;
                                     if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
@@ -528,7 +531,7 @@ const DocumentEditor = ({
                                     );
                                 })}
 
-                                {isSelected && !tableRefining && onDelete && (
+                                {isSelected && !tableRefining && onDelete && !reg.locked && (
                                     <g
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -555,16 +558,18 @@ const DocumentEditor = ({
                                     </g>
                                 )}
 
-                                {!tableRefining && (
-                                    <foreignObject
-                                        x={`${reg.x * 100}%`}
-                                        y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
-                                        width={150 / zoom}
-                                        height={24 / zoom}
-                                        style={{ overflow: 'visible', pointerEvents: 'none' }}
-                                    >
-                                        <div style={{
-                                            display: 'inline-block',
+                                <foreignObject
+                                    x={`${reg.x * 100}%`}
+                                    y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
+                                    width={200 / zoom}
+                                    height={30 / zoom}
+                                    style={{ overflow: 'visible', pointerEvents: 'auto' }}
+                                >
+                                    <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
                                             padding: `${1 / zoom}px ${6 / zoom}px`,
                                             background: config.color,
                                             color: '#fff',
@@ -574,12 +579,50 @@ const DocumentEditor = ({
                                             whiteSpace: 'nowrap',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                                             opacity: 0.9,
-                                            transformOrigin: 'top left'
-                                        }}>
-                                            {reg.label || config.label}
+                                            transformOrigin: 'top left',
+                                            gap: `${6 / zoom}px`,
+                                            cursor: 'default'
+                                        }}
+                                    >
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleLock && onToggleLock(reg.id);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: `${16 / zoom}px`,
+                                                height: `${16 / zoom}px`,
+                                                borderRadius: '50%',
+                                                background: reg.locked ? '#8b5cf6' : 'rgba(255,255,255,0.2)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                border: reg.locked ? '1px solid #fff' : 'none'
+                                            }}
+                                        >
+                                            {reg.locked ? (
+                                                <svg width={10 / zoom} height={10 / zoom} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg width={10 / zoom} height={10 / zoom} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                                </svg>
+                                            )}
                                         </div>
-                                    </foreignObject>
-                                )}
+                                        <span style={{ pointerEvents: 'none' }}>
+                                            {(() => {
+                                                const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
+                                                return isGenericLabel ? config.label : reg.label;
+                                            })()}
+                                        </span>
+                                    </div>
+                                </foreignObject>
+
                             </g>
                         );
                     })}

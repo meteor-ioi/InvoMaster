@@ -3,7 +3,7 @@ import { PenTool, FileText, ArrowRight } from 'lucide-react';
 
 export default function Home({ onNavigate }) {
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '100px 20px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
             <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '10px' }}>
                 <span className="gradient-text">影刀</span> 离线单据识别
             </h1>

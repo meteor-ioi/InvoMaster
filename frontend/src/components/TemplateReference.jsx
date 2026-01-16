@@ -89,7 +89,7 @@ export default function TemplateReference() {
     };
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px 40px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <div>
                     <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>模板引用与执行</h2>

@@ -161,7 +161,11 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                 }
             });
             setAnalysis(res.data);
-            setRegions(res.data.regions || []);
+            const mappedRegions = (res.data.regions || []).map(r => ({
+                ...r,
+                label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
+            }));
+            setRegions(mappedRegions);
             setTemplateName(res.data.template_found ? `识别_${res.data.filename}` : `模型_${res.data.filename}`);
             setStep('review');
             setEditorMode('view');
@@ -264,6 +268,24 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
         }
     };
 
+    const handleCommitTableRules = () => {
+        if (!tableRefining) return;
+
+        // Update the regions with the latest table refinement data
+        setRegions(prev => prev.map(r => r.id === tableRefining.id ? {
+            ...r,
+            table_settings: tableRefining.settings
+        } : r));
+
+        // Provide success feedback
+        setSaveSuccess(true);
+        setToast({ type: 'success', text: '表格规则已暂存 (草稿)' });
+        setTimeout(() => {
+            setSaveSuccess(false);
+            setToast(null);
+        }, 2000);
+    };
+
     const handleSaveTemplate = async () => {
         try {
             await axios.post(`${API_BASE}/templates`, {
@@ -273,18 +295,7 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                 regions: regions
             });
             fetchTemplates();
-
-            if (tableRefining) {
-                // 原地成功反馈，不打断微调流程
-                setSaveSuccess(true);
-                setToast({ type: 'success', text: '表格规则保存成功' });
-                setTimeout(() => {
-                    setSaveSuccess(false);
-                    setToast(null);
-                }, 2000);
-            } else {
-                setStep('complete');
-            }
+            setStep('complete');
         } catch (err) {
             console.error(err);
             alert('保存模板失败: ' + (err.response?.data?.detail || err.message));
@@ -304,46 +315,31 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
         recordHistory(newRegions);
     };
 
-    const updateRegionMemo = (id, memo) => {
-        const newRegions = regions.map(r => r.id === id ? { ...r, memo } : r);
-        setRegions(newRegions);
-        recordHistory(newRegions);
-    };
-
     const updateRegionType = (id, type) => {
-        const newRegions = regions.map(r => r.id === id ? { ...r, type } : r);
+        const newRegions = regions.map(r => r.id === id ? {
+            ...r,
+            type,
+            label: TYPE_CONFIG[type]?.label || type
+        } : r);
         setRegions(newRegions);
         recordHistory(newRegions);
     };
 
-    const loadTemplateForEditing = (template) => {
-        // Mock analysis object based on template
-        const fingerprint = template.fingerprint;
-        // In POC, we assume image path is predictable if saved via standard flow
-        // The backend saves images to data/uploads/images_{fingerprint}/page_1.png etc.
-        // We only use first page for now.
-        const mockAnalysis = {
-            id: template.id,
-            fingerprint: template.fingerprint,
-            filename: `${template.name}.pdf`, // Placeholder
-            images: [`images_${fingerprint.slice(0, 8)}/page_1.png`],
-            regions: template.regions,
-            template_found: true
-        };
+    const toggleRegionLock = (id) => {
+        const newRegions = regions.map(r => r.id === id ? { ...r, locked: !r.locked } : r);
+        setRegions(newRegions);
+        recordHistory(newRegions);
+    };
 
-        setAnalysis(mockAnalysis);
-        setRegions(template.regions);
-        setTemplateName(template.name);
-        setStep('review');
-        setEditorMode('view');
-        setTableRefining(null);
-        setRightPanelCollapsed(false);
+    const updateRegionRemarks = (id, remarks) => {
+        const newRegions = regions.map(r => r.id === id ? { ...r, remarks } : r);
+        setRegions(newRegions);
+        recordHistory(newRegions);
     };
 
     const selectedRegion = useMemo(() => regions.find(r => r.id === selectedId), [regions, selectedId]);
 
     const sortedTemplates = useMemo(() => {
-        // If analysis exists, sort by match. If not, just list.
         if (!analysis) return templates;
         return [...templates].sort((a, b) => {
             if (a.fingerprint === analysis.fingerprint) return -1;
@@ -359,39 +355,66 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
     }, [regions, viewFilters]);
 
     return (
-        <div style={{ padding: '0 20px 40px', position: 'relative' }}>
+        <div style={{ padding: step === 'review' ? '0 20px 40px' : '40px 20px', position: 'relative' }}>
+            <button
+                onClick={onBack}
+                style={{
+                    position: 'absolute', top: '20px', left: '20px',
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-secondary)', zIndex: 10
+                }}
+            >
+                <Home size={18} /> 回到首页
+            </button>
+
+            <header style={{ position: 'relative', textAlign: 'center', marginBottom: step === 'review' ? '30px' : '40px' }}>
+                {step !== 'review' && (
+                    <>
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
+                            模板制作工作台
+                        </h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>基于 AI 的文档标注与规则定义</p>
+                    </>
+                )}
+
+                <button
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    style={{
+                        position: 'fixed',
+                        bottom: '30px',
+                        right: '30px',
+                        background: 'var(--input-bg)', border: '1px solid var(--glass-border)',
+                        padding: '10px', borderRadius: '12px', cursor: 'pointer', color: 'var(--text-primary)',
+                        zIndex: 1000,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                >
+                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+            </header>
+
             <main style={{
                 display: 'grid',
                 gridTemplateColumns: step === 'review' && analysis
-                    ? `${leftPanelCollapsed ? '96px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '96px' : '300px'}`
-                    : '260px 1fr',
+                    ? `${leftPanelCollapsed ? '48px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '48px' : '340px'}`
+                    : '1fr',
                 gap: '20px',
-                alignItems: 'start',
-                paddingTop: '80px',
-                transition: 'grid-template-columns 0.3s ease'
+                alignItems: 'start'
             }}>
-                {/* Left Panel - Templates & Global Actions */}
-                <LeftPanel
-                    collapsed={leftPanelCollapsed}
-                    setCollapsed={setLeftPanelCollapsed}
-                    templates={templates}
-                    sortedTemplates={sortedTemplates}
-                    analysis={analysis}
-                    onEditTemplate={loadTemplateForEditing}
-                    onFileUpload={handleFileUpload}
-                    loading={loading}
-                />
+                {/* Left Panel - Templates */}
+                {step === 'review' && analysis && (
+                    <LeftPanel
+                        collapsed={leftPanelCollapsed}
+                        setCollapsed={setLeftPanelCollapsed}
+                        templates={templates}
+                        sortedTemplates={sortedTemplates}
+                        analysis={analysis}
+                    />
+                )}
 
                 {/* Center Panel - Main Content */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
-                    {step === 'upload' && (
-                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                            <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '10px' }}>
-                                模板制作工作台
-                            </h1>
-                            <p style={{ color: 'var(--text-secondary)' }}>基于 AI 的文档标注与规则定义</p>
-                        </div>
-                    )}
                     {step === 'upload' && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', maxWidth: '600px', margin: '0 auto' }}>
                             <div
@@ -489,6 +512,7 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                                         zoom={zoom}
                                         showRegions={showRegions}
                                         onDelete={deleteRegion}
+                                        onToggleLock={toggleRegionLock}
                                         onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
                                     />
                                 </div>
@@ -564,10 +588,12 @@ export default function TemplateCreator({ onBack }) { // Accept onBack prop
                         deleteRegion={deleteRegion}
                         updateRegionType={updateRegionType}
                         updateRegionLabel={updateRegionLabel}
-                        updateRegionMemo={updateRegionMemo}
+                        updateRegionRemarks={updateRegionRemarks}
+                        toggleRegionLock={toggleRegionLock}
                         tableSettings={tableSettings}
                         setTableSettings={setTableSettings}
                         handleApplyTableSettings={handleApplyTableSettings}
+                        handleCommitTableRules={handleCommitTableRules}
                         handleEnterTableRefine={handleEnterTableRefine}
                         templateName={templateName}
                         setTemplateName={setTemplateName}

@@ -44,9 +44,9 @@ class Region(BaseModel):
     height: float
     label: Optional[str] = None
     text: Optional[str] = None # For extracted text
-    memo: Optional[str] = None # For business logic context
+    label: Optional[str] = None
+    text: Optional[str] = None # For extracted text
     table_settings: Optional[dict] = None # For table-specific logic
-    structured_data: Optional[List[List[Optional[str]]]] = None # For table 2D array
 
 class ExtractRequest(BaseModel):
     template_id: str
@@ -93,7 +93,7 @@ def get_file_fingerprint(file_path):
 
 def extract_text_from_regions(pdf_path, regions: List[Region]):
     """
-    Uses pdfplumber to extract text and structured table data.
+    Uses pdfplumber to extract text from specific normalized coordinates.
     """
     results = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -114,34 +114,6 @@ def extract_text_from_regions(pdf_path, regions: List[Region]):
             
             reg_dict = reg.dict()
             reg_dict["text"] = text.strip() if text else ""
-            
-            # Special handling for Tables: Extract structured 2D array
-            if reg.type == 'table':
-                try:
-                    s = reg.table_settings or {
-                        "vertical_strategy": "text",
-                        "horizontal_strategy": "text"
-                    }
-                    
-                    # Handle explicit lines coordinate conversion (Relative -> Absolute)
-                    # Note: This logic duplicates /table/analyze a bit, could be refactored to a helper
-                    table_op_settings = s.copy()
-                    if table_op_settings.get("vertical_strategy") == "explicit":
-                        rel_cols = table_op_settings.get("explicit_vertical_lines", [])
-                        abs_cols = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
-                        table_op_settings["explicit_vertical_lines"] = abs_cols
-                    
-                    if table_op_settings.get("horizontal_strategy") == "explicit":
-                        rel_rows = table_op_settings.get("explicit_horizontal_lines", [])
-                        abs_rows = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
-                        table_op_settings["explicit_horizontal_lines"] = abs_rows
-
-                    table_data = cropped.extract_table(table_op_settings)
-                    reg_dict["structured_data"] = table_data
-                except Exception as e:
-                    print(f"Table extraction failed for region {reg.id}: {e}")
-                    reg_dict["structured_data"] = None
-
             results.append(reg_dict)
             
     return results
@@ -407,11 +379,7 @@ async def extract_from_template(
         result_map = {}
         for r in extracted_regions:
             key = r.get("label") or r.get("id")
-            # If table data exists, use it as the primary value for this key
-            if r.get("structured_data"):
-                result_map[key] = r.get("structured_data")
-            else:
-                result_map[key] = r.get("text", "")
+            result_map[key] = r.get("text", "")
             
         # 5. Log History
         import datetime
