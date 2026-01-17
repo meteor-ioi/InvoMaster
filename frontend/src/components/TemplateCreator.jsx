@@ -419,7 +419,7 @@ export default function TemplateCreator({ theme, setTheme }) {
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '48px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '40px' : '300px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px'
