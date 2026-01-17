@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
-import { Edit3, Eye, Sun, Moon, Code, Maximize2, Minimize2 } from 'lucide-react';
+import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft } from 'lucide-react';
 
 function App() {
     const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
@@ -91,7 +91,7 @@ function App() {
                         }}
                         title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
                     >
-                        {isSidebarsCollapsed ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
+                        {isSidebarsCollapsed ? <ChevronsLeftRight size={18} /> : <ChevronsRightLeft size={18} />}
                     </button>
 
                     <button
