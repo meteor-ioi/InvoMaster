@@ -85,8 +85,42 @@ def read_history(limit: int = 50):
     lines = []
     with open(HISTORY_FILE, "r", encoding="utf-8") as f:
         lines = f.readlines()
-    # Return last N lines reversed
-    return [json.loads(line) for line in reversed(lines[-limit:])]
+    # Return last N lines reversed with index
+    history_list = [json.loads(line) for line in reversed(lines[-limit:])]
+    # Add index to each item for reference
+    for idx, item in enumerate(history_list):
+        item['index'] = idx
+    return history_list
+
+def delete_history_item(index: int):
+    """Delete a history item by its index (0-based from most recent)"""
+    if not os.path.exists(HISTORY_FILE):
+        return False
+    
+    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    # Calculate actual line index (reversed)
+    total = len(lines)
+    if index < 0 or index >= total:
+        return False
+    
+    # Remove the item (index is from reversed list)
+    actual_index = total - 1 - index
+    lines.pop(actual_index)
+    
+    # Write back
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+    
+    return True
+
+def get_history_item(index: int):
+    """Get a single history item by index"""
+    history = read_history()
+    if 0 <= index < len(history):
+        return history[index]
+    return None
 
 def get_file_fingerprint(file_path):
     """
@@ -615,6 +649,22 @@ async def extract_from_template_legacy(
 @app.get("/history")
 async def get_history():
     return read_history()
+
+@app.get("/history/{index}")
+async def get_history_detail(index: int):
+    """Get detailed information for a specific history item"""
+    item = get_history_item(index)
+    if not item:
+        raise HTTPException(status_code=404, detail="History item not found")
+    return item
+
+@app.delete("/history/{index}")
+async def delete_history(index: int):
+    """Delete a history item by index"""
+    success = delete_history_item(index)
+    if not success:
+        raise HTTPException(status_code=404, detail="History item not found")
+    return {"status": "success", "message": f"History item {index} deleted"}
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -13,6 +13,7 @@ export default function TemplateReference() {
     const [history, setHistory] = useState([]);
     const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml'
     const [copied, setCopied] = useState(false);
+    const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(null);
 
     // --- Search & Mode States ---
     const [selectionMode, setSelectionMode] = useState('auto'); // 'auto' (Standard) or 'custom' (Custom)
@@ -53,6 +54,44 @@ export default function TemplateReference() {
         }
     };
 
+    const handleDeleteHistory = async (index, e) => {
+        e.stopPropagation(); // Prevent triggering the click event
+        if (!confirm('确定要删除这条历史记录吗?')) return;
+
+        try {
+            await axios.delete(`${API_BASE}/history/${index}`);
+            // If the deleted item was selected, clear the result
+            if (selectedHistoryIndex === index) {
+                setResult(null);
+                setSelectedHistoryIndex(null);
+            }
+            fetchHistory(); // Refresh the list
+        } catch (err) {
+            console.error("Failed to delete history", err);
+            alert("删除失败: " + (err.response?.data?.detail || err.message));
+        }
+    };
+
+    const handleViewHistory = async (index) => {
+        try {
+            const res = await axios.get(`${API_BASE}/history/${index}`);
+            const historyItem = res.data;
+
+            // Transform history data to match the result format
+            setResult({
+                status: 'success',
+                filename: historyItem.filename,
+                template_name: historyItem.template_name,
+                mode: historyItem.mode || 'custom_forced',
+                data: historyItem.result_summary
+            });
+            setSelectedHistoryIndex(index);
+        } catch (err) {
+            console.error("Failed to load history item", err);
+            alert("加载历史记录失败: " + (err.response?.data?.detail || err.message));
+        }
+    };
+
     const handleFileUpload = (e) => {
         if (e.target.files[0]) setFile(e.target.files[0]);
     };
@@ -61,6 +100,7 @@ export default function TemplateReference() {
         if (!file) return alert("请先上传文件");
         setLoading(true);
         setResult(null);
+        setSelectedHistoryIndex(null); // Clear history selection when executing new extraction
         try {
             const formData = new FormData();
             formData.append('file', file);
@@ -115,7 +155,7 @@ export default function TemplateReference() {
 
             // 根据类型渲染内容
             if (type === 'table' && Array.isArray(content)) {
-                // 表格类型：渲染为 Markdown 表格
+                // 表格类型:渲染为 Markdown 表格
                 if (content.length > 0) {
                     md += `| ${content[0].join(' | ')} |\n`;
                     md += `| ${content[0].map(() => '---').join(' | ')} |\n`;
@@ -124,13 +164,13 @@ export default function TemplateReference() {
                     });
                 }
             } else if (type === 'figure') {
-                // 图片类型：使用引用块
+                // 图片类型:使用引用块
                 md += `> 🖼️ ${content || '(无文本内容)'}\n`;
             } else if (type === 'title') {
-                // 标题类型：使用加粗
+                // 标题类型:使用加粗
                 md += `**${content}**\n`;
             } else {
-                // 普通文本：直接显示
+                // 普通文本:直接显示
                 md += `${content}\n`;
             }
 
@@ -230,7 +270,7 @@ export default function TemplateReference() {
 
                     {/* 1. Mode Selector */}
                     <div style={{ marginBottom: '20px' }}>
-                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
+
                         <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                             <button
                                 onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
@@ -389,18 +429,45 @@ export default function TemplateReference() {
                         <div style={{ maxHeight: '250px', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                             {history.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '11px', padding: '15px', textAlign: 'center' }}>暂无记录</p>}
                             {history.map((h, i) => (
-                                <div key={i} style={{
-                                    padding: '10px 12px', borderBottom: i === history.length - 1 ? 'none' : '1px solid var(--glass-border)',
-                                    fontSize: '11px',
-                                    background: 'rgba(255,255,255,0.01)'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{h.filename}</span>
-                                        <span style={{ opacity: 0.5 }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
+                                <div
+                                    key={i}
+                                    onClick={() => handleViewHistory(h.index)}
+                                    style={{
+                                        padding: '10px 12px',
+                                        borderBottom: i === history.length - 1 ? 'none' : '1px solid var(--glass-border)',
+                                        fontSize: '11px',
+                                        background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.01)',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s ease',
+                                        position: 'relative'
+                                    }}
+                                    className="list-item-hover"
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px', flex: 1 }}>
+                                            {h.filename}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                            <span style={{ opacity: 0.5, fontSize: '10px' }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
+                                            <button
+                                                onClick={(e) => handleDeleteHistory(h.index, e)}
+                                                title="删除记录"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    padding: '4px',
+                                                    cursor: 'pointer',
+                                                    color: '#ef4444',
+                                                    display: 'flex'
+                                                }}
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                            <CheckCircle size={12} color="var(--success-color)" />
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--text-secondary)" }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px' }}>{h.template_name || "未知模板"}</span>
-                                        <CheckCircle size={12} color="var(--success-color)" />
+                                    <div style={{ color: "var(--text-secondary)", fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        模板: {h.template_name || "未知模板"}
                                     </div>
                                 </div>
                             ))}
@@ -472,7 +539,7 @@ export default function TemplateReference() {
                                 <div style={{ padding: '30px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }}>
                                     <FileText size={64} />
                                 </div>
-                                <p style={{ fontSize: '1.1rem' }}>待执行：请上传文件并点击“开始提取”</p>
+                                <p style={{ fontSize: '1.1rem' }}>待执行:请上传文件并点击"开始提取"</p>
                             </div>
                         ) : (
                             <div className="animate-fade-in">
@@ -531,7 +598,7 @@ export default function TemplateReference() {
                                             </tbody>
                                         </table>
                                         <div style={{ marginTop: '20px', fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                            提示：此表格为实时渲染的 Markdown 预览
+                                            提示:此表格为实时渲染的 Markdown 预览
                                         </div>
                                     </div>
                                 )}
