@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2 } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -9,6 +10,7 @@ const LeftPanel = ({
     analysis,
     onAnalyze,
     onSelectTemplate,
+    onDeleteTemplate,
     typeConfig = TYPE_CONFIG
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
@@ -248,12 +250,18 @@ const LeftPanel = ({
                                     return matchMode && matchSearch;
                                 });
 
-                                // Sorting (matched first)
+                                // Sorting (Selected first, then Matched)
                                 const sorted = [...filtered].sort((a, b) => {
+                                    const aSelected = analysis && a.id === analysis.id;
+                                    const bSelected = analysis && b.id === analysis.id;
+                                    if (aSelected && !bSelected) return -1;
+                                    if (!aSelected && bSelected) return 1;
+
                                     const aMatch = analysis && a.fingerprint === analysis.fingerprint;
                                     const bMatch = analysis && b.fingerprint === analysis.fingerprint;
                                     if (aMatch && !bMatch) return -1;
                                     if (!aMatch && bMatch) return 1;
+
                                     return 0;
                                 });
 
@@ -263,86 +271,123 @@ const LeftPanel = ({
                                     </p>;
                                 }
 
-                                return sorted.map(t => {
-                                    const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
-                                    const IsSelected = analysis && t.id === analysis.id;
+                                return (
+                                    <AnimatePresence mode="popLayout">
+                                        {sorted.map(t => {
+                                            const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
+                                            const IsSelected = analysis && t.id === analysis.id;
 
-                                    return (
-                                        <div
-                                            key={t.id}
-                                            className={IsMatched ? 'matched-scan-effect' : ''}
-                                            onClick={() => onSelectTemplate && onSelectTemplate(t)}
-                                            style={{
-                                                padding: '8px',
-                                                borderRadius: '8px',
-                                                background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
-                                                border: IsMatched ? '1.5px solid var(--success-color)' : (IsSelected ? '1.5px solid var(--primary-color)' : '1px solid var(--glass-border)'),
-                                                marginBottom: '8px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <div
-                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                            return (
+                                                <motion.div
+                                                    layout
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    key={t.id}
+                                                    className={IsMatched ? 'matched-scan-effect' : ''}
+                                                    onClick={() => onSelectTemplate && onSelectTemplate(t)}
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderRadius: '8px',
+                                                        background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
+                                                        border: IsMatched ? '1.5px solid var(--success-color)' : (IsSelected ? '1.5px solid var(--primary-color)' : '1px solid var(--glass-border)'),
+                                                        marginBottom: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'background 0.2s ease, border 0.2s ease'
+                                                    }}
+                                                >
                                                     <div
-                                                        style={{ padding: '4px' }}
-                                                        onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
+                                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                                     >
-                                                        {expandedIds.includes(t.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                                    </div>
-                                                    <span style={{
-                                                        fontSize: '11px',
-                                                        fontWeight: 'bold',
-                                                        color: IsMatched ? 'var(--success-color)' : 'var(--text-primary)',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap'
-                                                    }}>
-                                                        {t.name}
-                                                    </span>
-                                                </div>
-                                                {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
-                                            </div>
-
-                                            {/* Tags Display */}
-                                            {t.tags && t.tags.length > 0 && (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', paddingLeft: '22px' }}>
-                                                    {t.tags.map(tag => (
-                                                        <span key={tag} style={{
-                                                            fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
-                                                            background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)',
-                                                            border: '0.5px solid rgba(59, 130, 246, 0.2)'
-                                                        }}>
-                                                            {tag}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {expandedIds.includes(t.id) && (
-                                                <div style={{ marginTop: '8px', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--glass-border)', marginLeft: '10px' }}>
-                                                    {t.regions && t.regions.length > 0 ? t.regions.map(r => {
-                                                        const config = typeConfig[r.type.toLowerCase()] || { label: r.type, color: '#ccc' };
-                                                        return (
-                                                            <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '4px' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-primary)' }}>
-                                                                    <span style={{ color: config.color, display: 'flex' }}>{getIcon(r.type)}</span>
-                                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
-                                                                        {r.label || config.label}
-                                                                    </span>
-                                                                </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                                            <div
+                                                                style={{ padding: '4px' }}
+                                                                onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
+                                                            >
+                                                                {expandedIds.includes(t.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                                                             </div>
-                                                        );
-                                                    }) : (
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>无定义要素</span>
+                                                            <span style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: 'bold',
+                                                                color: IsMatched ? 'var(--success-color)' : 'var(--text-primary)',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {t.name}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(t.id);
+                                                                    // Could use a toast here if passed down, but alert is "small change"
+                                                                    alert(`已复制模板 ID: ${t.id}`);
+                                                                }}
+                                                                title="复制模板 ID"
+                                                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onDeleteTemplate && onDeleteTemplate(t.id);
+                                                                }}
+                                                                title="删除模板"
+                                                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#ef4444', display: 'flex' }}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                            {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ fontSize: '9px', color: 'var(--text-secondary)', paddingLeft: '22px', marginTop: '2px', opacity: 0.7, wordBreak: 'break-all' }}>
+                                                        ID: {t.id}
+                                                    </div>
+
+
+                                                    {/* Tags Display */}
+                                                    {t.tags && t.tags.length > 0 && (
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', paddingLeft: '22px' }}>
+                                                            {t.tags.map(tag => (
+                                                                <span key={tag} style={{
+                                                                    fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
+                                                                    background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)',
+                                                                    border: '0.5px solid rgba(59, 130, 246, 0.2)'
+                                                                }}>
+                                                                    {tag}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })
+
+                                                    {expandedIds.includes(t.id) && (
+                                                        <div style={{ marginTop: '8px', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--glass-border)', marginLeft: '10px' }}>
+                                                            {t.regions && t.regions.length > 0 ? t.regions.map(r => {
+                                                                const config = typeConfig[r.type.toLowerCase()] || { label: r.type, color: '#ccc' };
+                                                                return (
+                                                                    <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '4px' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-primary)' }}>
+                                                                            <span style={{ color: config.color, display: 'flex' }}>{getIcon(r.type)}</span>
+                                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
+                                                                                {r.label || config.label}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }) : (
+                                                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>无定义要素</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                );
                             })()}
                         </div>
                     </div>
@@ -351,5 +396,6 @@ const LeftPanel = ({
         </aside>
     );
 };
+
 
 export default LeftPanel;

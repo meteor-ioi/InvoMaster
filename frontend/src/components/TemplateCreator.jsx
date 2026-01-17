@@ -192,6 +192,24 @@ export default function TemplateCreator({ theme, setTheme }) {
         }
     };
 
+    const handleDeleteTemplate = async (id) => {
+        if (!window.confirm('确定要删除该模板吗？此操作不可撤销且将清理物理文件。')) return;
+        try {
+            await axios.delete(`${API_BASE}/templates/${id}`);
+            fetchTemplates();
+            if (analysis && analysis.id === id) {
+                setAnalysis(null);
+                setRegions([]);
+            }
+            setToast({ type: 'success', text: '模板已从数据库及磁盘中删除' });
+            setTimeout(() => setToast(null), 2000);
+        } catch (err) {
+            console.error('删除模板失败', err);
+            alert('删除失败: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
+
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
         const s = settingsOverride || region.table_settings || tableSettings;
@@ -376,6 +394,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                     analysis={analysis}
                     onAnalyze={analyze}
                     onSelectTemplate={handleSelectTemplate}
+                    onDeleteTemplate={handleDeleteTemplate}
                 />
 
                 {/* Center Panel - Main Content */}

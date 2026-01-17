@@ -461,6 +461,41 @@ async def save_template(template: Template):
 
     return {"status": "success", "id": template.id, "mode": mode}
 
+@app.delete("/templates/{template_id}")
+async def delete_template(template_id: str):
+    # 1. Get info from DB
+    t_record = db.get_template(template_id)
+    if not t_record:
+        # Check if it exists in base dir if not in DB
+        t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
+        if not os.path.exists(t_path):
+            raise HTTPException(status_code=404, detail="Template not found")
+        filename_to_delete = t_path
+    else:
+        filename_to_delete = t_record.get('filename')
+
+    # 2. Delete from DB
+    db.delete_template(template_id)
+
+    # 3. Delete physical files
+    # Delete JSON
+    if filename_to_delete and os.path.exists(filename_to_delete):
+        os.remove(filename_to_delete)
+    
+    # Delete fallback JSONs
+    for d in [TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_DIR]:
+        p = os.path.join(d, f"{template_id}.json")
+        if os.path.exists(p):
+            os.remove(p)
+
+    # Delete Source PDF
+    source_pdf = os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.pdf")
+    if os.path.exists(source_pdf):
+        os.remove(source_pdf)
+
+    return {"status": "success", "message": f"Template {template_id} deleted"}
+
+
 @app.post("/extract/{template_id}")
 async def extract_with_custom_template(
     template_id: str,
