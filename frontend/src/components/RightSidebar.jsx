@@ -207,11 +207,11 @@ const RightSidebar = ({
                                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                                     {[
-                                        'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'text', 'abandon', 'custom'
+                                        'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'abandon', 'custom'
                                     ].map(type => {
                                         const config = typeConfig[type];
                                         if (!config) return null;
-                                        const Icon = config.icon;
+                                        const Icon = type === 'custom' ? null : config.icon;
                                         return (
                                             <button
                                                 key={type}
@@ -230,8 +230,7 @@ const RightSidebar = ({
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    gap: '6px',
-                                                    gridColumn: type === 'custom' ? 'span 2' : 'auto'
+                                                    gap: '6px'
                                                 }}
                                             >
                                                 {Icon && <Icon size={14} />}
