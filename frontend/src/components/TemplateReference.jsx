@@ -411,7 +411,7 @@ export default function TemplateReference() {
                                 <div style={{ position: 'relative' }} ref={dropdownRef}>
                                     <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: '500' }}>识别模板</p>
                                     <div
-                                        onClick={() => selectionMode === 'custom' && setIsDropdownOpen(!isDropdownOpen)}
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                         style={{
                                             width: '100%',
                                             padding: '8px',
@@ -421,24 +421,22 @@ export default function TemplateReference() {
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            // 增加交互反馈
-                                            cursor: selectionMode === 'custom' ? 'pointer' : 'default',
-                                            opacity: selectionMode === 'custom' ? 1 : 0.8,
+                                            cursor: 'pointer',
                                             boxShadow: isDropdownOpen ? '0 0 0 2px rgba(139, 92, 246, 0.1)' : 'none',
                                             transition: 'all 0.2s ease',
                                             height: '36px'
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                            {selectionMode === 'auto' ? <Sparkles size={14} color="var(--primary-color)" /> : <Layout size={14} color="var(--accent-color)" />}
+                                            {selectedTemplate === 'auto' ? <Sparkles size={14} color="var(--primary-color)" /> : <Layout size={14} color="var(--accent-color)" />}
                                             <span style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {getSelectedName()}
                                             </span>
                                         </div>
-                                        {selectionMode === 'custom' && <ChevronDown size={14} color="var(--text-secondary)" />}
+                                        <ChevronDown size={14} color="var(--text-secondary)" />
                                     </div>
 
-                                    {isDropdownOpen && selectionMode === 'custom' && (
+                                    {isDropdownOpen && (
                                         <div style={{
                                             position: 'absolute',
                                             top: '100%',
@@ -476,6 +474,27 @@ export default function TemplateReference() {
                                                 </div>
                                             </div>
                                             <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="custom-scrollbar">
+                                                <div
+                                                    onClick={() => { setSelectedTemplate('auto'); setIsDropdownOpen(false); }}
+                                                    className="list-item-hover"
+                                                    style={{
+                                                        padding: '8px 12px',
+                                                        fontSize: '12px',
+                                                        color: 'var(--text-primary)',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                        color: selectedTemplate === 'auto' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                        borderBottom: '1px solid var(--glass-border)'
+                                                    }}
+                                                >
+                                                    {selectedTemplate === 'auto' && <Check size={12} />}
+                                                    <Sparkles size={12} />
+                                                    自动识别匹配
+                                                </div>
+
                                                 {filteredTemplates.length === 0 ? (
                                                     <div style={{ padding: '15px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                                         无匹配模板
