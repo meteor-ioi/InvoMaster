@@ -698,7 +698,7 @@ export default function TemplateReference() {
 
                                 {outputFormat === 'json' && (
                                     <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(0,0,0,0.3)',
+                                        background: 'rgba(15, 23, 42, 0.9)',
                                         padding: '24px', borderRadius: '16px',
                                         overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
                                         border: '1px solid var(--glass-border)',
@@ -712,7 +712,7 @@ export default function TemplateReference() {
 
                                 {outputFormat === 'xml' && (
                                     <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(0,0,0,0.3)',
+                                        background: 'rgba(15, 23, 42, 0.9)',
                                         padding: '24px', borderRadius: '16px',
                                         overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
                                         border: '1px solid var(--glass-border)',
