@@ -125,6 +125,29 @@ const TopToolbar = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     {tableRefining ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <button
+                                onClick={() => setShowSplitPreview(!showSplitPreview)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid',
+                                    borderColor: showSplitPreview ? 'var(--primary-color)' : 'var(--glass-border)',
+                                    background: showSplitPreview ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    color: showSplitPreview ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    marginRight: '5px'
+                                }}
+                            >
+                                <Layout size={14} />
+                                {showSplitPreview ? '收起预览' : '数据预览'}
+                            </button>
+
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Table size={14} color="var(--primary-color)" />
                                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>结构统计:</span>
@@ -143,29 +166,6 @@ const TopToolbar = ({
                                     提示: 拖拽线段移动，边缘悬停可新增
                                 </span>
                             </div>
-
-                            <button
-                                onClick={() => setShowSplitPreview(!showSplitPreview)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '4px 12px',
-                                    borderRadius: '6px',
-                                    border: '1px solid',
-                                    borderColor: showSplitPreview ? 'var(--primary-color)' : 'var(--glass-border)',
-                                    background: showSplitPreview ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                    color: showSplitPreview ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    marginLeft: '10px'
-                                }}
-                            >
-                                <Layout size={12} />
-                                {showSplitPreview ? '收起预览' : '数据预览'}
-                            </button>
                         </div>
                     ) : (
                         <div style={{ position: 'relative' }} ref={filterRef}>
