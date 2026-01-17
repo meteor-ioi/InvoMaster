@@ -602,7 +602,7 @@ async def extract_with_custom_template(
             key = r.get("id")
             
             # 过滤不需要的原始坐标及冗余文本字段
-            meta = {k: v for k, v in r.items() if k not in ["x", "y", "width", "height", "content", "text", "id"]}
+            meta = {k: v for k, v in r.items() if k not in ["x", "y", "width", "height", "content", "text", "id", "table_settings"]}
             
             result_map[key] = {
                 "content": r.get("content", ""),
