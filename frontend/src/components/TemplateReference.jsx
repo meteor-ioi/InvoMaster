@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -14,9 +14,24 @@ export default function TemplateReference() {
     const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml'
     const [copied, setCopied] = useState(false);
 
+    // --- Search & Mode States ---
+    const [selectionMode, setSelectionMode] = useState('auto'); // 'auto' (Standard) or 'custom' (Custom)
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
     useEffect(() => {
         fetchTemplates();
         fetchHistory();
+
+        // Handle click outside to close dropdown
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const fetchTemplates = async () => {
@@ -81,7 +96,6 @@ export default function TemplateReference() {
     };
 
     // --- Data Conversion Logic ---
-
     const getMarkdown = () => {
         if (!result) return "";
         let md = `| 字段 | 提取内容 |\n| --- | --- |\n`;
@@ -139,49 +153,143 @@ export default function TemplateReference() {
         a.click();
     };
 
-    const groupedTemplates = React.useMemo(() => {
-        const groups = { auto: [], custom: [] };
-        templates.forEach(t => {
-            const mode = t.mode || 'auto';
-            if (groups[mode]) groups[mode].push(t);
-        });
-        return groups;
-    }, [templates]);
+    // --- Filtered Templates Logic ---
+    const filteredTemplates = templates.filter(t => {
+        const matchesMode = (t.mode || 'auto') === selectionMode;
+        const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesMode && matchesSearch;
+    });
+
+    const getSelectedName = () => {
+        if (selectedTemplate === 'auto') return "⚡️ 自动识别匹配 (Auto Detect)";
+        const found = templates.find(t => t.id === selectedTemplate);
+        return found ? found.name : "未知模板";
+    };
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '20px', alignItems: 'start' }}>
+
                 {/* Control Panel */}
                 <div className="glass-card" style={{ padding: '24px' }}>
+
+                    {/* 1. Mode Selector (Same as TemplateCreator) */}
                     <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>选择模板</label>
-                        <select
-                            value={selectedTemplate}
-                            onChange={(e) => setSelectedTemplate(e.target.value)}
+                        <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text-secondary)' }}>模板类型</p>
+                        <div style={{ display: 'flex', gap: '10px', background: 'var(--input-bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                            <button
+                                onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                                    fontSize: '13px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                    background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                    color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                    fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                }}
+                            >
+                                <Sparkles size={14} /> 标准模式
+                            </button>
+                            <button
+                                onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                                    fontSize: '13px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                    background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                    color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                    fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                }}
+                            >
+                                <User size={14} /> 自定义模式
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 2. Searchable Custom Select */}
+                    <div style={{ marginBottom: '24px', position: 'relative' }} ref={dropdownRef}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>选择具体目标模板</label>
+                        <div
                             style={{
-                                width: '100%', padding: '10px', borderRadius: '12px',
-                                border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)',
-                                outline: 'none'
+                                width: '100%', padding: '10px 15px', borderRadius: '12px',
+                                border: '1px solid var(--glass-border)', background: 'var(--input-bg)',
+                                cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                             }}
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         >
-                            <option value="auto">⚡️ 自动识别匹配 (Auto Detect)</option>
+                            <span style={{ fontSize: '14px', color: selectedTemplate ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {getSelectedName()}
+                            </span>
+                            <ChevronDown size={18} style={{ opacity: 0.5, transition: 'transform 0.3s', transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+                        </div>
 
-                            {groupedTemplates.auto.length > 0 && (
-                                <optgroup label="标准模式 (AI Standard)">
-                                    {groupedTemplates.auto.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                </optgroup>
-                            )}
+                        {/* Dropdown Menu */}
+                        {isDropdownOpen && (
+                            <div className="glass-card animate-slide-up" style={{
+                                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
+                                zIndex: 1000, padding: '10px', border: '1px solid var(--glass-border)',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.4)', background: 'var(--glass-bg)',
+                                backdropFilter: 'blur(20px)'
+                            }}>
+                                {/* Search Input inside dropdown */}
+                                <div style={{ position: 'relative', marginBottom: '10px' }}>
+                                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                                    <input
+                                        type="text"
+                                        placeholder="输入关键字搜索模板..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        autoFocus
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            width: '100%', padding: '8px 10px 8px 32px', borderRadius: '8px',
+                                            border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)',
+                                            color: 'var(--text-primary)', fontSize: '13px', outline: 'none'
+                                        }}
+                                    />
+                                </div>
 
-                            {groupedTemplates.custom.length > 0 && (
-                                <optgroup label="自定义模式 (Custom User)">
-                                    {groupedTemplates.custom.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                {/* List items */}
+                                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {selectionMode === 'auto' && (
+                                        <div
+                                            onClick={() => { setSelectedTemplate('auto'); setIsDropdownOpen(false); setSearchQuery(''); }}
+                                            style={{
+                                                padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+                                                background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                                                display: 'flex', alignItems: 'center', gap: '8px'
+                                            }}
+                                            className="list-item-hover"
+                                        >
+                                            <Sparkles size={14} className="text-primary" />
+                                            ⚡️ 自动识别匹配 (Auto Detect)
+                                        </div>
+                                    )}
+
+                                    {filteredTemplates.map(t => (
+                                        <div
+                                            key={t.id}
+                                            onClick={() => { setSelectedTemplate(t.id); setIsDropdownOpen(false); setSearchQuery(''); }}
+                                            style={{
+                                                padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+                                                background: selectedTemplate === t.id ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                                                display: 'flex', flexDirection: 'column', gap: '2px'
+                                            }}
+                                            className="list-item-hover"
+                                        >
+                                            <span style={{ fontWeight: '500' }}>{t.name}</span>
+                                            <code style={{ fontSize: '10px', opacity: 0.4 }}>ID: {t.id}</code>
+                                        </div>
                                     ))}
-                                </optgroup>
-                            )}
-                        </select>
+
+                                    {filteredTemplates.length === 0 && (selectionMode === 'custom' || searchQuery) && (
+                                        <p style={{ padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                                            未发现匹配模板
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ marginBottom: '24px' }}>
@@ -210,8 +318,8 @@ export default function TemplateReference() {
                     <button
                         className="btn-primary"
                         onClick={handleExecute}
-                        disabled={!file || loading}
-                        style={{ width: '100%', padding: '14px', borderRadius: '12px', fontSize: '1rem', opacity: (!file || loading) ? 0.6 : 1 }}
+                        disabled={!file || loading || (selectionMode === 'custom' && !selectedTemplate)}
+                        style={{ width: '100%', padding: '14px', borderRadius: '12px', fontSize: '1rem', opacity: (!file || loading || (selectionMode === 'custom' && !selectedTemplate)) ? 0.6 : 1 }}
                     >
                         {loading ? '正在识别提取...' : (
                             <><Play size={18} style={{ marginRight: '8px' }} /> 开始提取数据</>
