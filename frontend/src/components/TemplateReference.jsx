@@ -139,6 +139,15 @@ export default function TemplateReference() {
         a.click();
     };
 
+    const groupedTemplates = React.useMemo(() => {
+        const groups = { auto: [], custom: [] };
+        templates.forEach(t => {
+            const mode = t.mode || 'auto';
+            if (groups[mode]) groups[mode].push(t);
+        });
+        return groups;
+    }, [templates]);
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '20px', alignItems: 'start' }}>
@@ -151,13 +160,27 @@ export default function TemplateReference() {
                             onChange={(e) => setSelectedTemplate(e.target.value)}
                             style={{
                                 width: '100%', padding: '10px', borderRadius: '12px',
-                                border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)'
+                                border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)',
+                                outline: 'none'
                             }}
                         >
                             <option value="auto">⚡️ 自动识别匹配 (Auto Detect)</option>
-                            {templates.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
+
+                            {groupedTemplates.auto.length > 0 && (
+                                <optgroup label="标准模式 (AI Standard)">
+                                    {groupedTemplates.auto.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </optgroup>
+                            )}
+
+                            {groupedTemplates.custom.length > 0 && (
+                                <optgroup label="自定义模式 (Custom User)">
+                                    {groupedTemplates.custom.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </optgroup>
+                            )}
                         </select>
                     </div>
 
