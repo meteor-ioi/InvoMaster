@@ -523,3 +523,9 @@
 - **文案排版**：在 `TemplateCreator.jsx` 的保存成功状态卡片中，将长文本提示语拆分为两行并保持居中对齐，提升了阅读体验。
 - **Git 快照**：`ui: format template saved success message to multiple lines`
 
+### 01:00
+**用户提问**：添加 git 快照。然后优化“模板引用”左右两侧板块卡片高度的设计，引用“模板制作”卡片高度相对页面高度的设计逻辑。
+**AI 答复**：已完成。
+- **布局对齐**：参考 `TemplateCreator.jsx`，将 `TemplateReference.jsx` 中左侧控制面板和右侧结果预览面板的高度统一设置为 `calc(100vh - 100px)`，并添加 `position: sticky; top: 20px` 属性。
+- **效果**：现在“模板引用”页面的两个主面板也会跟随视口固定高度，防止页面过长滚动，内容在卡片内部滚动，保持了与“模板制作”页面一致的视觉节奏和交互体验。
+
