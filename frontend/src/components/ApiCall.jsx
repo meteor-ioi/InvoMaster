@@ -53,14 +53,9 @@ else:
   -F "file=@/path/to/invoice.pdf"`;
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '60px 20px' }}>
-            {/* Header Simplified */}
-            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-                <h2 style={{ fontSize: '2.2rem', fontWeight: 'bold' }}>API 调用示例</h2>
-            </div>
-
-            {/* Combined Code Card */}
-            <div className="glass-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '60px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 20px 40px' }}>
+            {/* Combined Code Card - Directly at top */}
+            <div className="glass-card" style={{ padding: '0', overflow: 'hidden', marginBottom: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
                 <div style={{
                     padding: '15px 25px',
                     borderBottom: '1px solid var(--glass-border)',
@@ -84,7 +79,8 @@ else:
                                     fontSize: '14px',
                                     fontWeight: 'bold',
                                     cursor: 'pointer',
-                                    minWidth: '120px'
+                                    minWidth: '120px',
+                                    outline: 'none'
                                 }}
                             >
                                 <option value="python">Python</option>

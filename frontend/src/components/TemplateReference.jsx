@@ -140,12 +140,8 @@ export default function TemplateReference() {
     };
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-            <div style={{ marginBottom: '30px' }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>模板引用与执行</h2>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '30px', alignItems: 'start' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '20px', alignItems: 'start' }}>
                 {/* Control Panel */}
                 <div className="glass-card" style={{ padding: '24px' }}>
                     <div style={{ marginBottom: '24px' }}>
