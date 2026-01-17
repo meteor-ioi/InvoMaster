@@ -1,19 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect } from 'lucide-react';
 
 const TYPE_CONFIG = {
-    'title': { label: '标题', color: '#60a5fa' },
-    'table': { label: '表格', color: '#10b981' },
-    'plain text': { label: '普通正文', color: '#94a3b8' },
-    'text': { label: '普通正文', color: '#94a3b8' },
-    'abandon': { label: '无效区域', color: '#808080' },
-    'figure': { label: '图片', color: '#f59e0b' },
-    'list': { label: '列表', color: '#ec4899' },
-    'header': { label: '页眉', color: '#8b5cf6' },
-    'footer': { label: '页脚', color: '#6366f1' },
-    'equation': { label: '数学公式', color: '#10b981' },
-    'table caption': { label: '表格标题', color: '#0ea5e9' },
-    'figure caption': { label: '图片标题', color: '#f97316' },
-    'custom': { label: '自定义区域', color: '#f43f5e' }
+    'title': { label: '标题', color: '#60a5fa', icon: Heading },
+    'table': { label: '表格', color: '#10b981', icon: Grid3X3 },
+    'plain text': { label: '普通正文', color: '#94a3b8', icon: AlignLeft },
+    'text': { label: '普通正文', color: '#94a3b8', icon: Type },
+    'abandon': { label: '无效区域', color: '#808080', icon: Ban },
+    'figure': { label: '图片', color: '#f59e0b', icon: Image },
+    'list': { label: '列表', color: '#ec4899', icon: List },
+    'header': { label: '页眉', color: '#8b5cf6', icon: PanelTop },
+    'footer': { label: '页脚', color: '#6366f1', icon: PanelBottom },
+    'equation': { label: '数学公式', color: '#10b981', icon: Sigma },
+    'table caption': { label: '表格标题', color: '#0ea5e9', icon: TextSelect },
+    'figure caption': { label: '图片标题', color: '#f97316', icon: MessageSquareText },
+    'custom': { label: '自定义区域', color: '#f43f5e', icon: BoxSelect }
 };
 
 const HANDLE_SIZE = 9; // Slightly increased base size

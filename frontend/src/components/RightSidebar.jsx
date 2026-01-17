@@ -205,12 +205,13 @@ const RightSidebar = ({
 
                             <div>
                                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                                     {[
                                         'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'text', 'abandon', 'custom'
                                     ].map(type => {
                                         const config = typeConfig[type];
                                         if (!config) return null;
+                                        const Icon = config.icon;
                                         return (
                                             <button
                                                 key={type}
@@ -225,9 +226,15 @@ const RightSidebar = ({
                                                     color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
                                                     fontWeight: selectedRegion.type === type ? 'bold' : 'normal',
                                                     cursor: selectedRegion.locked ? 'not-allowed' : 'pointer',
-                                                    opacity: selectedRegion.locked && selectedRegion.type !== type ? 0.5 : 1
+                                                    opacity: selectedRegion.locked && selectedRegion.type !== type ? 0.5 : 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                    gridColumn: type === 'custom' ? 'span 2' : 'auto'
                                                 }}
                                             >
+                                                {Icon && <Icon size={14} />}
                                                 {config.label}
                                             </button>
                                         );
