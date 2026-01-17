@@ -341,75 +341,7 @@ const DocumentEditor = ({
 
                         return (
                             <g key={reg.id}>
-                                {/* 1. Label rendered FIRST to avoid blocking handles (visually still on top due to offset) */}
-                                <foreignObject
-                                    x={`${reg.x * 100}%`}
-                                    y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
-                                    width={200}
-                                    height={30}
-                                    style={{
-                                        overflow: 'visible',
-                                        pointerEvents: 'none' // Container doesn't block events
-                                    }}
-                                >
-                                    <div
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: `2px 8px`,
-                                            background: config.color,
-                                            color: '#fff',
-                                            fontSize: `11px`,
-                                            fontWeight: 'bold',
-                                            borderRadius: '3px 3px 3px 0',
-                                            whiteSpace: 'nowrap',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                            opacity: 0.9,
-                                            transformOrigin: 'top left',
-                                            gap: `6px`,
-                                            cursor: 'default',
-                                            pointerEvents: 'auto' // Only label content captures events
-                                        }}
-                                    >
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onToggleLock && onToggleLock(reg.id);
-                                            }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                width: `18px`,
-                                                height: `18px`,
-                                                borderRadius: '50%',
-                                                background: reg.locked ? '#8b5cf6' : 'rgba(255,255,255,0.2)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                border: reg.locked ? '1px solid #fff' : 'none'
-                                            }}
-                                        >
-                                            {reg.locked ? (
-                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                </svg>
-                                            ) : (
-                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-                                                </svg>
-                                            )}
-                                        </div>
-                                        <span style={{ pointerEvents: 'none' }}>
-                                            {(() => {
-                                                const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
-                                                return isGenericLabel ? config.label : reg.label;
-                                            })()}
-                                        </span>
-                                    </div>
-                                </foreignObject>
+
 
                                 {/* 2. Main Box Interaction Hit Area */}
                                 <rect
@@ -576,6 +508,76 @@ const DocumentEditor = ({
                                         })}
                                     </g>
                                 )}
+
+                                {/* 1. Label rendered here to stay on top of borders but below handles */}
+                                <foreignObject
+                                    x={`${reg.x * 100}%`}
+                                    y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
+                                    width={200}
+                                    height={30}
+                                    style={{
+                                        overflow: 'visible',
+                                        pointerEvents: 'none' // Container doesn't block events
+                                    }}
+                                >
+                                    <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            padding: `2px 8px`,
+                                            background: config.color,
+                                            color: '#fff',
+                                            fontSize: `11px`,
+                                            fontWeight: 'bold',
+                                            borderRadius: '3px 3px 3px 0',
+                                            whiteSpace: 'nowrap',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                            opacity: 0.9,
+                                            transformOrigin: 'top left',
+                                            gap: `6px`,
+                                            cursor: 'default',
+                                            pointerEvents: 'auto' // Only label content captures events
+                                        }}
+                                    >
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleLock && onToggleLock(reg.id);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: `18px`,
+                                                height: `18px`,
+                                                borderRadius: '50%',
+                                                background: reg.locked ? '#8b5cf6' : 'rgba(255,255,255,0.2)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                border: reg.locked ? '1px solid #fff' : 'none'
+                                            }}
+                                        >
+                                            {reg.locked ? (
+                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                                </svg>
+                                            )}
+                                        </div>
+                                        <span style={{ pointerEvents: 'none' }}>
+                                            {(() => {
+                                                const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
+                                                return isGenericLabel ? config.label : reg.label;
+                                            })()}
+                                        </span>
+                                    </div>
+                                </foreignObject>
 
                                 {/* 3. Handles (Rendered later to be on top) */}
                                 {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
