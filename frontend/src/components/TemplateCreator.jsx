@@ -60,6 +60,35 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [history, setHistory] = useState([[]]);
     const [historyIndex, setHistoryIndex] = useState(0);
 
+    // --- 表格微调历史 ---
+    const [tableHistory, setTableHistory] = useState([]);
+    const [tableHistoryIndex, setTableHistoryIndex] = useState(-1);
+
+    const recordTableHistory = (newTableRefining) => {
+        if (!newTableRefining) return;
+        const newHistory = tableHistory.slice(0, tableHistoryIndex + 1);
+        newHistory.push(JSON.parse(JSON.stringify(newTableRefining)));
+        if (newHistory.length > 50) newHistory.shift();
+        setTableHistory(newHistory);
+        setTableHistoryIndex(newHistory.length - 1);
+    };
+
+    const tableUndo = () => {
+        if (tableHistoryIndex > 0) {
+            const nextIndex = tableHistoryIndex - 1;
+            setTableHistoryIndex(nextIndex);
+            setTableRefining(JSON.parse(JSON.stringify(tableHistory[nextIndex])));
+        }
+    };
+
+    const tableRedo = () => {
+        if (tableHistoryIndex < tableHistory.length - 1) {
+            const nextIndex = tableHistoryIndex + 1;
+            setTableHistoryIndex(nextIndex);
+            setTableRefining(JSON.parse(JSON.stringify(tableHistory[nextIndex])));
+        }
+    };
+
     const recordHistory = (newRegions) => {
         const newHistory = history.slice(0, historyIndex + 1);
         newHistory.push(JSON.parse(JSON.stringify(newRegions)));
@@ -238,7 +267,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                 } : r));
             }
 
-            setTableRefining({
+            const newState = {
                 id: region.id,
                 filename: analysis.filename,
                 rows: res.data.rows,
@@ -246,7 +275,12 @@ export default function TemplateCreator({ theme, setTheme }) {
                 cells: res.data.cells,
                 preview: res.data.preview,
                 settings: s
-            });
+            };
+
+            setTableRefining(newState);
+            // 初始化表格历史
+            setTableHistory([JSON.parse(JSON.stringify(newState))]);
+            setTableHistoryIndex(0);
         } catch (err) {
             console.error(err);
             alert('获取表格结构分析失败');
@@ -271,14 +305,18 @@ export default function TemplateCreator({ theme, setTheme }) {
                 settings: newSettings
             });
 
-            setTableRefining(prev => ({
-                ...prev,
-                rows: res.data.rows,
-                cols: res.data.cols,
-                cells: res.data.cells,
-                preview: res.data.preview,
-                settings: newSettings
-            }));
+            setTableRefining(prev => {
+                const newState = {
+                    ...prev,
+                    rows: res.data.rows,
+                    cols: res.data.cols,
+                    cells: res.data.cells,
+                    preview: res.data.preview,
+                    settings: newSettings
+                };
+                recordTableHistory(newState);
+                return newState;
+            });
 
             setRegions(prev => prev.map(r => r.id === regionId ? {
                 ...r,
@@ -584,6 +622,10 @@ export default function TemplateCreator({ theme, setTheme }) {
                     historyLength={history.length}
                     undo={undo}
                     redo={redo}
+                    tableHistoryIndex={tableHistoryIndex}
+                    tableHistoryLength={tableHistory.length}
+                    tableUndo={tableUndo}
+                    tableRedo={tableRedo}
                     deleteRegion={deleteRegion}
                     updateRegionType={updateRegionType}
                     updateRegionLabel={updateRegionLabel}

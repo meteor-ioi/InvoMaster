@@ -16,6 +16,10 @@ const RightSidebar = ({
     historyLength,
     undo,
     redo,
+    tableHistoryIndex,
+    tableHistoryLength,
+    tableUndo,
+    tableRedo,
     deleteRegion,
     updateRegionType,
     updateRegionLabel,
@@ -70,7 +74,16 @@ const RightSidebar = ({
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {!tableRefining && (
+                            {tableRefining ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                                    <button onClick={(e) => { e.stopPropagation(); tableUndo(); }} disabled={tableHistoryIndex <= 0} title="撤回表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex > 0 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex > 0 ? 1 : 0.5 }}>
+                                        <RotateCcw size={12} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); tableRedo(); }} disabled={tableHistoryIndex >= tableHistoryLength - 1} title="重做表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex < tableHistoryLength - 1 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex < tableHistoryLength - 1 ? 1 : 0.5 }}>
+                                        <RotateCw size={12} />
+                                    </button>
+                                </div>
+                            ) : (
                                 <>
                                     <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
                                         <RotateCcw size={12} />

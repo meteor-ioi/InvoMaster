@@ -101,29 +101,8 @@ const TopToolbar = ({
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {!tableRefining && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Filter size={14} color="var(--text-secondary)" />
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
-                            {['table', 'title', 'figure', 'plain text', 'custom', 'abandon'].map(type => (
-                                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={!!viewFilters[type]}
-                                        onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
-                                        style={{ accentColor: 'var(--success-color)' }}
-                                    />
-                                    {typeConfig[type]?.label || type}
-                                </label>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    {/* Middle Section: Stats (Only in Table Refining) */}
-                    {tableRefining && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '0 20px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>
+                    {tableRefining ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Table size={14} color="var(--primary-color)" />
                                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>结构统计:</span>
@@ -143,7 +122,27 @@ const TopToolbar = ({
                                 </span>
                             </div>
                         </div>
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Filter size={14} color="var(--text-secondary)" />
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
+                            {['table', 'title', 'figure', 'plain text', 'custom', 'abandon'].map(type => (
+                                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!viewFilters[type]}
+                                        onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
+                                        style={{ accentColor: 'var(--success-color)' }}
+                                    />
+                                    {typeConfig[type]?.label || type}
+                                </label>
+                            ))}
+                        </div>
                     )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    {/* Right Toolbar Empty space placeholder or Hint */}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
