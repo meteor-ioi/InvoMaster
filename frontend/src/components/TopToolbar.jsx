@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -20,7 +20,9 @@ const TopToolbar = ({
     showRegions,
     setShowRegions,
     typeConfig,
-    isIntegrated = false
+    isIntegrated = false,
+    showSplitPreview,
+    setShowSplitPreview
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -141,6 +143,29 @@ const TopToolbar = ({
                                     提示: 拖拽线段移动，边缘悬停可新增
                                 </span>
                             </div>
+
+                            <button
+                                onClick={() => setShowSplitPreview(!showSplitPreview)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid',
+                                    borderColor: showSplitPreview ? 'var(--primary-color)' : 'var(--glass-border)',
+                                    background: showSplitPreview ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    color: showSplitPreview ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    marginLeft: '10px'
+                                }}
+                            >
+                                <Layout size={12} />
+                                {showSplitPreview ? '收起预览' : '数据预览'}
+                            </button>
                         </div>
                     ) : (
                         <div style={{ position: 'relative' }} ref={filterRef}>

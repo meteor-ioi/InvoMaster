@@ -122,6 +122,7 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [isResizingPanel, setIsResizingPanel] = useState(false);
     const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
     const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+    const [showSplitPreview, setShowSplitPreview] = useState(false);
 
     useEffect(() => {
         fetchTemplates();
@@ -469,6 +470,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                                     setShowRegions={setShowRegions}
                                     typeConfig={TYPE_CONFIG}
                                     isIntegrated={true}
+                                    showSplitPreview={showSplitPreview}
+                                    setShowSplitPreview={setShowSplitPreview}
                                 />
 
                                 <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -531,71 +534,87 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                 </div>
                                             )}
 
-                                            <div
-                                                style={{
-                                                    position: 'relative',
-                                                    minWidth: 0,
-                                                    height: `${previewPanelHeight}px`,
-                                                    minHeight: '200px',
-                                                    maxHeight: '1000px',
-                                                    overflow: 'auto',
-                                                    borderRadius: '16px',
-                                                    border: '1px solid var(--glass-border)'
-                                                }}
-                                            >
-                                                <DocumentEditor
-                                                    image={`${API_BASE}/static/${analysis.images[0]}`}
-                                                    regions={regions}
-                                                    viewFilters={viewFilters}
-                                                    setRegions={setRegions}
-                                                    selectedId={selectedId}
-                                                    setSelectedId={setSelectedId}
-                                                    editorMode={editorMode}
-                                                    tableRefining={tableRefining}
-                                                    setTableRefining={setTableRefining}
-                                                    onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
-                                                    onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
-                                                    zoom={zoom}
-                                                    showRegions={showRegions}
-                                                    onDelete={deleteRegion}
-                                                    onToggleLock={toggleRegionLock}
-                                                    onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
-                                                />
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: (tableRefining && showSplitPreview) ? '1fr 1fr' : '1fr',
+                                                gap: (tableRefining && showSplitPreview) ? '20px' : '0',
+                                                flex: 1,
+                                                minHeight: 0
+                                            }}>
+                                                <div
+                                                    style={{
+                                                        position: 'relative',
+                                                        minWidth: 0,
+                                                        height: (tableRefining && showSplitPreview) ? '100%' : `${previewPanelHeight}px`,
+                                                        minHeight: '200px',
+                                                        maxHeight: (tableRefining && showSplitPreview) ? 'none' : '1000px',
+                                                        overflow: 'auto',
+                                                        borderRadius: '16px',
+                                                        border: '1px solid var(--glass-border)'
+                                                    }}
+                                                >
+                                                    <DocumentEditor
+                                                        image={`${API_BASE}/static/${analysis.images[0]}`}
+                                                        regions={regions}
+                                                        viewFilters={viewFilters}
+                                                        setRegions={setRegions}
+                                                        selectedId={selectedId}
+                                                        setSelectedId={setSelectedId}
+                                                        editorMode={editorMode}
+                                                        tableRefining={tableRefining}
+                                                        setTableRefining={setTableRefining}
+                                                        onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
+                                                        onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
+                                                        zoom={zoom}
+                                                        showRegions={showRegions}
+                                                        onDelete={deleteRegion}
+                                                        onToggleLock={toggleRegionLock}
+                                                        onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
+                                                    />
+                                                </div>
+
+                                                {tableRefining && showSplitPreview && (
+                                                    <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                                                        <DataPreview tableRefining={tableRefining} isSplit={true} />
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            <div
-                                                style={{
-                                                    height: '12px',
-                                                    cursor: 'ns-resize',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    background: 'var(--input-bg)',
-                                                    borderRadius: '0 0 8px 8px',
-                                                    marginTop: '4px'
-                                                }}
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    setIsResizingPanel(true);
-                                                    const startY = e.clientY;
-                                                    const startHeight = previewPanelHeight;
-                                                    const handleMouseMove = (moveE) => {
-                                                        const delta = moveE.clientY - startY;
-                                                        setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
-                                                    };
-                                                    const handleMouseUp = () => {
-                                                        setIsResizingPanel(false);
-                                                        document.removeEventListener('mousemove', handleMouseMove);
-                                                        document.removeEventListener('mouseup', handleMouseUp);
-                                                    };
-                                                    document.addEventListener('mousemove', handleMouseMove);
-                                                    document.addEventListener('mouseup', handleMouseUp);
-                                                }}
-                                            >
-                                                <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
-                                            </div>
+                                            {!(tableRefining && showSplitPreview) && (
+                                                <div
+                                                    style={{
+                                                        height: '12px',
+                                                        cursor: 'ns-resize',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        background: 'var(--input-bg)',
+                                                        borderRadius: '0 0 8px 8px',
+                                                        marginTop: '4px'
+                                                    }}
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setIsResizingPanel(true);
+                                                        const startY = e.clientY;
+                                                        const startHeight = previewPanelHeight;
+                                                        const handleMouseMove = (moveE) => {
+                                                            const delta = moveE.clientY - startY;
+                                                            setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
+                                                        };
+                                                        const handleMouseUp = () => {
+                                                            setIsResizingPanel(false);
+                                                            document.removeEventListener('mousemove', handleMouseMove);
+                                                            document.removeEventListener('mouseup', handleMouseUp);
+                                                        };
+                                                        document.addEventListener('mousemove', handleMouseMove);
+                                                        document.addEventListener('mouseup', handleMouseUp);
+                                                    }}
+                                                >
+                                                    <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
+                                                </div>
+                                            )}
 
-                                            {tableRefining && (
+                                            {tableRefining && !showSplitPreview && (
                                                 <DataPreview tableRefining={tableRefining} />
                                             )}
                                         </>
