@@ -290,7 +290,7 @@ const DocumentEditor = ({
             style={{
                 width: '100%',
                 flex: 1,
-                minHeight: '600px',
+                minHeight: 0,
                 overflow: 'auto',
                 background: '#1a1a1a',
                 borderRadius: '16px',

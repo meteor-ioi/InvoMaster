@@ -451,7 +451,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                 }}>
                     {step === 'review' && (
                         <>
-                            <div className="glass-card" style={{ padding: '0', minWidth: 0, display: 'flex', flexDirection: 'column', flex: 1, background: 'var(--glass-bg)', overflow: 'hidden' }}>
+                            <div className="glass-card" style={{ padding: '0', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', flex: 1, background: 'var(--glass-bg)', overflow: 'hidden' }}>
                                 <TopToolbar
                                     tableRefining={tableRefining}
                                     selectedRegion={selectedRegion}
@@ -476,7 +476,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                                     setShowSplitPreview={setShowSplitPreview}
                                 />
 
-                                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
                                     {loading && (
                                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', borderRadius: '12px' }}>
                                             <div className="loading-spinner" />
@@ -552,6 +552,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                     style={{
                                                         position: 'relative',
                                                         minWidth: 0,
+                                                        minHeight: 0,
                                                         height: (tableRefining && showSplitPreview) ? '100%' : `${previewPanelHeight}px`,
                                                         minHeight: '200px',
                                                         maxHeight: (tableRefining && showSplitPreview) ? 'none' : '1000px',
@@ -617,7 +618,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                                 document.addEventListener('mouseup', handleMouseUp);
                                                             }}
                                                         />
-                                                        <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)', height: '100%' }}>
+                                                        <div style={{ minWidth: 0, minHeight: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)', height: '100%' }}>
                                                             <DataPreview tableRefining={tableRefining} isSplit={true} />
                                                         </div>
                                                     </>
