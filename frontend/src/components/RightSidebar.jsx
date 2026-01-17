@@ -247,13 +247,15 @@ const RightSidebar = ({
                                                 type="range" min="1" max="10" step="1"
                                                 value={tableSettings.snap_tolerance || 3}
                                                 onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
-                                                style={{ flex: 1, accentColor: 'var(--primary-color)', height: '4px' }}
+                                                style={{ flex: 1, accentColor: 'var(--primary-color)', cursor: 'pointer' }}
                                             />
-                                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '15px' }}>{tableSettings.snap_tolerance || 3}</span>
+                                            <span style={{ fontSize: '11px', minWidth: '20px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                                                {tableSettings.snap_tolerance || 3}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}>
+                                    <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px', marginTop: '10px' }}>
                                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析结构
                                     </button>
 
@@ -262,8 +264,7 @@ const RightSidebar = ({
                                         className="btn-primary"
                                         style={{
                                             width: '100%',
-                                            background: saveSuccess ? 'var(--success-color)' : 'var(--success-color)',
-                                            opacity: saveSuccess ? 0.9 : 1,
+                                            background: 'var(--success-color)',
                                             fontSize: '12px',
                                             padding: '8px',
                                             display: 'flex',
@@ -356,10 +357,10 @@ const RightSidebar = ({
                             className="glass-card"
                             style={{
                                 padding: '15px',
-                                display: 'flex',
                                 flexDirection: 'column',
                                 gap: '10px',
-                                borderRadius: '16px'
+                                borderRadius: '16px',
+                                display: 'flex'
                             }}
                         >
                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>模板类型</p>

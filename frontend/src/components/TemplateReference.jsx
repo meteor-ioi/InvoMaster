@@ -410,7 +410,8 @@ export default function TemplateReference() {
                                         style={{
                                             width: '100%', padding: '8px 12px', borderRadius: '10px',
                                             border: '1px solid var(--glass-border)', background: 'var(--input-bg)',
-                                            cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                            cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            boxSizing: 'border-box'
                                         }}
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                     >

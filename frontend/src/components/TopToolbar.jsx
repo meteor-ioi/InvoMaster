@@ -325,27 +325,28 @@ const TopToolbar = ({
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
-                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '5px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Minus size={14} /></button>
+                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center', fontWeight: 'bold' }}>{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Plus size={14} /></button>
                         <button onClick={() => {
                             if (zoom < 1.49) setZoom(1.5);
                             else if (zoom < 1.99) setZoom(2.0);
                             else setZoom(1.0);
-                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
+                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px', fontWeight: '600' }}>自适应</button>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <button
                             onClick={() => setShowRegions(!showRegions)}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px',
-                                borderRadius: '6px', border: '1px solid var(--glass-border)',
-                                background: 'transparent', color: 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer'
+                                display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 12px',
+                                borderRadius: '8px', border: '1px solid var(--glass-border)',
+                                background: 'transparent', color: 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer',
+                                transition: 'all 0.2s', fontWeight: 'bold'
                             }}
                         >
-                            {showRegions ? <Eye size={12} /> : <EyeOff size={12} />}
+                            {showRegions ? <Eye size={14} /> : <EyeOff size={14} />}
                             {showRegions ? '隐藏预览' : '显示预览'}
                         </button>
                     </div>
