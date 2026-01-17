@@ -1,5 +1,6 @@
 import React from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2 } from 'lucide-react';
+import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
     collapsed,
@@ -127,30 +128,30 @@ const RightSidebar = ({
                                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     垂直策略 (列) <HelpCircle size={10} />
                                 </p>
-                                <select
+                                <StrategySelect
                                     value={tableSettings.vertical_strategy}
                                     onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
-                                    style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
-                                >
-                                    <option value="lines">基于线</option>
-                                    <option value="text">基于文字对齐</option>
-                                    <option value="rects">基于块</option>
-                                    <option value="explicit">手动模式</option>
-                                </select>
+                                    options={[
+                                        { value: "lines", label: "基于线条", icon: AlignJustify },
+                                        { value: "text", label: "基于文字", icon: Type },
+                                        { value: "rects", label: "基于色块", icon: Box },
+                                        { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                    ]}
+                                />
                             </div>
 
                             <div>
                                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
-                                <select
+                                <StrategySelect
                                     value={tableSettings.horizontal_strategy}
                                     onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
-                                    style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '6px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
-                                >
-                                    <option value="lines">基于线</option>
-                                    <option value="text">基于文字对齐</option>
-                                    <option value="rects">基于块</option>
-                                    <option value="explicit">手动模式</option>
-                                </select>
+                                    options={[
+                                        { value: "lines", label: "基于线条", icon: AlignJustify },
+                                        { value: "text", label: "基于文字", icon: Type },
+                                        { value: "rects", label: "基于色块", icon: Box },
+                                        { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                    ]}
+                                />
                             </div>
 
                             <div>
@@ -260,60 +261,63 @@ const RightSidebar = ({
                         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', fontStyle: 'italic', padding: '10px' }}>
                             {editorMode === 'add' ? '正在新增模式：在左侧图中拖拽即可创建' : '在图中点击选框以开始编辑'}
                         </p>
-                    )}
+                    )
+                    }
 
-                    {!tableRefining && (
-                        <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
-                            <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <button
-                                    onClick={() => setTemplateMode('auto')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        fontSize: '11px',
-                                        cursor: 'pointer',
-                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                        color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
-                                        transition: 'all 0.3s ease',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                    }}
-                                >
-                                    <Sparkles size={12} /> 标准模式
-                                </button>
-                                <button
-                                    onClick={() => setTemplateMode('custom')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        fontSize: '11px',
-                                        cursor: 'pointer',
-                                        background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                        color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
-                                        transition: 'all 0.3s ease',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                    }}
-                                >
-                                    <User size={12} /> 自定义模式
+                    {
+                        !tableRefining && (
+                            <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
+                                <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                    <button
+                                        onClick={() => setTemplateMode('auto')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '6px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                            color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                            fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                        }}
+                                    >
+                                        <Sparkles size={12} /> 标准模式
+                                    </button>
+                                    <button
+                                        onClick={() => setTemplateMode('custom')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '6px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                            color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                            fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                        }}
+                                    >
+                                        <User size={12} /> 自定义模式
+                                    </button>
+                                </div>
+
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>保存模板名称</p>
+                                <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '15px' }} />
+                                <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                    <Save size={16} /> 保存并入库
                                 </button>
                             </div>
-
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>保存模板名称</p>
-                            <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '15px' }} />
-                            <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                <Save size={16} /> 保存并入库
-                            </button>
-                        </div>
-                    )}
+                        )
+                    }
                 </>
             )}
-        </aside>
+        </aside >
     );
 };
 

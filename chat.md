@@ -324,3 +324,24 @@
 **AI 答复**：已完成。
 - **后端逻辑调整**：修改了 `backend/main.py` 中的 `extract_with_custom_template` 函数，在构建返回 JSON 时明确排除了 `table_settings` 字段。
 - **结果精简**：现在的提取结果 JSON 更加纯净，仅包含内容和必要的元数据。
+
+### 20:01
+**用户提问**：更新高精度表格微调模式的 UI 和默认设置。
+1. 更新策略选项文本（"基于文字对齐"->"基于文字"等）。
+2. 将默认吸附容差改为 6。
+**AI 答复**：已完成。
+- **UI 文本更新**：修改了 `RightSidebar.jsx` 中的下拉选项，使其更简洁清晰。
+- **默认值调整**：在 `TemplateCreator.jsx` 中将 `snap_tolerance` 的默认值从 3 调整为 6，提高了默认的吸附灵敏度。
+- **Git 快照**：`fix: 从提取结果中移除 table_settings 字段` (此前完成)
+
+### 20:05
+**用户提问**：进一步优化：垂直和水平策略的四个选项前添加图标，便于识别。
+**AI 答复**：已完成。
+- **新组件开发**：创建了 `StrategySelect` 组件 (`frontend/src/components/StrategySelect.jsx`)，支持在下拉列表中显示图标。
+- **界面集成**：在 `RightSidebar.jsx` 中替换了原生的 `select` 元素。
+- **图标映射**：
+  - 基于线条 -> `AlignJustify`
+  - 基于文字 -> `Type`
+  - 基于色块 -> `Box`
+  - 手动模式 -> `MousePointer2`
+- **Git 快照**：`feat: 优化表格微调 UI，添加策略图标并更新默认吸附容差`

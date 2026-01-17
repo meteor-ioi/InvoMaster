@@ -52,7 +52,7 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [tableSettings, setTableSettings] = useState({
         vertical_strategy: 'text',
         horizontal_strategy: 'text',
-        snap_tolerance: 3,
+        snap_tolerance: 6,
         join_tolerance: 3,
     });
 
