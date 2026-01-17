@@ -167,10 +167,12 @@ export default function TemplateReference() {
             if (type === 'table' && Array.isArray(content)) {
                 // 表格类型:渲染为 Markdown 表格
                 if (content.length > 0) {
-                    md += `| ${content[0].join(' | ')} |\n`;
+                    const sanitize = (cell) => String(cell || '').replace(/\n/g, '<br>');
+
+                    md += `| ${content[0].map(sanitize).join(' | ')} |\n`;
                     md += `| ${content[0].map(() => '---').join(' | ')} |\n`;
                     content.slice(1).forEach(row => {
-                        md += `| ${row.join(' | ')} |\n`;
+                        md += `| ${row.map(sanitize).join(' | ')} |\n`;
                     });
                 }
             } else if (type === 'figure') {
