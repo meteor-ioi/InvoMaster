@@ -1,5 +1,5 @@
-import React from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -40,49 +40,112 @@ const RightSidebar = ({
     templateMode,
     setTemplateMode
 }) => {
+    const [isHoveringToggle, setIsHoveringToggle] = useState(false);
+
     return (
         <aside
             className="glass-card"
             style={{
-                width: collapsed ? '40px' : '300px',
-                minWidth: collapsed ? '40px' : '300px',
-                padding: collapsed ? '10px' : '15px',
+                width: collapsed ? '64px' : '300px',
+                minWidth: collapsed ? '64px' : '300px',
+                padding: collapsed ? '15px 0' : '15px',
                 position: 'sticky',
                 top: '20px',
-                transition: 'all 0.3s ease',
-                overflow: 'hidden'
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px',
+                height: 'calc(100vh - 100px)',
+                overflow: 'visible' // 为了显示悬浮按钮
             }}
         >
+            {/* 悬浮切换按钮 (左边缘居中) */}
             <div
                 style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: collapsed ? 'center' : 'space-between',
+                    position: 'absolute',
+                    left: '-12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 100,
                     cursor: 'pointer',
-                    marginBottom: collapsed ? 0 : '10px',
-                    paddingBottom: collapsed ? 0 : '10px',
-                    borderBottom: collapsed ? 'none' : '1px solid var(--glass-border)'
+                    opacity: isHoveringToggle ? 1 : 0.6,
+                    transition: 'all 0.3s ease'
                 }}
+                onMouseEnter={() => setIsHoveringToggle(true)}
+                onMouseLeave={() => setIsHoveringToggle(false)}
                 onClick={() => setCollapsed(!collapsed)}
             >
-                {collapsed ? (
-                    <ChevronLeft size={18} color="var(--text-secondary)" />
-                ) : (
-                    <>
+                <div style={{
+                    width: '24px',
+                    height: '48px',
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                    color: 'var(--text-primary)'
+                }}>
+                    {collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                </div>
+            </div>
+
+            {collapsed ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                    <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, #8b5cf633, #ec489933)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--accent-color)'
+                    }}>
+                        <Edit3 size={20} />
+                    </div>
+
+                    <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
+
+                    <button
+                        onClick={() => setCollapsed(false)}
+                        className="glass-card"
+                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--accent-color)', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
+                        title="要素编辑"
+                    >
+                        <Layout size={20} />
+                    </button>
+
+                    <button
+                        onClick={() => handleSaveTemplate()}
+                        className="glass-card"
+                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s' }}
+                        title="保存并入库"
+                    >
+                        <Save size={20} />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {/* 展开状态顶栏：仅显示标题和 Undo/Redo */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Edit3 size={16} color="var(--accent-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             {tableRefining ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                                <>
                                     <button onClick={(e) => { e.stopPropagation(); tableUndo(); }} disabled={tableHistoryIndex <= 0} title="撤回表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex > 0 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex > 0 ? 1 : 0.5 }}>
                                         <RotateCcw size={12} />
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); tableRedo(); }} disabled={tableHistoryIndex >= tableHistoryLength - 1} title="重做表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex < tableHistoryLength - 1 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex < tableHistoryLength - 1 ? 1 : 0.5 }}>
                                         <RotateCw size={12} />
                                     </button>
-                                </div>
+                                </>
                             ) : (
                                 <>
                                     <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
@@ -127,216 +190,212 @@ const RightSidebar = ({
                                     </button>
                                 </>
                             )}
-                            <ChevronRight size={16} color="var(--text-secondary)" />
                         </div>
-                    </>
-                )}
-            </div>
+                    </div>
 
-            {!collapsed && (
-                <>
-                    {tableRefining ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    垂直策略 (列) <HelpCircle size={10} />
-                                </p>
-                                <StrategySelect
-                                    value={tableSettings.vertical_strategy}
-                                    onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
-                                    options={[
-                                        { value: "lines", label: "基于线条", icon: AlignJustify },
-                                        { value: "text", label: "基于文字", icon: Type },
-                                        { value: "rects", label: "基于色块", icon: Box },
-                                        { value: "explicit", label: "手动模式", icon: MousePointer2 }
-                                    ]}
-                                />
-                            </div>
+                    <div style={{ width: '100%', height: '1px', background: 'var(--glass-border)', marginBottom: '5px' }} />
 
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
-                                <StrategySelect
-                                    value={tableSettings.horizontal_strategy}
-                                    onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
-                                    options={[
-                                        { value: "lines", label: "基于线条", icon: AlignJustify },
-                                        { value: "text", label: "基于文字", icon: Type },
-                                        { value: "rects", label: "基于色块", icon: Box },
-                                        { value: "explicit", label: "手动模式", icon: MousePointer2 }
-                                    ]}
-                                />
-                            </div>
-
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差 (Snap)</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <input
-                                        type="range" min="1" max="10" step="1"
-                                        value={tableSettings.snap_tolerance || 3}
-                                        onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
-                                        style={{ flex: 1, accentColor: 'var(--primary-color)', height: '4px' }}
+                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                        {tableRefining ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        垂直策略 (列) <HelpCircle size={10} />
+                                    </p>
+                                    <StrategySelect
+                                        value={tableSettings.vertical_strategy}
+                                        onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
+                                        options={[
+                                            { value: "lines", label: "基于线条", icon: AlignJustify },
+                                            { value: "text", label: "基于文字", icon: Type },
+                                            { value: "rects", label: "基于色块", icon: Box },
+                                            { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                        ]}
                                     />
-                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '15px' }}>{tableSettings.snap_tolerance || 3}</span>
                                 </div>
-                            </div>
 
-                            <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}>
-                                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析结构
-                            </button>
+                                <div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
+                                    <StrategySelect
+                                        value={tableSettings.horizontal_strategy}
+                                        onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
+                                        options={[
+                                            { value: "lines", label: "基于线条", icon: AlignJustify },
+                                            { value: "text", label: "基于文字", icon: Type },
+                                            { value: "rects", label: "基于色块", icon: Box },
+                                            { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                        ]}
+                                    />
+                                </div>
 
-                            <button
-                                onClick={handleCommitTableRules}
-                                className="btn-primary"
-                                style={{
-                                    width: '100%',
-                                    background: saveSuccess ? 'var(--success-color)' : 'var(--success-color)',
-                                    opacity: saveSuccess ? 0.9 : 1,
-                                    fontSize: '12px',
-                                    padding: '8px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.3s ease'
-                                }}
-                            >
-                                {saveSuccess ? <CheckCircle size={14} /> : <Save size={14} />}
-                                {saveSuccess ? '识别规则已保存' : '保存识别规则'}
-                            </button>
+                                <div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差 (Snap)</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <input
+                                            type="range" min="1" max="10" step="1"
+                                            value={tableSettings.snap_tolerance || 3}
+                                            onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
+                                            style={{ flex: 1, accentColor: 'var(--primary-color)', height: '4px' }}
+                                        />
+                                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '15px' }}>{tableSettings.snap_tolerance || 3}</span>
+                                    </div>
+                                </div>
 
-                            <button onClick={() => setTableRefining(null)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', cursor: 'pointer' }}>
-                                退出微调模式
-                            </button>
-                        </div>
-                    ) : selectedRegion ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {selectedRegion.type === 'table' && (
-                                <button onClick={() => handleEnterTableRefine(selectedRegion)} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success-color)', color: 'var(--success-color)', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <Grid size={16} /> 高精度表格微调
+                                <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px' }}>
+                                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析结构
                                 </button>
-                            )}
 
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                                    {[
-                                        'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'abandon', 'custom'
-                                    ].map(type => {
-                                        const config = typeConfig[type];
-                                        if (!config) return null;
-                                        const Icon = type === 'custom' ? null : config.icon;
-                                        return (
-                                            <button
-                                                key={type}
-                                                onClick={() => !selectedRegion.locked && updateRegionType(selectedId, type)}
-                                                disabled={selectedRegion.locked}
-                                                style={{
-                                                    padding: '6px 8px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '10px',
-                                                    border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`,
-                                                    background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)',
-                                                    color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
-                                                    fontWeight: selectedRegion.type === type ? 'bold' : 'normal',
-                                                    cursor: selectedRegion.locked ? 'not-allowed' : 'pointer',
-                                                    opacity: selectedRegion.locked && selectedRegion.type !== type ? 0.5 : 1,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                {Icon && <Icon size={14} />}
-                                                {config.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注</p>
-                                <textarea
-                                    value={selectedRegion.remarks || ''}
-                                    onChange={(e) => updateRegionRemarks(selectedId, e.target.value)}
-                                    placeholder="额外描述信息..."
-                                    disabled={selectedRegion.locked}
+                                <button
+                                    onClick={handleCommitTableRules}
+                                    className="btn-primary"
                                     style={{
                                         width: '100%',
-                                        background: 'var(--input-bg)',
-                                        border: '1px solid var(--glass-border)',
-                                        padding: '8px',
-                                        borderRadius: '6px',
-                                        color: 'var(--text-primary)',
+                                        background: saveSuccess ? 'var(--success-color)' : 'var(--success-color)',
+                                        opacity: saveSuccess ? 0.9 : 1,
                                         fontSize: '12px',
-                                        minHeight: '60px',
-                                        resize: 'vertical',
-                                        opacity: selectedRegion.locked ? 0.7 : 1
+                                        padding: '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.3s ease'
                                     }}
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', fontStyle: 'italic', padding: '10px' }}>
-                            {editorMode === 'add' ? '正在新增模式：在左侧图中拖拽即可创建' : '在图中点击选框以开始编辑'}
-                        </p>
-                    )
-                    }
+                                >
+                                    {saveSuccess ? <CheckCircle size={14} /> : <Save size={14} />}
+                                    {saveSuccess ? '识别规则已保存' : '保存识别规则'}
+                                </button>
 
-                    {
-                        !tableRefining && (
-                            <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
-                                <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                    <button
-                                        onClick={() => setTemplateMode('auto')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '6px',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            fontSize: '11px',
-                                            cursor: 'pointer',
-                                            background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                            color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                            fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
-                                            transition: 'all 0.3s ease',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                        }}
-                                    >
-                                        <Sparkles size={12} /> 标准模式
-                                    </button>
-                                    <button
-                                        onClick={() => setTemplateMode('custom')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '6px',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            fontSize: '11px',
-                                            cursor: 'pointer',
-                                            background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                            color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                            fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
-                                            transition: 'all 0.3s ease',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                        }}
-                                    >
-                                        <User size={12} /> 自定义模式
-                                    </button>
-                                </div>
-
-                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>保存模板名称</p>
-                                <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '15px' }} />
-                                <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                    <Save size={16} /> 保存并入库
+                                <button onClick={() => setTableRefining(null)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-primary)', fontSize: '12px', cursor: 'pointer' }}>
+                                    退出微调模式
                                 </button>
                             </div>
-                        )
-                    }
+                        ) : selectedRegion ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {selectedRegion.type === 'table' && (
+                                    <button onClick={() => handleEnterTableRefine(selectedRegion)} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success-color)', color: 'var(--success-color)', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <Grid size={16} /> 高精度表格微调
+                                    </button>
+                                )}
+
+                                <div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                                        {[
+                                            'title', 'plain text', 'table caption', 'table', 'figure caption', 'figure', 'header', 'footer', 'list', 'equation', 'abandon', 'custom'
+                                        ].map(type => {
+                                            const config = typeConfig[type];
+                                            if (!config) return null;
+                                            const Icon = type === 'custom' ? null : config.icon;
+                                            return (
+                                                <button
+                                                    key={type}
+                                                    onClick={() => !selectedRegion.locked && updateRegionType(selectedId, type)}
+                                                    disabled={selectedRegion.locked}
+                                                    style={{
+                                                        padding: '6px 8px',
+                                                        borderRadius: '6px',
+                                                        fontSize: '10px',
+                                                        border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`,
+                                                        background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)',
+                                                        color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
+                                                        fontWeight: selectedRegion.type === type ? 'bold' : 'normal',
+                                                        cursor: selectedRegion.locked ? 'not-allowed' : 'pointer',
+                                                        opacity: selectedRegion.locked && selectedRegion.type !== type ? 0.5 : 1,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px'
+                                                    }}
+                                                >
+                                                    {Icon && <Icon size={14} />}
+                                                    {config.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注</p>
+                                    <textarea
+                                        value={selectedRegion.remarks || ''}
+                                        onChange={(e) => updateRegionRemarks(selectedId, e.target.value)}
+                                        placeholder="额外描述信息..."
+                                        disabled={selectedRegion.locked}
+                                        style={{
+                                            width: '100%',
+                                            background: 'var(--input-bg)',
+                                            border: '1px solid var(--glass-border)',
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '12px',
+                                            minHeight: '60px',
+                                            resize: 'vertical',
+                                            opacity: selectedRegion.locked ? 0.7 : 1
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', fontStyle: 'italic', padding: '10px' }}>
+                                {editorMode === 'add' ? '正在新增模式：在左侧图中拖拽即可创建' : '在图中点击选框以开始编辑'}
+                            </p>
+                        )}
+                    </div>
+
+                    {!tableRefining && (
+                        <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
+                            <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                <button
+                                    onClick={() => setTemplateMode('auto')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '6px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                        color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
+                                        transition: 'all 0.3s ease',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                    }}
+                                >
+                                    <Sparkles size={12} /> 标准模式
+                                </button>
+                                <button
+                                    onClick={() => setTemplateMode('custom')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '6px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                        color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
+                                        transition: 'all 0.3s ease',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                    }}
+                                >
+                                    <User size={12} /> 自定义模式
+                                </button>
+                            </div>
+
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', marginTop: '10px' }}>保存模板名称</p>
+                            <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '15px' }} />
+                            <button onClick={handleSaveTemplate} className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                <Save size={16} /> 保存并入库
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
-        </aside >
+        </aside>
     );
 };
 
