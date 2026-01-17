@@ -117,7 +117,7 @@ const TopToolbar = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Filter size={14} color="var(--text-secondary)" />
                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
-                                {['table', 'title', 'figure', 'header', 'footer', 'text'].map(type => (
+                                {['table', 'title', 'figure', 'text'].map(type => (
                                     <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
                                         <input
                                             type="checkbox"

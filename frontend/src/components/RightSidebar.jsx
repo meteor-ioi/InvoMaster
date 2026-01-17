@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User } from 'lucide-react';
 
 const RightSidebar = ({
     collapsed,
@@ -265,40 +265,42 @@ const RightSidebar = ({
                     {!tableRefining && (
                         <div style={{ marginTop: '10px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
                             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', background: 'var(--input-bg)', padding: '4px', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                                 <button
                                     onClick={() => setTemplateMode('auto')}
                                     style={{
                                         flex: 1,
                                         padding: '6px',
-                                        borderRadius: '4px',
+                                        borderRadius: '6px',
                                         border: 'none',
                                         fontSize: '11px',
                                         cursor: 'pointer',
                                         background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
                                         color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
                                         fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.3s ease',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                     }}
                                 >
-                                    标准模式
+                                    <Sparkles size={12} /> 标准模式
                                 </button>
                                 <button
                                     onClick={() => setTemplateMode('custom')}
                                     style={{
                                         flex: 1,
                                         padding: '6px',
-                                        borderRadius: '4px',
+                                        borderRadius: '6px',
                                         border: 'none',
                                         fontSize: '11px',
                                         cursor: 'pointer',
                                         background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
                                         color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
                                         fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.3s ease',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                     }}
                                 >
-                                    自定义模式
+                                    <User size={12} /> 自定义模式
                                 </button>
                             </div>
 

@@ -395,6 +395,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                     onAnalyze={analyze}
                     onSelectTemplate={handleSelectTemplate}
                     onDeleteTemplate={handleDeleteTemplate}
+                    setToast={setToast}
                 />
 
                 {/* Center Panel - Main Content */}

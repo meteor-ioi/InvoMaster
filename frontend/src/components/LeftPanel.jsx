@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2 } from 'lucide-react';
+import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -11,6 +11,7 @@ const LeftPanel = ({
     onAnalyze,
     onSelectTemplate,
     onDeleteTemplate,
+    setToast,
     typeConfig = TYPE_CONFIG
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
@@ -214,26 +215,28 @@ const LeftPanel = ({
                         </div>
 
                         {/* Mode Tabs */}
-                        <div style={{ display: 'flex', borderRadius: '8px', background: 'var(--input-bg)', padding: '3px' }}>
+                        <div style={{ display: 'flex', borderRadius: '8px', background: 'var(--input-bg)', padding: '4px', border: '1px solid var(--glass-border)' }}>
                             <button
                                 onClick={() => setActiveTab('auto')}
                                 style={{
-                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: activeTab === 'auto' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
                                     background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)'
+                                    color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
-                                标准模式
+                                <Sparkles size={12} /> 标准模式
                             </button>
                             <button
                                 onClick={() => setActiveTab('custom')}
                                 style={{
-                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
-                                    background: activeTab === 'custom' ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)'
+                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: activeTab === 'custom' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
+                                    background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                    color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
-                                自定义模式
+                                <User size={12} /> 自定义模式
                             </button>
                         </div>
 
@@ -322,8 +325,10 @@ const LeftPanel = ({
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     navigator.clipboard.writeText(t.id);
-                                                                    // Could use a toast here if passed down, but alert is "small change"
-                                                                    alert(`已复制模板 ID: ${t.id}`);
+                                                                    if (setToast) {
+                                                                        setToast({ type: 'success', text: `已复制模板 ID: ${t.id}` });
+                                                                        setTimeout(() => setToast(null), 2000);
+                                                                    }
                                                                 }}
                                                                 title="复制模板 ID"
                                                                 style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}

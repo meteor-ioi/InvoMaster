@@ -102,6 +102,7 @@ def get_file_fingerprint(file_path):
 def extract_text_from_regions(pdf_path, regions: List[Region]):
     """
     Uses pdfplumber to extract text from specific normalized coordinates.
+    Supports high-precision table extraction if region type is 'table'.
     """
     results = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -116,12 +117,51 @@ def extract_text_from_regions(pdf_path, regions: List[Region]):
                 (reg.x + reg.width) * width,
                 (reg.y + reg.height) * height
             )
-            # Crop and extract
+            
+            # Crop region
             cropped = first_page.within_bbox(bbox)
-            text = cropped.extract_text()
+            content = ""
+            
+            if reg.type.lower() == 'table':
+                # Use saved table_settings or default
+                s = reg.table_settings or {
+                    "vertical_strategy": "text",
+                    "horizontal_strategy": "text",
+                    "snap_tolerance": 3,
+                    "join_tolerance": 3,
+                }
+                
+                # Convert explicit relative lines to absolute if present
+                s_copy = s.copy()
+                if s_copy.get("vertical_strategy") == "explicit":
+                    rel_cols = s_copy.get("explicit_vertical_lines", [])
+                    s_copy["explicit_vertical_lines"] = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
+                
+                if s_copy.get("horizontal_strategy") == "explicit":
+                    rel_rows = s_copy.get("explicit_horizontal_lines", [])
+                    s_copy["explicit_horizontal_lines"] = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
+                
+                # Extract structured table
+                table_data = cropped.extract_table(s_copy)
+                if table_data:
+                    # Convert 2D list to Markdown table
+                    lines = []
+                    for i, row in enumerate(table_data):
+                        # Filter out None and strip
+                        row_cells = [str(c).replace('\n', ' ').strip() if c is not None else "" for c in row]
+                        lines.append("| " + " | ".join(row_cells) + " |")
+                        if i == 0: # Header separator
+                            lines.append("| " + " | ".join(["---"] * len(row_cells)) + " |")
+                    content = "\n".join(lines)
+                else:
+                    content = cropped.extract_text() or ""
+            else:
+                text = cropped.extract_text()
+                content = text.strip() if text else ""
             
             reg_dict = reg.dict()
-            reg_dict["text"] = text.strip() if text else ""
+            reg_dict["text"] = content
+            # Ensure remarks are included (pydantic model already has it)
             results.append(reg_dict)
             
     return results
@@ -532,7 +572,10 @@ async def extract_with_custom_template(
         result_map = {}
         for r in extracted_regions:
             key = r.get("label") or r.get("id")
-            result_map[key] = r.get("text", "")
+            result_map[key] = {
+                "content": r.get("text", ""),
+                "remarks": r.get("remarks", "")
+            }
             
         # 5. Log History
         import datetime
