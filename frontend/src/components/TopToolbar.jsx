@@ -101,35 +101,22 @@ const TopToolbar = ({
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
-                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
-                        <button onClick={() => {
-                            if (zoom < 1.49) setZoom(1.5);
-                            else if (zoom < 1.99) setZoom(2.0);
-                            else setZoom(1.0);
-                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
-                    </div>
                     {!tableRefining && (
-                        <>
-                            <div style={{ height: '16px', width: '1px', background: 'var(--glass-border)' }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Filter size={14} color="var(--text-secondary)" />
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
-                                {['table', 'title', 'figure', 'plain text'].map(type => (
-                                    <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={!!viewFilters[type]}
-                                            onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
-                                            style={{ accentColor: 'var(--success-color)' }}
-                                        />
-                                        {typeConfig[type]?.label || type}
-                                    </label>
-                                ))}
-                            </div>
-                        </>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Filter size={14} color="var(--text-secondary)" />
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
+                            {['table', 'title', 'figure', 'plain text', 'custom', 'abandon'].map(type => (
+                                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!viewFilters[type]}
+                                        onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
+                                        style={{ accentColor: 'var(--success-color)' }}
+                                    />
+                                    {typeConfig[type]?.label || type}
+                                </label>
+                            ))}
+                        </div>
                     )}
                 </div>
 
@@ -157,6 +144,17 @@ const TopToolbar = ({
                             </div>
                         </div>
                     )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
+                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
+                        <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
+                        <button onClick={() => {
+                            if (zoom < 1.49) setZoom(1.5);
+                            else if (zoom < 1.99) setZoom(2.0);
+                            else setZoom(1.0);
+                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
+                    </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <button
