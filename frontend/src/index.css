@@ -200,3 +200,55 @@ select {
     opacity: 1;
   }
 }
+
+.nav-tab-hover:hover {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+.upload-zone-hover:hover {
+  border-color: var(--primary-color) !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.icon-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: var(--glass-border);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-success {
+  color: var(--success-color);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

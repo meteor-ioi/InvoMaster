@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
-import { Edit3, Eye, Sun, Moon } from 'lucide-react';
+import ApiCall from './components/ApiCall';
+import { Edit3, Eye, Sun, Moon, Code } from 'lucide-react';
 
 function App() {
-    const [view, setView] = useState('creator'); // 'creator', 'reference'
+    const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
     const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
 
     useEffect(() => {
@@ -14,7 +15,8 @@ function App() {
 
     const tabs = [
         { id: 'creator', label: '模板制作', icon: <Edit3 size={18} /> },
-        { id: 'reference', label: '模板引用', icon: <Eye size={18} /> }
+        { id: 'reference', label: '模板引用', icon: <Eye size={18} /> },
+        { id: 'apicall', label: 'API 调用', icon: <Code size={18} /> }
     ];
 
     return (
@@ -33,7 +35,9 @@ function App() {
                 zIndex: 1000,
                 padding: '0 20px'
             }}>
-                <div style={{ width: '100px' }}></div> {/* Spacer to balance the layout */}
+                <div style={{ width: '150px' }}>
+                    <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>BabelDOC</h1>
+                </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                     {tabs.map(tab => (
@@ -62,7 +66,7 @@ function App() {
                     ))}
                 </div>
 
-                <div style={{ width: '100px', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ width: '150px', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                         style={{
@@ -89,6 +93,7 @@ function App() {
             <main style={{ flex: 1, position: 'relative' }}>
                 {view === 'creator' && <TemplateCreator theme={theme} setTheme={setTheme} />}
                 {view === 'reference' && <TemplateReference theme={theme} />}
+                {view === 'apicall' && <ApiCall theme={theme} />}
             </main>
         </div>
     );

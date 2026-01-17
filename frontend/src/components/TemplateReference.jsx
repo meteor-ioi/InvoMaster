@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Code, Clock, CheckCircle } from 'lucide-react';
-import ApiExampleModal from './ApiExampleModal';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -11,8 +10,9 @@ export default function TemplateReference() {
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
-    const [showApiModal, setShowApiModal] = useState(false);
     const [history, setHistory] = useState([]);
+    const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml'
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         fetchTemplates();
@@ -43,20 +43,15 @@ export default function TemplateReference() {
 
     const handleExecute = async () => {
         if (!file) return alert("请先上传文件");
-        // For 'auto', we might need logic, but for now force user to pick or use 'auto' (which might be the analyze endpoint).
-        // Let's assume for Reference Mode, if they pick 'Auto', we use the analyze endpoint which does fingerprint matching.
-        // If they pick a specific template, we use the new /extract endpoint.
-
         setLoading(true);
+        setResult(null);
         try {
             const formData = new FormData();
             formData.append('file', file);
 
             let res;
             if (selectedTemplate === 'auto') {
-                // Use /analyze logic which auto-detects
                 res = await axios.post(`${API_BASE}/analyze`, formData);
-                // Transform analyze result to match extract result format approximately
                 const dataMap = {};
                 (res.data.regions || []).forEach(r => {
                     const k = r.label || r.id;
@@ -66,20 +61,17 @@ export default function TemplateReference() {
                 setResult({
                     status: 'success',
                     filename: res.data.filename,
-                    template_name: res.data.template_found ? "Auto-Matched" : "No Template Matched",
+                    template_name: res.data.template_found ? "自动匹配" : "无匹配模板",
                     data: dataMap,
                     raw_regions: res.data.regions
                 });
-
             } else {
-                // Use explicit /extract
                 res = await axios.post(`${API_BASE}/extract`, formData, {
                     params: { template_id: selectedTemplate }
                 });
                 setResult(res.data);
                 fetchHistory(); // Refresh history
             }
-
         } catch (err) {
             console.error(err);
             alert("执行失败: " + (err.response?.data?.detail || err.message));
@@ -88,20 +80,72 @@ export default function TemplateReference() {
         }
     };
 
+    // --- Data Conversion Logic ---
+
+    const getMarkdown = () => {
+        if (!result) return "";
+        let md = `| 字段 | 提取内容 |\n| --- | --- |\n`;
+        Object.entries(result.data).forEach(([k, v]) => {
+            md += `| ${k} | ${String(v).replace(/\n/g, ' ')} |\n`;
+        });
+        return md;
+    };
+
+    const getJsonArray = () => {
+        if (!result) return [];
+        return [
+            ["字段", "内容"],
+            ...Object.entries(result.data).map(([k, v]) => [k, v])
+        ];
+    };
+
+    const getXml = () => {
+        if (!result) return "";
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<extraction_result>\n`;
+        xml += `  <metadata>\n    <filename>${result.filename}</filename>\n    <template>${result.template_name}</template>\n  </metadata>\n`;
+        xml += `  <data>\n`;
+        Object.entries(result.data).forEach(([k, v]) => {
+            xml += `    <field name="${k}">${v}</field>\n`;
+        });
+        xml += `  </data>\n</extraction_result>`;
+        return xml;
+    };
+
+    const handleCopy = () => {
+        let text = "";
+        if (outputFormat === 'markdown') text = getMarkdown();
+        else if (outputFormat === 'json') text = JSON.stringify(getJsonArray(), null, 2);
+        else if (outputFormat === 'xml') text = getXml();
+
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleDownload = () => {
+        let content = "";
+        let ext = "";
+        let type = "text/plain";
+
+        if (outputFormat === 'markdown') { content = getMarkdown(); ext = "md"; }
+        else if (outputFormat === 'json') { content = JSON.stringify(getJsonArray(), null, 2); ext = "json"; type = "application/json"; }
+        else if (outputFormat === 'xml') { content = getXml(); ext = "xml"; type = "application/xml"; }
+
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `extraction_${new Date().getTime()}.${ext}`;
+        a.click();
+    };
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <div>
                     <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>模板引用与执行</h2>
-                    <p style={{ color: 'var(--text-secondary)' }}>选择模板或自动匹配，验证提取效果</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>选择模板或自动匹配，验证高精度提取效果</p>
                 </div>
-                <button
-                    className="btn-secondary"
-                    onClick={() => setShowApiModal(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                    <Code size={18} /> API 调用示例
-                </button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '30px', alignItems: 'start' }}>
@@ -113,13 +157,13 @@ export default function TemplateReference() {
                             value={selectedTemplate}
                             onChange={(e) => setSelectedTemplate(e.target.value)}
                             style={{
-                                width: '100%', padding: '10px', borderRadius: '8px',
+                                width: '100%', padding: '10px', borderRadius: '12px',
                                 border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)'
                             }}
                         >
-                            <option value="auto">⚡️ 自动匹配 (Auto Detect)</option>
+                            <option value="auto">⚡️ 自动识别匹配 (Auto Detect)</option>
                             {templates.map(t => (
-                                <option key={t.id} value={t.id}>{t.name} ({t.id.slice(0, 8)}...)</option>
+                                <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
                         </select>
                     </div>
@@ -127,19 +171,20 @@ export default function TemplateReference() {
                     <div style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>上传单据 (PDF)</label>
                         <div style={{
-                            border: '2px dashed var(--glass-border)', borderRadius: '8px',
-                            padding: '30px 20px', textAlign: 'center', cursor: 'pointer',
-                            background: 'rgba(255,255,255,0.02)'
-                        }} onClick={() => document.getElementById('ref-upload').click()}>
+                            border: '2px dashed var(--glass-border)', borderRadius: '12px',
+                            padding: '40px 20px', textAlign: 'center', cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.02)',
+                            transition: 'all 0.2s ease'
+                        }} onClick={() => document.getElementById('ref-upload').click()} className="upload-zone-hover">
                             {file ? (
-                                <div style={{ color: 'var(--success-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    <FileText size={20} />
-                                    {file.name}
+                                <div style={{ color: 'var(--success-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                    <FileText size={40} />
+                                    <span style={{ fontWeight: '500' }}>{file.name}</span>
                                 </div>
                             ) : (
                                 <div style={{ color: 'var(--text-secondary)' }}>
-                                    <Upload size={24} style={{ marginBottom: '8px' }} />
-                                    <p>点击选择文件</p>
+                                    <Upload size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                                    <p>点击选择或直接拖拽 PDF 文件</p>
                                 </div>
                             )}
                             <input id="ref-upload" type="file" className="hidden" accept="application/pdf" onChange={handleFileUpload} />
@@ -150,32 +195,32 @@ export default function TemplateReference() {
                         className="btn-primary"
                         onClick={handleExecute}
                         disabled={!file || loading}
-                        style={{ width: '100%', padding: '12px', opacity: (!file || loading) ? 0.6 : 1 }}
+                        style={{ width: '100%', padding: '14px', borderRadius: '12px', fontSize: '1rem', opacity: (!file || loading) ? 0.6 : 1 }}
                     >
-                        {loading ? '执行中...' : (
-                            <><Play size={18} style={{ marginRight: '8px' }} /> 开始提取</>
+                        {loading ? '正在识别提取...' : (
+                            <><Play size={18} style={{ marginRight: '8px' }} /> 开始提取数据</>
                         )}
                     </button>
 
                     {/* Execution History Mini-list */}
                     <div style={{ marginTop: '40px' }}>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Clock size={16} /> 最近执行记录
+                        <h3 style={{ fontSize: '1.1rem', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
+                            <Clock size={16} /> 最近提取历史
                         </h3>
-                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            {history.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>暂无记录</p>}
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                            {history.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '20px', textAlign: 'center' }}>暂无记录</p>}
                             {history.map((h, i) => (
                                 <div key={i} style={{
-                                    padding: '12px', borderBottom: '1px solid var(--glass-border)',
-                                    fontSize: '0.9rem'
+                                    padding: '12px 16px', borderBottom: i === history.length - 1 ? 'none' : '1px solid var(--glass-border)',
+                                    fontSize: '0.85rem',
+                                    background: 'rgba(255,255,255,0.01)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                         <span style={{ fontWeight: 'bold' }}>{h.filename}</span>
-                                        <span style={{ opacity: 0.6 }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
+                                        <span style={{ opacity: 0.5 }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--text-secondary)" }}>
-                                        <span>{h.template_name}</span>
-                                        {/* Status indicator */}
+                                        <span>{h.template_name || "未知模板"}</span>
                                         <CheckCircle size={14} color="var(--success-color)" />
                                     </div>
                                 </div>
@@ -185,64 +230,126 @@ export default function TemplateReference() {
                 </div>
 
                 {/* Results Panel */}
-                <div className="glass-card" style={{ padding: '0', overflow: 'hidden', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+                <div className="glass-card" style={{ padding: '0', overflow: 'hidden', minHeight: '650px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{
                         padding: '15px 24px',
                         borderBottom: '1px solid var(--glass-border)',
-                        background: 'rgba(255,255,255,0.02)',
-                        fontWeight: 'bold'
+                        background: 'rgba(255,255,255,0.03)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
                     }}>
-                        提取结果预览
-                    </div>
+                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Layout size={18} className="text-primary" />
+                            提取结果导出
+                        </div>
 
-                    <div style={{ padding: '24px', flex: 1, overflow: 'auto' }}>
-                        {!result ? (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '15px' }}>
-                                <FileText size={48} style={{ opacity: 0.2 }} />
-                                <p>请上传文件并执行以查看结果</p>
-                            </div>
-                        ) : (
-                            <div>
-                                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                                    <div style={{ padding: '5px 12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary-color)', fontSize: '12px' }}>
-                                        Template: {result.template_name}
-                                    </div>
-                                    <div style={{ padding: '5px 12px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--success-color)', fontSize: '12px' }}>
-                                        Status: Success
-                                    </div>
-                                </div>
-
-                                <h4 style={{ marginBottom: '10px', borderLeft: '3px solid var(--primary-color)', paddingLeft: '10px' }}>JSON Data</h4>
-                                <pre style={{
-                                    background: 'rgba(0,0,0,0.3)',
-                                    padding: '15px', borderRadius: '8px',
-                                    overflowX: 'auto', fontSize: '14px',
-                                    marginBottom: '30px'
-                                }}>
-                                    {JSON.stringify(result.data, null, 2)}
-                                </pre>
-
-                                <h4 style={{ marginBottom: '10px', borderLeft: '3px solid var(--primary-color)', paddingLeft: '10px' }}>Markdown Table Preview</h4>
-                                { /* Attempt to render tables if keys contain table data */}
-                                <div style={{ lineHeight: '1.6' }}>
-                                    {Object.entries(result.data).map(([k, v]) => (
-                                        <div key={k} style={{ marginBottom: '10px' }}>
-                                            <strong style={{ color: 'var(--text-secondary)' }}>{k}:</strong> <span style={{ marginLeft: '10px' }}>{v}</span>
-                                        </div>
+                        {result && (
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', background: 'var(--input-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                                    {[
+                                        { id: 'markdown', label: 'MD', icon: <FileText size={14} /> },
+                                        { id: 'json', label: 'JSON', icon: <FileJson size={14} /> },
+                                        { id: 'xml', label: 'XML', icon: <FileCode size={14} /> }
+                                    ].map(f => (
+                                        <button
+                                            key={f.id}
+                                            onClick={() => setOutputFormat(f.id)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '5px',
+                                                padding: '6px 12px', borderRadius: '8px', border: 'none',
+                                                background: outputFormat === f.id ? 'var(--primary-color)' : 'transparent',
+                                                color: outputFormat === f.id ? 'white' : 'var(--text-secondary)',
+                                                cursor: 'pointer', transition: 'all 0.2s ease', fontSize: '13px', fontWeight: 'bold'
+                                            }}
+                                        >
+                                            {f.icon}
+                                            {f.label}
+                                        </button>
                                     ))}
                                 </div>
+                                <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)', margin: '0 5px' }} />
+                                <button className="icon-btn" title="拷贝" onClick={handleCopy}>
+                                    {copied ? <Check size={18} className="text-success" /> : <Copy size={18} />}
+                                </button>
+                                <button className="icon-btn" title="下载" onClick={handleDownload}>
+                                    <Download size={18} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
+                        {!result ? (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '20px', opacity: 0.5 }}>
+                                <div style={{ padding: '30px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }}>
+                                    <FileText size={64} />
+                                </div>
+                                <p style={{ fontSize: '1.1rem' }}>待执行：请上传文件并点击“开始提取”</p>
+                            </div>
+                        ) : (
+                            <div className="animate-fade-in">
+                                <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
+                                    <div style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)', fontSize: '13px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                        匹配模板: <b>{result.template_name}</b>
+                                    </div>
+                                    <div style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)', fontSize: '13px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                        状态: <b>识别成功</b>
+                                    </div>
+                                </div>
+
+                                {outputFormat === 'markdown' && (
+                                    <div style={{ animation: 'slideUp 0.3s ease' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                            <thead>
+                                                <tr style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary-color)' }}>
+                                                    <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid var(--glass-border)' }}>字段名称</th>
+                                                    <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid var(--glass-border)' }}>提取内容</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.entries(result.data).map(([k, v], idx) => (
+                                                    <tr key={idx} style={{ borderBottom: '1px solid var(--glass-border)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                                                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-secondary)', width: '30%' }}>{k}</td>
+                                                        <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{v}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div style={{ marginTop: '20px', fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                            提示：此表格为实时渲染的 Markdown 预览
+                                        </div>
+                                    </div>
+                                )}
+
+                                {outputFormat === 'json' && (
+                                    <pre style={{
+                                        background: 'rgba(0,0,0,0.3)',
+                                        padding: '20px', borderRadius: '12px',
+                                        overflowX: 'auto', fontSize: '14px', lineHeight: '1.6',
+                                        border: '1px solid var(--glass-border)',
+                                        animation: 'slideUp 0.3s ease'
+                                    }}>
+                                        {JSON.stringify(getJsonArray(), null, 2)}
+                                    </pre>
+                                )}
+
+                                {outputFormat === 'xml' && (
+                                    <pre style={{
+                                        background: 'rgba(0,0,0,0.3)',
+                                        padding: '20px', borderRadius: '12px',
+                                        overflowX: 'auto', fontSize: '14px', lineHeight: '1.6',
+                                        border: '1px solid var(--glass-border)',
+                                        animation: 'slideUp 0.3s ease'
+                                    }}>
+                                        {getXml()}
+                                    </pre>
+                                )}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-
-            {showApiModal && (
-                <ApiExampleModal
-                    onClose={() => setShowApiModal(false)}
-                    templateId={selectedTemplate === 'auto' ? '{template_id}' : selectedTemplate}
-                />
-            )}
         </div>
     );
 }
