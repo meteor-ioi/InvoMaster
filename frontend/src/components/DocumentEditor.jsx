@@ -16,7 +16,7 @@ const TYPE_CONFIG = {
     'custom': { label: '自定义区域', color: '#f43f5e' }
 };
 
-const HANDLE_SIZE = 8;
+const HANDLE_SIZE = 9; // Slightly increased base size
 
 const DocumentEditor = ({
     image, regions, viewFilters = {}, setRegions, selectedId, setSelectedId, editorMode = 'view',
@@ -76,7 +76,6 @@ const DocumentEditor = ({
         setInteraction({ type: 'move', id, startX: x, startY: y, initialRegion: { ...region } });
     };
 
-    // Use a ref to track the latest tableRefining state to avoid stale closures in event listeners
     const tableRefiningRef = useRef(tableRefining);
     useEffect(() => {
         tableRefiningRef.current = tableRefining;
@@ -85,11 +84,9 @@ const DocumentEditor = ({
     const startTableLineMove = (e, type, index, val) => {
         e.stopPropagation();
         e.preventDefault();
-        // Prevent moving outer borders (index 0 and length-1)
         if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
         if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
 
-        // Use document-level listeners for reliable drag handling
         const handleDocMouseMove = (moveE) => {
             if (!containerRef.current) return;
             const currentRefining = tableRefiningRef.current;
@@ -122,8 +119,6 @@ const DocumentEditor = ({
             document.removeEventListener('mouseup', handleDocMouseUp);
 
             const finalRefining = tableRefiningRef.current;
-
-            // Commit the change by re-analyzing with explicit lines
             if (finalRefining && onAnalyze) {
                 const newSettings = {
                     ...finalRefining.settings,
@@ -182,18 +177,14 @@ const DocumentEditor = ({
             return;
         }
 
-        // Hover detection for adding table lines
         if (tableRefining && !interaction) {
             const reg = regions.find(r => r.id === tableRefining.id);
             if (reg) {
-                const hoverThreshold = 0.04; // Increased threshold for hover detection
-
-                // Check for Left Border (row add)
+                const hoverThreshold = 0.04;
                 if (x >= reg.x - hoverThreshold && x <= reg.x + hoverThreshold / 2 && y >= reg.y && y <= reg.y + reg.height) {
                     const relY = (y - reg.y) / reg.height;
                     setAddLineHover({ type: 'row', val: relY, x: reg.x, y: y });
                 }
-                // Check for Top Border (col add)
                 else if (y >= reg.y - hoverThreshold && y <= reg.y + hoverThreshold / 2 && x >= reg.x && x <= reg.x + reg.width) {
                     const relX = (x - reg.x) / reg.width;
                     setAddLineHover({ type: 'col', val: relX, x: x, y: reg.y });
@@ -242,8 +233,6 @@ const DocumentEditor = ({
     const deleteTableLine = (e, type, index) => {
         e.stopPropagation();
         if (!tableRefining || !onAnalyze) return;
-
-        // Cannot delete borders
         if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
         if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
 
@@ -257,22 +246,19 @@ const DocumentEditor = ({
             const newCols = tableRefining.cols.filter((_, i) => i !== index);
             setTableRefining({ ...tableRefining, cols: newCols });
             newSettings.explicit_vertical_lines = newCols;
-            newSettings.explicit_horizontal_lines = tableRefining.rows; // Keep rows as is
+            newSettings.explicit_horizontal_lines = tableRefining.rows;
         } else {
             const newRows = tableRefining.rows.filter((_, i) => i !== index);
             setTableRefining({ ...tableRefining, rows: newRows });
             newSettings.explicit_horizontal_lines = newRows;
-            newSettings.explicit_vertical_lines = tableRefining.cols; // Keep cols as is
+            newSettings.explicit_vertical_lines = tableRefining.cols;
         }
 
         onAnalyze(newSettings);
-        // Notify parent to update dropdown to Explicit
         if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
     };
 
     const handleMouseUp = () => {
-        // Note: tableLine interactions are now handled by document-level events in startTableLineMove
-
         if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005) {
             const normalized = {
                 ...currentRect,
@@ -286,15 +272,6 @@ const DocumentEditor = ({
             setSelectedId(normalized.id);
             if (onHistorySnapshot) onHistorySnapshot(newRegions);
         } else if (interaction && (interaction.type === 'move' || interaction.type === 'resize')) {
-            // Logic to get the current regions state after move/resize
-            // Since setRegions is called during move/resize, the current regions in this scope might be stale
-            // However, in handleMouseUp, we can use a callback to capture the final state if we pass it through.
-            // But wait, setRegions in DocumentEditor is called with (prev => ...) usually?
-            // Let's check my previous edit.
-            // Oh, I used prev => prev.map...
-
-            // Actually, I'll just notify that an interaction ended, 
-            // and App.jsx can record the current state of regions.
             if (onHistorySnapshot) onHistorySnapshot();
         }
         setIsDrawing(false);
@@ -307,8 +284,8 @@ const DocumentEditor = ({
             ref={viewportRef}
             style={{
                 width: '100%',
-                flex: 1, // Use flex to fill parent
-                minHeight: '600px', // Maintain minimum height
+                flex: 1,
+                minHeight: '600px',
                 overflow: 'auto',
                 background: '#1a1a1a',
                 borderRadius: '16px',
@@ -348,7 +325,6 @@ const DocumentEditor = ({
                     transition: 'opacity 0.2s'
                 }}>
                     {regions.map(reg => {
-                        // Apply View Filters
                         const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
                         const isFiltered = activeFilters.length > 0 && !activeFilters.includes(reg.type.toLowerCase());
                         if (isFiltered) return null;
@@ -361,223 +337,16 @@ const DocumentEditor = ({
 
                         return (
                             <g key={reg.id}>
-                                <rect
-                                    x={`${reg.x * 100}%`}
-                                    y={`${reg.y * 100}%`}
-                                    width={`${reg.width * 100}%`}
-                                    height={`${reg.height * 100}%`}
-                                    fill={isSelected ? `${config.color}33` : `${config.color}11`}
-                                    stroke={config.color}
-                                    strokeWidth={isSelected ? 3 : 2} // Fixed width, ignored zoom
-                                    style={{ pointerEvents: 'auto', cursor: tableRefining ? 'default' : 'move' }}
-                                    onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
-                                />
-
-                                {tableRefining && tableRefining.id === reg.id && (
-                                    <g>
-                                        {/* 1. 表格单元格背景 */}
-                                        {tableRefining.cells?.map((cell, idx) => (
-                                            <rect
-                                                key={`cell-${idx}`}
-                                                x={`${(reg.x + cell.x * reg.width) * 100}%`}
-                                                y={`${(reg.y + cell.y * reg.height) * 100}%`}
-                                                width={`${cell.w * reg.width * 100}%`}
-                                                height={`${cell.h * reg.height * 100}%`}
-                                                fill="rgba(59, 130, 246, 0.05)"
-                                                stroke="rgba(59, 130, 246, 0.2)"
-                                                strokeWidth={1}
-                                            />
-                                        ))}
-
-                                        {/* 2. 所有可见线段 */}
-                                        {tableRefining.cols.map((colX, idx) => (
-                                            <line
-                                                key={`col-line-${idx}`}
-                                                x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y1={`${reg.y * 100}%`}
-                                                x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y2={`${(reg.y + reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.8)"
-                                                strokeWidth={1.5}
-                                                style={{ pointerEvents: 'none' }}
-                                            />
-                                        ))}
-                                        {tableRefining.rows.map((rowY, idx) => (
-                                            <line
-                                                key={`row-line-${idx}`}
-                                                x1={`${reg.x * 100}%`}
-                                                y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                x2={`${(reg.x + reg.width) * 100}%`}
-                                                y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.8)"
-                                                strokeWidth={1.5}
-                                                style={{ pointerEvents: 'none' }}
-                                            />
-                                        ))}
-
-                                        {/* 3. 拖拽响应热区 (不可见) */}
-                                        {tableRefining.cols.map((colX, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
-                                            return (
-                                                <line
-                                                    key={`col-hit-${idx}`}
-                                                    x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                    y1={`${reg.y * 100}%`}
-                                                    x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                    y2={`${(reg.y + reg.height) * 100}%`}
-                                                    stroke="transparent"
-                                                    strokeWidth={10}
-                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
-                                                    onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
-                                                />
-                                            );
-                                        })}
-                                        {tableRefining.rows.map((rowY, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
-                                            return (
-                                                <line
-                                                    key={`row-hit-${idx}`}
-                                                    x1={`${reg.x * 100}%`}
-                                                    y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                    x2={`${(reg.x + reg.width) * 100}%`}
-                                                    y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                    stroke="transparent"
-                                                    strokeWidth={10}
-                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
-                                                    onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
-                                                />
-                                            );
-                                        })}
-
-                                        {/* 4. 删除按钮 (最顶层) */}
-                                        {tableRefining.cols.map((colX, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
-                                            if (isBorder) return null;
-                                            return (
-                                                <g
-                                                    key={`col-del-${idx}`}
-                                                    onMouseDown={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        deleteTableLine(e, 'col', idx);
-                                                    }}
-                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                >
-                                                    <circle
-                                                        cx={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        cy={`${(reg.y + reg.height) * 100}%`}
-                                                        r={9}
-                                                        fill="#ef4444"
-                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
-                                                    />
-                                                    <text
-                                                        x={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y={`${(reg.y + reg.height) * 100}%`}
-                                                        fill="white"
-                                                        fontSize={14}
-                                                        fontWeight="bold"
-                                                        textAnchor="middle"
-                                                        dominantBaseline="middle"
-                                                        style={{ pointerEvents: 'none' }}
-                                                    >-</text>
-                                                </g>
-                                            );
-                                        })}
-                                        {tableRefining.rows.map((rowY, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
-                                            if (isBorder) return null;
-                                            return (
-                                                <g
-                                                    key={`row-del-${idx}`}
-                                                    onMouseDown={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        deleteTableLine(e, 'row', idx);
-                                                    }}
-                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                >
-                                                    <circle
-                                                        cx={`${(reg.x + reg.width) * 100}%`}
-                                                        cy={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        r={9}
-                                                        fill="#ef4444"
-                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
-                                                    />
-                                                    <text
-                                                        x={`${(reg.x + reg.width) * 100}%`}
-                                                        y={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        fill="white"
-                                                        fontSize={14}
-                                                        fontWeight="bold"
-                                                        textAnchor="middle"
-                                                        dominantBaseline="middle"
-                                                        style={{ pointerEvents: 'none' }}
-                                                    >-</text>
-                                                </g>
-                                            );
-                                        })}
-                                    </g>
-                                )}
-
-                                {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
-                                    let hx = reg.x, hy = reg.y;
-                                    if (handle.includes('e')) hx += reg.width;
-                                    if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
-                                    if (handle === 'n' || handle === 's') hx += reg.width / 2;
-                                    if (handle === 'e' || handle === 'w') hy += reg.height / 2;
-                                    if (handle === 'ne') hx = reg.x + reg.width;
-
-                                    const scaledHandleSize = HANDLE_SIZE / zoom;
-
-                                    return (
-                                        <rect
-                                            key={handle}
-                                            x={`calc(${hx * 100}% - ${scaledHandleSize / 2}px)`}
-                                            y={`calc(${hy * 100}% - ${scaledHandleSize / 2}px)`}
-                                            width={scaledHandleSize}
-                                            height={scaledHandleSize}
-                                            fill="#fff"
-                                            stroke={config.color}
-                                            strokeWidth={1}
-                                            style={{ pointerEvents: 'auto', cursor: `${handle}-resize` }}
-                                            onMouseDown={(e) => startResize(e, reg.id, handle)}
-                                        />
-                                    );
-                                })}
-
-                                {isSelected && !tableRefining && onDelete && !reg.locked && (
-                                    <g
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(reg.id);
-                                        }}
-                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                    >
-                                        <circle
-                                            cx={`${(reg.x + reg.width) * 100}%`}
-                                            cy={`${reg.y * 100}%`}
-                                            r={7}
-                                            fill="#ef4444"
-                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
-                                        />
-                                        <text
-                                            x={`${(reg.x + reg.width) * 100}%`}
-                                            y={`${reg.y * 100}%`}
-                                            fill="white"
-                                            fontSize={11}
-                                            fontWeight="bold"
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
-                                        >-</text>
-                                    </g>
-                                )}
-
+                                {/* 1. Label rendered FIRST to avoid blocking handles (visually still on top due to offset) */}
                                 <foreignObject
                                     x={`${reg.x * 100}%`}
                                     y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
                                     width={200}
                                     height={30}
-                                    style={{ overflow: 'visible', pointerEvents: 'auto' }}
+                                    style={{
+                                        overflow: 'visible',
+                                        pointerEvents: 'none' // Container doesn't block events
+                                    }}
                                 >
                                     <div
                                         onClick={(e) => e.stopPropagation()}
@@ -595,7 +364,8 @@ const DocumentEditor = ({
                                             opacity: 0.9,
                                             transformOrigin: 'top left',
                                             gap: `6px`,
-                                            cursor: 'default'
+                                            cursor: 'default',
+                                            pointerEvents: 'auto' // Only label content captures events
                                         }}
                                     >
                                         <div
@@ -637,6 +407,236 @@ const DocumentEditor = ({
                                     </div>
                                 </foreignObject>
 
+                                {/* 2. Main Box Interaction Hit Area */}
+                                <rect
+                                    x={`${reg.x * 100}%`}
+                                    y={`${reg.y * 100}%`}
+                                    width={`${reg.width * 100}%`}
+                                    height={`${reg.height * 100}%`}
+                                    fill="transparent"
+                                    style={{
+                                        pointerEvents: 'auto',
+                                        cursor: tableRefining ? 'default' : 'move',
+                                        stroke: 'transparent',
+                                        strokeWidth: 15 / zoom
+                                    }}
+                                    onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
+                                />
+
+                                <rect
+                                    x={`${reg.x * 100}%`}
+                                    y={`${reg.y * 100}%`}
+                                    width={`${reg.width * 100}%`}
+                                    height={`${reg.height * 100}%`}
+                                    fill={isSelected ? `${config.color}33` : `${config.color}11`}
+                                    stroke={config.color}
+                                    strokeWidth={isSelected ? 3 : 2}
+                                    style={{ pointerEvents: 'none' }}
+                                />
+
+                                {tableRefining && tableRefining.id === reg.id && (
+                                    <g>
+                                        {tableRefining.cells?.map((cell, idx) => (
+                                            <rect
+                                                key={`cell-${idx}`}
+                                                x={`${(reg.x + cell.x * reg.width) * 100}%`}
+                                                y={`${(reg.y + cell.y * reg.height) * 100}%`}
+                                                width={`${cell.w * reg.width * 100}%`}
+                                                height={`${cell.h * reg.height * 100}%`}
+                                                fill="rgba(59, 130, 246, 0.05)"
+                                                stroke="rgba(59, 130, 246, 0.2)"
+                                                strokeWidth={1}
+                                            />
+                                        ))}
+                                        {tableRefining.cols.map((colX, idx) => (
+                                            <line
+                                                key={`col-line-${idx}`}
+                                                x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                y1={`${reg.y * 100}%`}
+                                                x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                y2={`${(reg.y + reg.height) * 100}%`}
+                                                stroke="rgba(16, 185, 129, 0.8)"
+                                                strokeWidth={1.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        ))}
+                                        {tableRefining.rows.map((rowY, idx) => (
+                                            <line
+                                                key={`row-line-${idx}`}
+                                                x1={`${reg.x * 100}%`}
+                                                y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                x2={`${(reg.x + reg.width) * 100}%`}
+                                                y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                stroke="rgba(16, 185, 129, 0.8)"
+                                                strokeWidth={1.5}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        ))}
+                                        {tableRefining.cols.map((colX, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                            return (
+                                                <line
+                                                    key={`col-hit-${idx}`}
+                                                    x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                    y1={`${reg.y * 100}%`}
+                                                    x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                    y2={`${(reg.y + reg.height) * 100}%`}
+                                                    stroke="transparent"
+                                                    strokeWidth={12}
+                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
+                                                    onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
+                                                />
+                                            );
+                                        })}
+                                        {tableRefining.rows.map((rowY, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                            return (
+                                                <line
+                                                    key={`row-hit-${idx}`}
+                                                    x1={`${reg.x * 100}%`}
+                                                    y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                    x2={`${(reg.x + reg.width) * 100}%`}
+                                                    y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                    stroke="transparent"
+                                                    strokeWidth={12}
+                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
+                                                    onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
+                                                />
+                                            );
+                                        })}
+                                        {tableRefining.cols.map((colX, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                            if (isBorder) return null;
+                                            return (
+                                                <g
+                                                    key={`col-del-${idx}`}
+                                                    onMouseDown={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        deleteTableLine(e, 'col', idx);
+                                                    }}
+                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                >
+                                                    <circle
+                                                        cx={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        cy={`${(reg.y + reg.height) * 100}%`}
+                                                        r={10}
+                                                        fill="#ef4444"
+                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                    />
+                                                    <text
+                                                        x={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y={`${(reg.y + reg.height) * 100}%`}
+                                                        fill="white"
+                                                        fontSize={14}
+                                                        fontWeight="bold"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        style={{ pointerEvents: 'none' }}
+                                                    >-</text>
+                                                </g>
+                                            );
+                                        })}
+                                        {tableRefining.rows.map((rowY, idx) => {
+                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                            if (isBorder) return null;
+                                            return (
+                                                <g
+                                                    key={`row-del-${idx}`}
+                                                    onMouseDown={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        deleteTableLine(e, 'row', idx);
+                                                    }}
+                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                >
+                                                    <circle
+                                                        cx={`${(reg.x + reg.width) * 100}%`}
+                                                        cy={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        r={10}
+                                                        fill="#ef4444"
+                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                    />
+                                                    <text
+                                                        x={`${(reg.x + reg.width) * 100}%`}
+                                                        y={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        fill="white"
+                                                        fontSize={14}
+                                                        fontWeight="bold"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        style={{ pointerEvents: 'none' }}
+                                                    >-</text>
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
+                                )}
+
+                                {/* 3. Handles (Rendered later to be on top) */}
+                                {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
+                                    let hx = reg.x, hy = reg.y;
+                                    if (handle.includes('e')) hx += reg.width;
+                                    if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
+                                    if (handle === 'n' || handle === 's') hx += reg.width / 2;
+                                    if (handle === 'e' || handle === 'w') hy += reg.height / 2;
+                                    if (handle === 'ne') hx = reg.x + reg.width;
+
+                                    const scaledHandleSize = HANDLE_SIZE / zoom;
+                                    const hitAreaSize = Math.max(24, 30 / zoom);
+
+                                    return (
+                                        <g key={handle}>
+                                            <rect
+                                                x={`calc(${hx * 100}% - ${hitAreaSize / 2}px)`}
+                                                y={`calc(${hy * 100}% - ${hitAreaSize / 2}px)`}
+                                                width={hitAreaSize}
+                                                height={hitAreaSize}
+                                                fill="transparent"
+                                                style={{ pointerEvents: 'auto', cursor: `${handle}-resize` }}
+                                                onMouseDown={(e) => startResize(e, reg.id, handle)}
+                                            />
+                                            <rect
+                                                x={`calc(${hx * 100}% - ${scaledHandleSize / 2}px)`}
+                                                y={`calc(${hy * 100}% - ${scaledHandleSize / 2}px)`}
+                                                width={scaledHandleSize}
+                                                height={scaledHandleSize}
+                                                fill="#fff"
+                                                stroke={config.color}
+                                                strokeWidth={1}
+                                                style={{ pointerEvents: 'none' }}
+                                            />
+                                        </g>
+                                    );
+                                })}
+
+                                {/* 4. Delete and other buttons (Rendered last) */}
+                                {isSelected && !tableRefining && onDelete && !reg.locked && (
+                                    <g
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(reg.id);
+                                        }}
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                    >
+                                        <circle
+                                            cx={`${(reg.x + reg.width) * 100}%`}
+                                            cy={`${reg.y * 100}%`}
+                                            r={9}
+                                            fill="#ef4444"
+                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
+                                        />
+                                        <text
+                                            x={`${(reg.x + reg.width) * 100}%`}
+                                            y={`${reg.y * 100}%`}
+                                            fill="white"
+                                            fontSize={12}
+                                            fontWeight="bold"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                        >-</text>
+                                    </g>
+                                )}
                             </g>
                         );
                     })}
@@ -662,7 +662,7 @@ const DocumentEditor = ({
                             <circle
                                 cx={`${addLineHover.x * 100}%`}
                                 cy={`${addLineHover.y * 100}%`}
-                                r={11}
+                                r={12}
                                 fill="#3b82f6"
                                 stroke="#fff"
                                 strokeWidth={2}
@@ -678,7 +678,6 @@ const DocumentEditor = ({
                                 dominantBaseline="middle"
                                 style={{ pointerEvents: 'none' }}
                             >+</text>
-                            {/* Visual guide line */}
                             <line
                                 x1={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${regions.find(r => r.id === tableRefining.id).x * 100}%`}
                                 y1={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${regions.find(r => r.id === tableRefining.id).y * 100}%`}
