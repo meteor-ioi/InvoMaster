@@ -411,22 +411,6 @@ const TopToolbar = ({
                                     <Trash2 size={16} />
                                 </button>
 
-                                <div style={{ width: '1px', height: '14px', background: 'var(--glass-border)', margin: '0 4px' }} />
-
-                                <button
-                                    onClick={clearAllRegions}
-                                    title="一键清空预览中所有区块"
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: 'transparent',
-                                        color: '#ef4444',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <RefreshCw size={14} />
-                                </button>
                             </div>
                         </div>
                     )}
