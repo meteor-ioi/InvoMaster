@@ -437,10 +437,18 @@ export default function TemplateCreator({ theme, setTheme }) {
                 />
 
                 {/* Center Panel - Main Content */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '20px',
+                    minWidth: 0,
+                    position: 'sticky',
+                    top: '20px',
+                    height: 'calc(100vh - 100px)'
+                }}>
                     {step === 'review' && (
                         <>
-                            <div className="glass-card" style={{ padding: '0', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '600px', background: 'var(--glass-bg)', overflow: 'hidden' }}>
+                            <div className="glass-card" style={{ padding: '0', minWidth: 0, display: 'flex', flexDirection: 'column', flex: 1, background: 'var(--glass-bg)', overflow: 'hidden' }}>
                                 <TopToolbar
                                     tableRefining={tableRefining}
                                     selectedRegion={selectedRegion}
