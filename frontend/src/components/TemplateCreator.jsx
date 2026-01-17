@@ -118,8 +118,6 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [device, setDevice] = useState('mps');
     const [zoom, setZoom] = useState(1.0);
     const [showRegions, setShowRegions] = useState(true);
-    const [previewPanelHeight, setPreviewPanelHeight] = useState(500);
-    const [isResizingPanel, setIsResizingPanel] = useState(false);
     const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
     const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
     const [showSplitPreview, setShowSplitPreview] = useState(false);
@@ -553,9 +551,9 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                         position: 'relative',
                                                         minWidth: 0,
                                                         minHeight: 0,
-                                                        height: (tableRefining && showSplitPreview) ? '100%' : `${previewPanelHeight}px`,
-                                                        minHeight: '200px',
-                                                        maxHeight: (tableRefining && showSplitPreview) ? 'none' : '1000px',
+                                                        height: '100%',
+                                                        minHeight: 0,
+                                                        maxHeight: 'none',
                                                         overflow: 'auto',
                                                         borderRadius: '16px',
                                                         border: '1px solid var(--glass-border)',
@@ -624,40 +622,6 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                     </>
                                                 )}
                                             </div>
-
-                                            {!(tableRefining && showSplitPreview) && (
-                                                <div
-                                                    style={{
-                                                        height: '12px',
-                                                        cursor: 'ns-resize',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        background: 'var(--input-bg)',
-                                                        borderRadius: '0 0 8px 8px',
-                                                        marginTop: '4px'
-                                                    }}
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault();
-                                                        setIsResizingPanel(true);
-                                                        const startY = e.clientY;
-                                                        const startHeight = previewPanelHeight;
-                                                        const handleMouseMove = (moveE) => {
-                                                            const delta = moveE.clientY - startY;
-                                                            setPreviewPanelHeight(Math.max(200, Math.min(1000, startHeight + delta)));
-                                                        };
-                                                        const handleMouseUp = () => {
-                                                            setIsResizingPanel(false);
-                                                            document.removeEventListener('mousemove', handleMouseMove);
-                                                            document.removeEventListener('mouseup', handleMouseUp);
-                                                        };
-                                                        document.addEventListener('mousemove', handleMouseMove);
-                                                        document.addEventListener('mouseup', handleMouseUp);
-                                                    }}
-                                                >
-                                                    <div style={{ width: '40px', height: '4px', background: 'var(--glass-border)', borderRadius: '2px' }} />
-                                                </div>
-                                            )}
 
                                             {/* DataPreview 移至分屏内部或通过 showSplitPreview 控制 */}
                                         </>
