@@ -168,101 +168,101 @@ export default function TemplateReference() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '20px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
 
                 {/* Control Panel */}
-                <div className="glass-card" style={{ padding: '24px' }}>
+                <div className="glass-card" style={{ padding: '15px' }}>
 
-                    {/* 1. Mode Selector (Same as TemplateCreator) */}
-                    <div style={{ marginBottom: '24px' }}>
-                        <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', color: 'var(--text-secondary)' }}>模板类型</p>
-                        <div style={{ display: 'flex', gap: '10px', background: 'var(--input-bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                    {/* 1. Mode Selector */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>模板类型</p>
+                        <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                             <button
                                 onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
                                 style={{
-                                    flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
-                                    fontSize: '13px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                    flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
+                                    fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
                                     background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
                                     color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
                                     fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
-                                <Sparkles size={14} /> 标准模式
+                                <Sparkles size={12} /> 标准模式
                             </button>
                             <button
                                 onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
                                 style={{
-                                    flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
-                                    fontSize: '13px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                    flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
+                                    fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
                                     background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
                                     color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
                                     fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
-                                <User size={14} /> 自定义模式
+                                <User size={12} /> 自定义模式
                             </button>
                         </div>
                     </div>
 
                     {/* 2. Searchable Custom Select */}
-                    <div style={{ marginBottom: '24px', position: 'relative' }} ref={dropdownRef}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>选择具体目标模板</label>
+                    <div style={{ marginBottom: '20px', position: 'relative' }} ref={dropdownRef}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>选定目标模板</label>
                         <div
                             style={{
-                                width: '100%', padding: '10px 15px', borderRadius: '12px',
+                                width: '100%', padding: '8px 12px', borderRadius: '10px',
                                 border: '1px solid var(--glass-border)', background: 'var(--input-bg)',
                                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                             }}
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         >
-                            <span style={{ fontSize: '14px', color: selectedTemplate ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '13px', color: selectedTemplate ? 'var(--text-primary)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {getSelectedName()}
                             </span>
-                            <ChevronDown size={18} style={{ opacity: 0.5, transition: 'transform 0.3s', transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+                            <ChevronDown size={16} style={{ opacity: 0.5, transition: 'transform 0.3s', transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }} />
                         </div>
 
                         {/* Dropdown Menu */}
                         {isDropdownOpen && (
                             <div className="glass-card animate-slide-up" style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
-                                zIndex: 1000, padding: '10px', border: '1px solid var(--glass-border)',
+                                zIndex: 1000, padding: '8px', border: '1px solid var(--glass-border)',
                                 boxShadow: '0 10px 40px rgba(0,0,0,0.4)', background: 'var(--glass-bg)',
-                                backdropFilter: 'blur(20px)'
+                                backdropFilter: 'blur(20px)', borderRadius: '12px'
                             }}>
                                 {/* Search Input inside dropdown */}
-                                <div style={{ position: 'relative', marginBottom: '10px' }}>
-                                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                                    <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
                                     <input
                                         type="text"
-                                        placeholder="输入关键字搜索模板..."
+                                        placeholder="搜索模板..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         autoFocus
                                         onClick={(e) => e.stopPropagation()}
                                         style={{
-                                            width: '100%', padding: '8px 10px 8px 32px', borderRadius: '8px',
+                                            width: '100%', padding: '6px 10px 6px 30px', borderRadius: '6px',
                                             border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)',
-                                            color: 'var(--text-primary)', fontSize: '13px', outline: 'none'
+                                            color: 'var(--text-primary)', fontSize: '12px', outline: 'none'
                                         }}
                                     />
                                 </div>
 
                                 {/* List items */}
-                                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                     {selectionMode === 'auto' && (
                                         <div
                                             onClick={() => { setSelectedTemplate('auto'); setIsDropdownOpen(false); setSearchQuery(''); }}
                                             style={{
-                                                padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+                                                padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
                                                 background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                                                display: 'flex', alignItems: 'center', gap: '8px'
+                                                display: 'flex', alignItems: 'center', gap: '6px'
                                             }}
                                             className="list-item-hover"
                                         >
-                                            <Sparkles size={14} className="text-primary" />
-                                            ⚡️ 自动识别匹配 (Auto Detect)
+                                            <Sparkles size={12} className="text-primary" />
+                                            ⚡️ 自动识别匹配 (Auto)
                                         </div>
                                     )}
 
@@ -271,20 +271,20 @@ export default function TemplateReference() {
                                             key={t.id}
                                             onClick={() => { setSelectedTemplate(t.id); setIsDropdownOpen(false); setSearchQuery(''); }}
                                             style={{
-                                                padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+                                                padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
                                                 background: selectedTemplate === t.id ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                                                display: 'flex', flexDirection: 'column', gap: '2px'
+                                                display: 'flex', flexDirection: 'column', gap: '1px'
                                             }}
                                             className="list-item-hover"
                                         >
                                             <span style={{ fontWeight: '500' }}>{t.name}</span>
-                                            <code style={{ fontSize: '10px', opacity: 0.4 }}>ID: {t.id}</code>
+                                            <code style={{ fontSize: '9px', opacity: 0.4 }}>ID: {t.id}</code>
                                         </div>
                                     ))}
 
                                     {filteredTemplates.length === 0 && (selectionMode === 'custom' || searchQuery) && (
-                                        <p style={{ padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', opacity: 0.6 }}>
-                                            未发现匹配模板
+                                        <p style={{ padding: '15px', textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                                            未发现匹配项
                                         </p>
                                     )}
                                 </div>
@@ -292,23 +292,23 @@ export default function TemplateReference() {
                         )}
                     </div>
 
-                    <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>上传单据 (PDF)</label>
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>上传单据 (PDF)</label>
                         <div style={{
-                            border: '2px dashed var(--glass-border)', borderRadius: '12px',
-                            padding: '40px 20px', textAlign: 'center', cursor: 'pointer',
+                            border: '1px dashed var(--glass-border)', borderRadius: '10px',
+                            padding: '30px 15px', textAlign: 'center', cursor: 'pointer',
                             background: 'rgba(255,255,255,0.02)',
                             transition: 'all 0.2s ease'
                         }} onClick={() => document.getElementById('ref-upload').click()} className="upload-zone-hover">
                             {file ? (
-                                <div style={{ color: 'var(--success-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                                    <FileText size={40} />
-                                    <span style={{ fontWeight: '500' }}>{file.name}</span>
+                                <div style={{ color: 'var(--success-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                    <FileText size={32} />
+                                    <span style={{ fontSize: '12px', fontWeight: '500', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                                 </div>
                             ) : (
                                 <div style={{ color: 'var(--text-secondary)' }}>
-                                    <Upload size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                                    <p>点击选择或直接拖拽 PDF 文件</p>
+                                    <Upload size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                                    <p style={{ fontSize: '11px' }}>点击或拖拽 PDF</p>
                                 </div>
                             )}
                             <input id="ref-upload" type="file" className="hidden" accept="application/pdf" onChange={handleFileUpload} />
@@ -319,33 +319,33 @@ export default function TemplateReference() {
                         className="btn-primary"
                         onClick={handleExecute}
                         disabled={!file || loading || (selectionMode === 'custom' && !selectedTemplate)}
-                        style={{ width: '100%', padding: '14px', borderRadius: '12px', fontSize: '1rem', opacity: (!file || loading || (selectionMode === 'custom' && !selectedTemplate)) ? 0.6 : 1 }}
+                        style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', opacity: (!file || loading || (selectionMode === 'custom' && !selectedTemplate)) ? 0.6 : 1 }}
                     >
-                        {loading ? '正在识别提取...' : (
-                            <><Play size={18} style={{ marginRight: '8px' }} /> 开始提取数据</>
+                        {loading ? '正在处理...' : (
+                            <><Play size={16} style={{ marginRight: '6px' }} /> 开始提取数据</>
                         )}
                     </button>
 
                     {/* Execution History Mini-list */}
-                    <div style={{ marginTop: '40px' }}>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
-                            <Clock size={16} /> 最近提取历史
+                    <div style={{ marginTop: '30px' }}>
+                        <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+                            <Clock size={14} /> 最近提取历史
                         </h3>
-                        <div style={{ maxHeight: '300px', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                            {history.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '20px', textAlign: 'center' }}>暂无记录</p>}
+                        <div style={{ maxHeight: '250px', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                            {history.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '11px', padding: '15px', textAlign: 'center' }}>暂无记录</p>}
                             {history.map((h, i) => (
                                 <div key={i} style={{
-                                    padding: '12px 16px', borderBottom: i === history.length - 1 ? 'none' : '1px solid var(--glass-border)',
-                                    fontSize: '0.85rem',
+                                    padding: '10px 12px', borderBottom: i === history.length - 1 ? 'none' : '1px solid var(--glass-border)',
+                                    fontSize: '11px',
                                     background: 'rgba(255,255,255,0.01)'
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                        <span style={{ fontWeight: 'bold' }}>{h.filename}</span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{h.filename}</span>
                                         <span style={{ opacity: 0.5 }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: "var(--text-secondary)" }}>
-                                        <span>{h.template_name || "未知模板"}</span>
-                                        <CheckCircle size={14} color="var(--success-color)" />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px' }}>{h.template_name || "未知模板"}</span>
+                                        <CheckCircle size={12} color="var(--success-color)" />
                                     </div>
                                 </div>
                             ))}
