@@ -517,6 +517,9 @@
 **AI 答复**：已调整。
 - **背景优化**：将 `TemplateReference.jsx` 中 Markdown 表格容器的背景色从半透明黑 `rgba(0,0,0,0.1)` 修改为 `var(--input-bg)`（通常为白色或极淡灰），提升了日间模式下的阅读体验。
 
-### 00:46
-**用户提问**：添加 git 快照。
-**AI 答复**：已完成。上述所有修改均已分步提交并推送到 GitHub，包含了侧边栏样式统一、Markdown 导出修复及 UI 细节优化的完整记录。
+### 00:53
+**用户提问**：“该单据的指纹与布局规则已关联...”这行成功提示语换成两行居中显示。
+**AI 答复**：已优化。
+- **文案排版**：在 `TemplateCreator.jsx` 的保存成功状态卡片中，将长文本提示语拆分为两行并保持居中对齐，提升了阅读体验。
+- **Git 快照**：`ui: format template saved success message to multiple lines`
+
