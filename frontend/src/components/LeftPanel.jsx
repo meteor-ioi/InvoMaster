@@ -66,8 +66,8 @@ const LeftPanel = ({
     return (
         <aside
             style={{
-                width: collapsed ? '64px' : '300px',
-                minWidth: collapsed ? '64px' : '300px',
+                width: collapsed ? '64px' : '260px',
+                minWidth: collapsed ? '64px' : '260px',
                 position: 'sticky',
                 top: '20px',
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',

@@ -679,7 +679,10 @@ export default function TemplateCreator({ theme, setTheme }) {
                                 <CheckCircle size={40} />
                             </div>
                             <h2 style={{ marginBottom: '10px' }}>识别模板已沉淀</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>该单据的指纹与布局规则已关联，且源 PDF 已备份至库中。后续可随时从列表中再次加载修改。</p>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>
+                                该单据的指纹与布局规则已关联，且源 PDF 已备份至库中。<br />
+                                后续可随时从列表中再次加载修改。
+                            </p>
                             <button className="btn-primary" onClick={() => setStep('review')} style={{ padding: '12px 32px' }}>返回工作台</button>
                         </div>
                     )}
