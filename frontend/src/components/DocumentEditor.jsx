@@ -26,7 +26,9 @@ const DocumentEditor = ({
     showRegions = true,
     onDelete = null,
     onToggleLock = null,
-    onHistorySnapshot = null
+    onHistorySnapshot = null,
+    selectedIds = [], // Array of selected IDs
+    setSelectedIds = null
 }) => {
 
     const [interaction, setInteraction] = useState(null);
@@ -54,6 +56,7 @@ const DocumentEditor = ({
 
             setIsDrawing(true);
             setSelectedId(null);
+            if (setSelectedIds) setSelectedIds([]);
             setCurrentRect({
                 x, y, width: 0, height: 0,
                 id: newId,
@@ -61,6 +64,25 @@ const DocumentEditor = ({
                 label: ''
             });
             return;
+        }
+
+        if (editorMode === 'select' && (e.target === containerRef.current || e.target.tagName === 'svg')) {
+            setIsDrawing(true);
+            // Don't clear selection immediately if holding shift/ctrl? 
+            // For now, let's clear to start a new selection box
+            if (!e.shiftKey && setSelectedIds) setSelectedIds([]);
+            setSelectedId(null);
+            setCurrentRect({
+                x, y, width: 0, height: 0,
+                type: 'selection_box' // Special type for selection box
+            });
+            return;
+        }
+
+        // Click on background in View mode -> Clear selection
+        if (editorMode === 'view' && (e.target === containerRef.current || e.target.tagName === 'svg')) {
+            setSelectedId(null);
+            if (setSelectedIds) setSelectedIds([]);
         }
     };
 
@@ -74,11 +96,48 @@ const DocumentEditor = ({
 
     const startMove = (e, id) => {
         e.stopPropagation();
+
+        // Handle selection logic on click/down
+        let newSelectedIds = selectedIds ? [...selectedIds] : [];
+        if (setSelectedIds) {
+            if (editorMode === 'select') {
+                // Logic for select mode: toggle or add?
+                // If simply clicking (mousedown) on an item not yet selected, and not holding shift, maybe select it?
+                if (!newSelectedIds.includes(id)) {
+                    if (!e.shiftKey) {
+                        newSelectedIds = [id];
+                    } else {
+                        newSelectedIds.push(id);
+                    }
+                    setSelectedIds(newSelectedIds);
+                }
+            } else {
+                // Normal view mode
+                setSelectedIds([id]);
+                newSelectedIds = [id];
+            }
+        }
         setSelectedId(id);
+
         const region = regions.find(r => r.id === id);
         if (region && region.locked) return; // Prevent moving if locked
+
+        // Prepare initial positions for ALL selected regions (for batch move)
+        const movingRegions = newSelectedIds.map(rid => {
+            const r = regions.find(reg => reg.id === rid);
+            // Only include if found and not locked
+            return (r && !r.locked) ? { ...r } : null;
+        }).filter(Boolean);
+
         const { x, y } = getCoordinates(e);
-        setInteraction({ type: 'move', id, startX: x, startY: y, initialRegion: { ...region } });
+        setInteraction({
+            type: 'move',
+            id,
+            startX: x,
+            startY: y,
+            initialRegion: { ...region },
+            initialRegionsMap: movingRegions.reduce((acc, r) => ({ ...acc, [r.id]: r }), {})
+        });
     };
 
     const tableRefiningRef = useRef(tableRefining);
@@ -207,11 +266,29 @@ const DocumentEditor = ({
         if (interaction.type === 'move') {
             const dx = x - interaction.startX;
             const dy = y - interaction.startY;
-            setRegions(prev => prev.map(r => r.id === interaction.id ? {
-                ...r,
-                x: Math.max(0, Math.min(1 - r.width, interaction.initialRegion.x + dx)),
-                y: Math.max(0, Math.min(1 - r.height, interaction.initialRegion.y + dy))
-            } : r));
+
+            // Batch Move
+            if (interaction.initialRegionsMap) {
+                setRegions(prev => prev.map(r => {
+                    const initR = interaction.initialRegionsMap[r.id];
+                    if (initR) {
+                        return {
+                            ...r,
+                            x: Math.max(0, Math.min(1 - r.width, initR.x + dx)),
+                            y: Math.max(0, Math.min(1 - r.height, initR.y + dy))
+                        };
+                    }
+                    return r;
+                }));
+            } else {
+                // Fallback single move
+                setRegions(prev => prev.map(r => r.id === interaction.id ? {
+                    ...r,
+                    x: Math.max(0, Math.min(1 - r.width, interaction.initialRegion.x + dx)),
+                    y: Math.max(0, Math.min(1 - r.height, interaction.initialRegion.y + dy))
+                } : r));
+            }
+
         } else if (interaction.type === 'resize') {
             const dx = x - interaction.startX;
             const dy = y - interaction.startY;
@@ -264,7 +341,36 @@ const DocumentEditor = ({
     };
 
     const handleMouseUp = () => {
-        if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005) {
+        // Handle Box Selection Finalization
+        if (isDrawing && currentRect && editorMode === 'select') {
+            const selBox = {
+                x: currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x,
+                y: currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y,
+                width: Math.abs(currentRect.width),
+                height: Math.abs(currentRect.height)
+            };
+
+            // Find intersecting regions
+            const intersectingIds = regions.filter(r => {
+                const rRight = r.x + r.width;
+                const rBottom = r.y + r.height;
+                const boxRight = selBox.x + selBox.width;
+                const boxBottom = selBox.y + selBox.height;
+
+                // Check for intersection
+                return !(r.x > boxRight || rRight < selBox.x || r.y > boxBottom || rBottom < selBox.y);
+            }).map(r => r.id);
+
+            if (setSelectedIds) setSelectedIds(prev => {
+                // If shift key held? (For now simple replacement or union)
+                // Let's do union if we want, but for now simple replacement as per most box selects
+                return intersectingIds;
+            });
+            // Also set the first one as primary selectedId if exists
+            if (intersectingIds.length > 0) setSelectedId(intersectingIds[0]);
+            else setSelectedId(null);
+
+        } else if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005 && editorMode === 'add') {
             const normalized = {
                 ...currentRect,
                 x: currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x,
@@ -275,6 +381,7 @@ const DocumentEditor = ({
             const newRegions = [...regions, normalized];
             setRegions(newRegions);
             setSelectedId(normalized.id);
+            if (setSelectedIds) setSelectedIds([normalized.id]);
             if (onHistorySnapshot) onHistorySnapshot(newRegions);
         } else if (interaction && (interaction.type === 'move' || interaction.type === 'resize')) {
             if (onHistorySnapshot) onHistorySnapshot();
@@ -304,7 +411,7 @@ const DocumentEditor = ({
                     position: 'relative',
                     width: `${100 * zoom}%`,
                     margin: '0 auto',
-                    cursor: editorMode === 'add' ? 'crosshair' : 'default',
+                    cursor: editorMode === 'add' ? 'crosshair' : (editorMode === 'select' ? 'cell' : 'default'),
                     userSelect: 'none',
                     transition: 'width 0.2s ease-out'
                 }}
@@ -335,7 +442,7 @@ const DocumentEditor = ({
                         if (isFiltered) return null;
 
                         const config = TYPE_CONFIG[reg.type?.toLowerCase()] || TYPE_CONFIG['custom'];
-                        const isSelected = selectedId === reg.id;
+                        const isSelected = selectedId === reg.id || (selectedIds && selectedIds.includes(reg.id));
                         const isFaded = tableRefining && tableRefining.id !== reg.id;
 
                         if (isFaded) return null;

@@ -114,6 +114,7 @@ export default function TemplateCreator({ theme, setTheme }) {
     };
 
     const [selectedId, setSelectedId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]); // Multiple selection support
     const [confidence, setConfidence] = useState(0.25);
     const [device, setDevice] = useState('mps');
     const [zoom, setZoom] = useState(1.0);
@@ -389,11 +390,13 @@ export default function TemplateCreator({ theme, setTheme }) {
         }
     };
 
-    const deleteRegion = (id) => {
-        const newRegions = regions.filter(r => r.id !== id);
+    const deleteRegion = (ids) => {
+        const idsToDelete = Array.isArray(ids) ? ids : [ids];
+        const newRegions = regions.filter(r => !idsToDelete.includes(r.id));
         setRegions(newRegions);
         recordHistory(newRegions);
-        if (selectedId === id) setSelectedId(null);
+        if (idsToDelete.includes(selectedId)) setSelectedId(null);
+        setSelectedIds(prev => prev.filter(id => !idsToDelete.includes(id)));
     };
 
     const updateRegionLabel = (id, label) => {
@@ -430,6 +433,7 @@ export default function TemplateCreator({ theme, setTheme }) {
             setRegions([]);
             recordHistory([]);
             setSelectedId(null);
+            setSelectedIds([]);
             setToast({ type: 'success', text: '已清空所有区块' });
             setTimeout(() => setToast(null), 2000);
         }
@@ -506,6 +510,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                                     toggleRegionLock={toggleRegionLock}
                                     deleteRegion={deleteRegion}
                                     clearAllRegions={clearAllRegions}
+                                    selectedIds={selectedIds}
+                                    setSelectedIds={setSelectedIds}
                                 />
 
                                 <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
@@ -599,6 +605,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                         regions={regions}
                                                         viewFilters={viewFilters}
                                                         setRegions={setRegions}
+                                                        selectedIds={selectedIds}
+                                                        setSelectedIds={setSelectedIds}
                                                         selectedId={selectedId}
                                                         setSelectedId={setSelectedId}
                                                         editorMode={editorMode}

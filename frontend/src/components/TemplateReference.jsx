@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 

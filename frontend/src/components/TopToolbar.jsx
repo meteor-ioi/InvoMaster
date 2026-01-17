@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -28,7 +28,9 @@ const TopToolbar = ({
     setEditorMode,
     toggleRegionLock,
     deleteRegion,
-    clearAllRegions
+    clearAllRegions,
+    selectedIds,
+    setSelectedIds
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -376,23 +378,37 @@ const TopToolbar = ({
                                         transition: 'all 0.2s'
                                     }}
                                 >
-                                    <Plus size={16} />
+                                    <PlusSquare size={16} />
                                 </button>
                                 <button
-                                    disabled={!selectedRegion || selectedRegion?.locked}
-                                    onClick={() => deleteRegion(selectedRegion.id)}
-                                    title="删除区块"
+                                    onClick={() => setEditorMode(editorMode === 'select' ? 'view' : 'select')}
+                                    title="选择区域 (批量操作)"
                                     style={{
                                         width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: 'transparent',
-                                        color: (selectedRegion && !selectedRegion?.locked) ? '#ef4444' : 'var(--text-secondary)',
+                                        background: editorMode === 'select' ? 'var(--primary-color)' : 'transparent',
+                                        color: editorMode === 'select' ? '#fff' : 'var(--text-secondary)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: (selectedRegion && !selectedRegion?.locked) ? 'pointer' : 'not-allowed',
-                                        opacity: (selectedRegion && !selectedRegion?.locked) ? 1 : 0.5,
+                                        cursor: 'pointer',
                                         transition: 'all 0.2s'
                                     }}
                                 >
-                                    <Minus size={16} />
+                                    <BoxSelect size={16} />
+                                </button>
+                                <button
+                                    disabled={!selectedRegion && selectedIds?.length === 0}
+                                    onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
+                                    title={selectedIds?.length > 1 ? `删除选中的 ${selectedIds.length} 个区块` : "删除区块"}
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                        background: 'transparent',
+                                        color: (selectedRegion || selectedIds?.length > 0) ? '#ef4444' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: (selectedRegion || selectedIds?.length > 0) ? 'pointer' : 'not-allowed',
+                                        opacity: (selectedRegion || selectedIds?.length > 0) ? 1 : 0.5,
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Trash2 size={16} />
                                 </button>
 
                                 <div style={{ width: '1px', height: '14px', background: 'var(--glass-border)', margin: '0 4px' }} />
