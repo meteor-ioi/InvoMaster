@@ -335,16 +335,18 @@ const LeftPanel = ({
                                                             >
                                                                 <Copy size={12} />
                                                             </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    onDeleteTemplate && onDeleteTemplate(t.id);
-                                                                }}
-                                                                title="删除模板"
-                                                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#ef4444', display: 'flex' }}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
+                                                            {expandedIds.includes(t.id) && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onDeleteTemplate && onDeleteTemplate(t.id);
+                                                                    }}
+                                                                    title="删除模板"
+                                                                    style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#ef4444', display: 'flex' }}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            )}
                                                             {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
                                                         </div>
                                                     </div>

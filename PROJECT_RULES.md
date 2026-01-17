@@ -46,5 +46,92 @@
    - 动效应服务于“焦点引导”。例如，点击选择某项时，该项自动平滑置顶。
    - 避免冗余动效，确保动画时长（Duration）在 0.2s - 0.4s 之间，保持响应灵敏。
 
+## 数据提取输出规范 (Data Extraction Output Specification)
+
+### 1. JSON 结构标准
+数据提取接口（如 `/extract/{template_id}`）返回的 JSON 必须遵循以下结构：
+
+```json
+{
+  "status": "success",
+  "filename": "样本.pdf",
+  "template_name": "识别_样本.pdf",
+  "mode": "auto",
+  "data": {
+    "区域ID": {
+      "type": "区域类型",
+      "label": "要素分类",
+      "remarks": "业务备注",
+      "content": "提取内容或二维数组"
+    }
+  }
+}
+```
+
+### 2. 字段定义
+
+#### 顶层字段
+- **status**: 提取状态，固定为 `"success"` 或错误信息
+- **filename**: 上传的原始文件名
+- **template_name**: 使用的模板名称
+- **mode**: 模板类型，`"auto"` (标准模式) 或 `"custom"` (自定义模式)
+- **data**: 核心数据对象，Key 为区域 ID
+
+#### data 对象中的每个区域
+- **Key 命名**: 直接使用区域的唯一标识符（如 `auto_0`, `auto_3`），**不使用** Label 作为 Key
+- **type**: 区域类型，可选值：`table`, `figure`, `title`, `text`
+- **label**: 用户在工作台定义的要素分类（如"表格"、"图片"、"标题"等）
+- **remarks**: 业务备注，用户在右侧边栏填写的描述信息，可为 `null`
+- **content**: 提取的内容
+  - 对于 **表格类型**：存储为二维数组 `[[row1_cell1, row1_cell2], [row2_cell1, row2_cell2]]`
+  - 对于 **其他类型**：存储为字符串
+
+#### 排除字段
+以下字段**不应**出现在最终的 JSON 输出中：
+- `x`, `y`, `width`, `height`（物理坐标信息）
+- `text`（已统一为 `content`）
+- `id`（已作为 Key 使用，不在值中重复）
+
+### 3. 示例
+
+#### 完整示例
+```json
+{
+  "status": "success",
+  "filename": "invoice_2024.pdf",
+  "template_name": "标准发票模板",
+  "mode": "auto",
+  "data": {
+    "auto_0": {
+      "type": "figure",
+      "label": "公司Logo",
+      "remarks": null,
+      "content": "ABC Corporation"
+    },
+    "auto_3": {
+      "type": "table",
+      "label": "费用明细",
+      "remarks": "主汇总表",
+      "content": [
+        ["项目", "数量", "单价", "金额"],
+        ["产品A", "10", "100.00", "1000.00"],
+        ["产品B", "5", "200.00", "1000.00"]
+      ]
+    },
+    "auto_8": {
+      "type": "text",
+      "label": "发票号码",
+      "remarks": "用于财务系统关联",
+      "content": "INV-2024-001234"
+    }
+  }
+}
+```
+
+### 4. 前端渲染适配
+- **Markdown 预览**：前端需检测 `content` 是否为数组，若是则动态转换为 HTML 表格
+- **JSON 导出**：直接序列化 `data` 对象
+- **XML 导出**：数组类型需转为 JSON 字符串嵌入 XML 节点
+
 ---
 *最后更新：2026-01-17*

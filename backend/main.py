@@ -141,18 +141,11 @@ def extract_text_from_regions(pdf_path, regions: List[Region]):
                     rel_rows = s_copy.get("explicit_horizontal_lines", [])
                     s_copy["explicit_horizontal_lines"] = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
                 
-                # Extract structured table
+                # Extract structured table as 2D array
                 table_data = cropped.extract_table(s_copy)
                 if table_data:
-                    # Convert 2D list to Markdown table
-                    lines = []
-                    for i, row in enumerate(table_data):
-                        # Filter out None and strip
-                        row_cells = [str(c).replace('\n', ' ').strip() if c is not None else "" for c in row]
-                        lines.append("| " + " | ".join(row_cells) + " |")
-                        if i == 0: # Header separator
-                            lines.append("| " + " | ".join(["---"] * len(row_cells)) + " |")
-                    content = "\n".join(lines)
+                    # Clean the data (remove None, strip)
+                    content = [[str(c).strip() if c is not None else "" for c in row] for row in table_data]
                 else:
                     content = cropped.extract_text() or ""
             else:
@@ -160,8 +153,8 @@ def extract_text_from_regions(pdf_path, regions: List[Region]):
                 content = text.strip() if text else ""
             
             reg_dict = reg.dict()
-            reg_dict["text"] = content
-            # Ensure remarks are included (pydantic model already has it)
+            reg_dict["content"] = content # Use 'content' consistently
+            # Ensure remarks are included
             results.append(reg_dict)
             
     return results
@@ -571,10 +564,15 @@ async def extract_with_custom_template(
         # 4. Format Output Structure
         result_map = {}
         for r in extracted_regions:
-            key = r.get("label") or r.get("id")
+            # 直接使用区域 ID 作为 Key，确保唯一性
+            key = r.get("id")
+            
+            # 过滤不需要的原始坐标及冗余文本字段
+            meta = {k: v for k, v in r.items() if k not in ["x", "y", "width", "height", "content", "text", "id"]}
+            
             result_map[key] = {
-                "content": r.get("text", ""),
-                "remarks": r.get("remarks", "")
+                "content": r.get("content", ""),
+                **meta
             }
             
         # 5. Log History

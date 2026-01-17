@@ -98,37 +98,91 @@ export default function TemplateReference() {
     // --- Data Conversion Logic ---
     const getMarkdown = () => {
         if (!result) return "";
-        let md = `| 字段 | 提取内容 |\n| --- | --- |\n`;
-        Object.entries(result.data).forEach(([k, v]) => {
-            md += `| ${k} | ${String(v).replace(/\n/g, ' ')} |\n`;
+        let md = "";
+
+        Object.entries(result.data).forEach(([regionId, item]) => {
+            const { type, label, remarks, content } = item;
+
+            // 区域标题
+            md += `## ${label || regionId}\n\n`;
+
+            // 元数据信息
+            md += `**区域ID**: \`${regionId}\` | **类型**: \`${type}\`\n\n`;
+            if (remarks) {
+                md += `> **业务备注**: ${remarks}\n\n`;
+            }
+
+            // 根据类型渲染内容
+            if (type === 'table' && Array.isArray(content)) {
+                // 表格类型：渲染为 Markdown 表格
+                if (content.length > 0) {
+                    md += `| ${content[0].join(' | ')} |\n`;
+                    md += `| ${content[0].map(() => '---').join(' | ')} |\n`;
+                    content.slice(1).forEach(row => {
+                        md += `| ${row.join(' | ')} |\n`;
+                    });
+                }
+            } else if (type === 'figure') {
+                // 图片类型：使用引用块
+                md += `> 🖼️ ${content || '(无文本内容)'}\n`;
+            } else if (type === 'title') {
+                // 标题类型：使用加粗
+                md += `**${content}**\n`;
+            } else {
+                // 普通文本：直接显示
+                md += `${content}\n`;
+            }
+
+            md += "\n---\n\n";
         });
+
         return md;
     };
 
-    const getJsonArray = () => {
-        if (!result) return [];
-        return [
-            ["字段", "内容"],
-            ...Object.entries(result.data).map(([k, v]) => [k, v])
-        ];
+    const getJson = () => {
+        if (!result) return {};
+        return result.data;
     };
 
     const getXml = () => {
         if (!result) return "";
         let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<extraction_result>\n`;
-        xml += `  <metadata>\n    <filename>${result.filename}</filename>\n    <template>${result.template_name}</template>\n  </metadata>\n`;
-        xml += `  <data>\n`;
-        Object.entries(result.data).forEach(([k, v]) => {
-            xml += `    <field name="${k}">${v}</field>\n`;
+        xml += `  <metadata>\n    <filename>${result.filename}</filename>\n    <template>${result.template_name}</template>\n    <mode>${result.mode}</mode>\n  </metadata>\n`;
+        xml += `  <regions>\n`;
+
+        Object.entries(result.data).forEach(([regionId, item]) => {
+            xml += `    <region id="${regionId}">\n`;
+            xml += `      <type>${item.type}</type>\n`;
+            xml += `      <label>${item.label || ''}</label>\n`;
+            if (item.remarks) {
+                xml += `      <remarks><![CDATA[${item.remarks}]]></remarks>\n`;
+            }
+
+            if (Array.isArray(item.content)) {
+                xml += `      <content type="table">\n`;
+                item.content.forEach((row, idx) => {
+                    xml += `        <row index="${idx}">\n`;
+                    row.forEach((cell, cellIdx) => {
+                        xml += `          <cell index="${cellIdx}"><![CDATA[${cell}]]></cell>\n`;
+                    });
+                    xml += `        </row>\n`;
+                });
+                xml += `      </content>\n`;
+            } else {
+                xml += `      <content type="text"><![CDATA[${item.content}]]></content>\n`;
+            }
+
+            xml += `    </region>\n`;
         });
-        xml += `  </data>\n</extraction_result>`;
+
+        xml += `  </regions>\n</extraction_result>`;
         return xml;
     };
 
     const handleCopy = () => {
         let text = "";
         if (outputFormat === 'markdown') text = getMarkdown();
-        else if (outputFormat === 'json') text = JSON.stringify(getJsonArray(), null, 2);
+        else if (outputFormat === 'json') text = JSON.stringify(getJson(), null, 2);
         else if (outputFormat === 'xml') text = getXml();
 
         navigator.clipboard.writeText(text);
@@ -142,7 +196,7 @@ export default function TemplateReference() {
         let type = "text/plain";
 
         if (outputFormat === 'markdown') { content = getMarkdown(); ext = "md"; }
-        else if (outputFormat === 'json') { content = JSON.stringify(getJsonArray(), null, 2); ext = "json"; type = "application/json"; }
+        else if (outputFormat === 'json') { content = JSON.stringify(getJson(), null, 2); ext = "json"; type = "application/json"; }
         else if (outputFormat === 'xml') { content = getXml(); ext = "xml"; type = "application/xml"; }
 
         const blob = new Blob([content], { type });
@@ -432,10 +486,33 @@ export default function TemplateReference() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {Object.entries(result.data).map(([k, v], idx) => (
+                                                {Object.entries(result.data).map(([k, item], idx) => (
                                                     <tr key={idx} style={{ borderBottom: '1px solid var(--glass-border)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
-                                                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-secondary)', width: '30%' }}>{k}</td>
-                                                        <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{v}</td>
+                                                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-secondary)', width: '30%', verticalAlign: 'top' }}>
+                                                            {k}
+                                                            {item.remarks && <div style={{ fontSize: '10px', opacity: 0.5, fontWeight: 'normal', marginTop: '4px' }}>备注: {item.remarks}</div>}
+                                                        </td>
+                                                        <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>
+                                                            {Array.isArray(item.content) ? (
+                                                                <div style={{ overflowX: 'auto', padding: '4px' }}>
+                                                                    <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%', border: '1px solid var(--glass-border)' }}>
+                                                                        <tbody>
+                                                                            {item.content.map((row, rIdx) => (
+                                                                                <tr key={rIdx} style={{ background: rIdx === 0 ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
+                                                                                    {row.map((cell, cIdx) => (
+                                                                                        <td key={cIdx} style={{ padding: '6px 10px', border: '1px solid var(--glass-border)', fontWeight: rIdx === 0 ? 'bold' : 'normal' }}>
+                                                                                            {cell}
+                                                                                        </td>
+                                                                                    ))}
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                String(item.content)
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -454,7 +531,7 @@ export default function TemplateReference() {
                                         border: '1px solid var(--glass-border)',
                                         animation: 'slideUp 0.3s ease'
                                     }}>
-                                        {JSON.stringify(getJsonArray(), null, 2)}
+                                        {JSON.stringify(getJson(), null, 2)}
                                     </pre>
                                 )}
 
