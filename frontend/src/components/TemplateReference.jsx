@@ -141,11 +141,8 @@ export default function TemplateReference() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>模板引用与执行</h2>
-                    <p style={{ color: 'var(--text-secondary)' }}>选择模板或自动匹配，验证高精度提取效果</p>
-                </div>
+            <div style={{ marginBottom: '30px' }}>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold' }}>模板引用与执行</h2>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '30px', alignItems: 'start' }}>
