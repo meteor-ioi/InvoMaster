@@ -123,6 +123,35 @@ const TopToolbar = ({
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {/* 高精度表格微调入口 - 移至最左侧 */}
+                    {!tableRefining && (
+                        <button
+                            onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
+                            disabled={!isTableSelected}
+                            title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 16px',
+                                borderRadius: '8px',
+                                border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
+                                background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                cursor: isTableSelected ? 'pointer' : 'not-allowed',
+                                transition: 'all 0.3s ease',
+                                opacity: isTableSelected ? 1 : 0.5,
+                                boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none',
+                                marginRight: '5px'
+                            }}
+                        >
+                            <Grid size={14} />
+                            高精度表格微调
+                        </button>
+                    )}
+
                     {tableRefining ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <button
@@ -295,33 +324,6 @@ const TopToolbar = ({
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {/* 高精度表格微调按钮 */}
-                    {!tableRefining && (
-                        <button
-                            onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
-                            disabled={!isTableSelected}
-                            title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 16px',
-                                borderRadius: '8px',
-                                border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
-                                background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                cursor: isTableSelected ? 'pointer' : 'not-allowed',
-                                transition: 'all 0.3s ease',
-                                opacity: isTableSelected ? 1 : 0.5,
-                                boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none'
-                            }}
-                        >
-                            <Grid size={14} />
-                            高精度表格微调
-                        </button>
-                    )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
