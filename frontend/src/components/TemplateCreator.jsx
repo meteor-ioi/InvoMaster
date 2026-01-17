@@ -123,6 +123,8 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
     const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
     const [showSplitPreview, setShowSplitPreview] = useState(false);
+    const [splitPercent, setSplitPercent] = useState(50);
+    const [isResizingSplit, setIsResizingSplit] = useState(false);
 
     useEffect(() => {
         fetchTemplates();
@@ -534,13 +536,18 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                 </div>
                                             )}
 
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: (tableRefining && showSplitPreview) ? '1fr 1fr' : '1fr',
-                                                gap: (tableRefining && showSplitPreview) ? '20px' : '0',
-                                                flex: 1,
-                                                minHeight: 0
-                                            }}>
+                                            <div
+                                                className="split-container"
+                                                style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: (tableRefining && showSplitPreview) ? `${splitPercent}% 4px 1fr` : '1fr',
+                                                    gap: '0',
+                                                    flex: 1,
+                                                    minHeight: 0,
+                                                    height: '100%',
+                                                    overflow: 'hidden'
+                                                }}
+                                            >
                                                 <div
                                                     style={{
                                                         position: 'relative',
@@ -550,7 +557,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                         maxHeight: (tableRefining && showSplitPreview) ? 'none' : '1000px',
                                                         overflow: 'auto',
                                                         borderRadius: '16px',
-                                                        border: '1px solid var(--glass-border)'
+                                                        border: '1px solid var(--glass-border)',
+                                                        background: 'rgba(0,0,0,0.05)'
                                                     }}
                                                 >
                                                     <DocumentEditor
@@ -574,9 +582,45 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                 </div>
 
                                                 {tableRefining && showSplitPreview && (
-                                                    <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
-                                                        <DataPreview tableRefining={tableRefining} isSplit={true} />
-                                                    </div>
+                                                    <>
+                                                        <div
+                                                            style={{
+                                                                width: '4px',
+                                                                cursor: 'col-resize',
+                                                                background: isResizingSplit ? 'var(--primary-color)' : 'transparent',
+                                                                transition: 'background 0.2s',
+                                                                margin: '0 8px',
+                                                                borderRadius: '2px',
+                                                                zIndex: 10
+                                                            }}
+                                                            onMouseEnter={(e) => e.target.style.background = 'var(--glass-border)'}
+                                                            onMouseLeave={(e) => !isResizingSplit && (e.target.style.background = 'transparent')}
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault();
+                                                                setIsResizingSplit(true);
+                                                                const container = e.currentTarget.parentElement;
+                                                                const containerRect = container.getBoundingClientRect();
+
+                                                                const handleMouseMove = (moveE) => {
+                                                                    const relativeX = moveE.clientX - containerRect.left;
+                                                                    const percent = (relativeX / containerRect.width) * 100;
+                                                                    setSplitPercent(Math.max(20, Math.min(80, percent)));
+                                                                };
+
+                                                                const handleMouseUp = () => {
+                                                                    setIsResizingSplit(false);
+                                                                    document.removeEventListener('mousemove', handleMouseMove);
+                                                                    document.removeEventListener('mouseup', handleMouseUp);
+                                                                };
+
+                                                                document.addEventListener('mousemove', handleMouseMove);
+                                                                document.addEventListener('mouseup', handleMouseUp);
+                                                            }}
+                                                        />
+                                                        <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)', height: '100%' }}>
+                                                            <DataPreview tableRefining={tableRefining} isSplit={true} />
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
 
