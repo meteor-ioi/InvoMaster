@@ -47,11 +47,15 @@ const DocumentEditor = ({
         if (tableRefining) return; // Interaction handled by lines if refining
 
         if (editorMode === 'add' && (e.target === containerRef.current || e.target.tagName === 'svg')) {
+            // 计算当前已有的 custom 区块数量,从 0 开始编号(和 auto 编号规则一致)
+            const customCount = regions.filter(r => r.id && r.id.startsWith('custom_')).length;
+            const newId = `custom_${customCount}`;
+
             setIsDrawing(true);
             setSelectedId(null);
             setCurrentRect({
                 x, y, width: 0, height: 0,
-                id: `custom_${Date.now()}`,
+                id: newId,
                 type: 'custom',
                 label: ''
             });

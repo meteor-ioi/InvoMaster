@@ -34,6 +34,35 @@
    - 在側邊欄等狹窄空間，搜索框應避免與標題並排擠佔空間。
    - 推薦採用“切換模式”：默認顯示標題與搜索圖標，激活時搜索框替換標題位置，平衡空間利用與視覺優雅。
 
+2. **侧边栏折叠面板 (Collapsible Sidebar)**：
+   - **适用场景**：当页面包含控制面板（如筛选、配置）和主内容区域（如预览、结果展示）时，应提供折叠功能以优化空间利用。
+   - **折叠按钮位置**：
+     - 放置在主内容区域的标题栏**最左侧**，而非控制面板内部
+     - 使用 `ChevronLeft`（←）和 `ChevronRight`（→）图标表示折叠/展开状态
+     - 按钮样式应使用 `icon-btn` 类，保持与全站图标按钮风格一致
+   - **布局实现**：
+     ```jsx
+     // 使用 CSS Grid 动态调整列宽
+     <div style={{ 
+       display: 'grid', 
+       gridTemplateColumns: isPanelCollapsed ? '0px 1fr' : '300px 1fr',
+       gap: '20px',
+       transition: 'grid-template-columns 0.3s ease'
+     }}>
+     ```
+   - **面板隐藏逻辑**：
+     ```jsx
+     // 控制面板样式
+     <div style={{
+       width: isPanelCollapsed ? '0' : '300px',
+       opacity: isPanelCollapsed ? 0 : 1,
+       overflow: 'hidden',
+       transition: 'width 0.3s ease, opacity 0.3s ease'
+     }}>
+     ```
+   - **动画时长**：统一使用 `0.3s` 过渡时间，确保折叠/展开动作流畅但不拖沓
+   - **状态管理**：使用 `useState` 维护折叠状态，命名建议为 `isPanelCollapsed` 或 `isSidebarCollapsed`
+
 ## UI 动效规范 (Motion & Animation)
 1. **底层选型**：全站动效统一使用 `framer-motion` 库，严禁混用原生 CSS Transition 过多处理复杂布局变换。
 2. **布局平移动效 (Layout Transitions)**：

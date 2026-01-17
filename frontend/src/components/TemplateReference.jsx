@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -18,6 +18,7 @@ export default function TemplateReference() {
     const [selectionMode, setSelectionMode] = useState('auto'); // 'auto' (Standard) or 'custom' (Custom)
     const [searchQuery, setSearchQuery] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
     const dropdownRef = useRef(null);
 
     useEffect(() => {
@@ -215,17 +216,17 @@ export default function TemplateReference() {
     });
 
     const getSelectedName = () => {
-        if (selectedTemplate === 'auto') return "⚡️ 自动识别匹配 (Auto Detect)";
+        if (selectedTemplate === 'auto') return "⚡️ 自动识别匹配";
         const found = templates.find(t => t.id === selectedTemplate);
         return found ? found.name : "未知模板";
     };
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isPanelCollapsed ? '0px 1fr' : '300px 1fr', gap: '20px', alignItems: 'start', transition: 'grid-template-columns 0.3s ease' }}>
 
                 {/* Control Panel */}
-                <div className="glass-card" style={{ padding: '15px' }}>
+                <div className="glass-card" style={{ padding: '15px', overflow: 'hidden', width: isPanelCollapsed ? '0' : '300px', opacity: isPanelCollapsed ? 0 : 1, transition: 'width 0.3s ease, opacity 0.3s ease' }}>
 
                     {/* 1. Mode Selector */}
                     <div style={{ marginBottom: '20px' }}>
@@ -316,7 +317,7 @@ export default function TemplateReference() {
                                             className="list-item-hover"
                                         >
                                             <Sparkles size={12} className="text-primary" />
-                                            ⚡️ 自动识别匹配 (Auto)
+                                            ⚡️ 自动识别匹配
                                         </div>
                                     )}
 
@@ -417,7 +418,15 @@ export default function TemplateReference() {
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                                onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
+                                className="icon-btn"
+                                title={isPanelCollapsed ? "展开控制面板" : "折叠控制面板"}
+                                style={{ padding: '6px' }}
+                            >
+                                {isPanelCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                            </button>
                             <Layout size={18} className="text-primary" />
                             提取结果导出
                         </div>
@@ -488,9 +497,13 @@ export default function TemplateReference() {
                                             <tbody>
                                                 {Object.entries(result.data).map(([k, item], idx) => (
                                                     <tr key={idx} style={{ borderBottom: '1px solid var(--glass-border)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
-                                                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-secondary)', width: '30%', verticalAlign: 'top' }}>
-                                                            {k}
-                                                            {item.remarks && <div style={{ fontSize: '10px', opacity: 0.5, fontWeight: 'normal', marginTop: '4px' }}>备注: {item.remarks}</div>}
+                                                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-secondary)', width: '150px', verticalAlign: 'top' }}>
+                                                            <div style={{ marginBottom: '6px', fontSize: '13px' }}>{k}</div>
+                                                            <div style={{ fontSize: '10px', opacity: 0.6, fontWeight: 'normal', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                <div><span style={{ opacity: 0.5 }}>类型:</span> <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{item.type}</code></div>
+                                                                {item.label && <div><span style={{ opacity: 0.5 }}>标签:</span> {item.label}</div>}
+                                                                {item.remarks && <div><span style={{ opacity: 0.5 }}>备注:</span> {item.remarks}</div>}
+                                                            </div>
                                                         </td>
                                                         <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>
                                                             {Array.isArray(item.content) ? (
