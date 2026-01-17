@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User } from 'lucide-react';
+import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -20,6 +20,7 @@ const LeftPanel = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState([]);
     const [showSearch, setShowSearch] = useState(false);
+    const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
     const toggleExpand = (id, e) => {
         e.stopPropagation();
@@ -66,43 +67,92 @@ const LeftPanel = ({
     return (
         <aside
             style={{
-                width: collapsed ? '48px' : '260px',
-                minWidth: collapsed ? '48px' : '260px',
+                width: collapsed ? '64px' : '260px',
+                minWidth: collapsed ? '64px' : '260px',
                 position: 'sticky',
                 top: '20px',
-                transition: 'all 0.3s ease',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '15px'
+                gap: '15px',
+                height: 'calc(100vh - 100px)',
             }}
         >
-            {/* 顶栏控制 (折叠按钮) */}
+            {/* 悬浮切换按钮 (右边缘居中) */}
             <div
-                className="glass-card"
                 style={{
-                    padding: '10px',
+                    position: 'absolute',
+                    right: '-12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 100,
+                    cursor: 'pointer',
+                    opacity: isHoveringToggle ? 1 : 0.6,
+                    transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={() => setIsHoveringToggle(true)}
+                onMouseLeave={() => setIsHoveringToggle(false)}
+                onClick={() => setCollapsed(!collapsed)}
+            >
+                <div style={{
+                    width: '24px',
+                    height: '48px',
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer'
-                }}
-                onClick={() => setCollapsed(!collapsed)}
-            >
-                {collapsed ? (
-                    <ChevronRight size={18} color="var(--text-secondary)" />
-                ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Layout size={16} color="var(--primary-color)" />
-                            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>侧边工作台</span>
-                        </div>
-                        <ChevronLeft size={18} color="var(--text-secondary)" />
-                    </div>
-                )}
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                    color: 'var(--text-primary)'
+                }}>
+                    {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </div>
             </div>
 
-            {!collapsed && (
+            {collapsed ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '15px 0' }}>
+                    <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, #3b82f633, #8b5cf633)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--primary-color)'
+                    }}>
+                        <Layout size={20} />
+                    </div>
+
+                    <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
+
+                    <button
+                        onClick={() => document.getElementById('panel-file-upload').click()}
+                        className="glass-card"
+                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--primary-color)', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                        title="上传 PDF 文件"
+                    >
+                        <Upload size={20} />
+                    </button>
+
+                    <button
+                        onClick={() => setCollapsed(false)}
+                        className="glass-card"
+                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--accent-color)', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
+                        title="模板仓库"
+                    >
+                        <Package size={20} />
+                    </button>
+
+                    <input id="panel-file-upload" type="file" className="hidden" accept="application/pdf" onChange={handleFileSelect} />
+                </div>
+            ) : (
                 <>
+                    {/* 展开状态下不再需要顶栏，直接开始内容卡片 */}
+
                     {/* 卡片 1: 添加文件 */}
                     <div
                         className="glass-card"
@@ -122,7 +172,8 @@ const LeftPanel = ({
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '10px',
-                            boxShadow: dragActive ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none'
+                            boxShadow: dragActive ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none',
+                            borderRadius: '16px'
                         }}
                     >
                         <div style={{
@@ -133,7 +184,8 @@ const LeftPanel = ({
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '4px'
+                            marginBottom: '4px',
+                            border: '1px solid rgba(59, 130, 246, 0.2)'
                         }}>
                             <Upload size={20} color="var(--primary-color)" />
                         </div>
@@ -163,8 +215,8 @@ const LeftPanel = ({
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '12px',
-                            maxHeight: 'calc(100vh - 250px)',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            borderRadius: '16px'
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px' }}>
@@ -201,8 +253,8 @@ const LeftPanel = ({
                             ) : (
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Star size={14} color="var(--accent-color)" />
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>模板仓库</span>
+                                        <Package size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
                                     </div>
                                     <Search
                                         size={14}
@@ -215,11 +267,11 @@ const LeftPanel = ({
                         </div>
 
                         {/* Mode Tabs */}
-                        <div style={{ display: 'flex', borderRadius: '8px', background: 'var(--input-bg)', padding: '4px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ display: 'flex', borderRadius: '10px', background: 'var(--input-bg)', padding: '4px', border: '1px solid var(--glass-border)' }}>
                             <button
                                 onClick={() => setActiveTab('auto')}
                                 style={{
-                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: activeTab === 'auto' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
+                                    flex: 1, padding: '8px 0', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: activeTab === 'auto' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
                                     background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
                                     color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
@@ -230,7 +282,7 @@ const LeftPanel = ({
                             <button
                                 onClick={() => setActiveTab('custom')}
                                 style={{
-                                    flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: activeTab === 'custom' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
+                                    flex: 1, padding: '8px 0', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: activeTab === 'custom' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
                                     background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
                                     color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
@@ -240,9 +292,7 @@ const LeftPanel = ({
                             </button>
                         </div>
 
-
-
-                        <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
                             {(() => {
                                 // Filter logic
                                 const filtered = templates.filter(t => {
@@ -269,9 +319,12 @@ const LeftPanel = ({
                                 });
 
                                 if (sorted.length === 0) {
-                                    return <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
-                                        {searchQuery ? '未找到相关模板' : `暂无${activeTab === 'auto' ? '标准' : '自定义'}模式模板`}
-                                    </p>;
+                                    return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
+                                        <Package size={24} />
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                            {searchQuery ? '未找到相关模板' : `暂无模板`}
+                                        </p>
+                                    </div>;
                                 }
 
                                 return (
@@ -290,24 +343,24 @@ const LeftPanel = ({
                                                     className={IsMatched ? 'matched-scan-effect' : ''}
                                                     onClick={() => onSelectTemplate && onSelectTemplate(t)}
                                                     style={{
-                                                        padding: '8px',
-                                                        borderRadius: '8px',
+                                                        padding: '10px',
+                                                        borderRadius: '10px',
                                                         background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
-                                                        border: IsMatched ? '1.5px solid var(--success-color)' : (IsSelected ? '1.5px solid var(--primary-color)' : '1px solid var(--glass-border)'),
-                                                        marginBottom: '8px',
+                                                        border: IsMatched ? '2px solid var(--success-color)' : (IsSelected ? '2px solid var(--primary-color)' : '1px solid var(--glass-border)'),
+                                                        marginBottom: '10px',
                                                         cursor: 'pointer',
-                                                        transition: 'background 0.2s ease, border 0.2s ease'
+                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                                     }}
                                                 >
                                                     <div
                                                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                                                     >
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                                             <div
-                                                                style={{ padding: '4px' }}
+                                                                style={{ padding: '2px', color: 'var(--text-secondary)' }}
                                                                 onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
                                                             >
-                                                                {expandedIds.includes(t.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                                {expandedIds.includes(t.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                                             </div>
                                                             <span style={{
                                                                 fontSize: '11px',
@@ -320,7 +373,7 @@ const LeftPanel = ({
                                                                 {t.name}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -333,7 +386,7 @@ const LeftPanel = ({
                                                                 title="复制模板 ID"
                                                                 style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
                                                             >
-                                                                <Copy size={12} />
+                                                                <Copy size={13} />
                                                             </button>
                                                             {expandedIds.includes(t.id) && (
                                                                 <button
@@ -344,24 +397,24 @@ const LeftPanel = ({
                                                                     title="删除模板"
                                                                     style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#ef4444', display: 'flex' }}
                                                                 >
-                                                                    <Trash2 size={12} />
+                                                                    <Trash2 size={13} />
                                                                 </button>
                                                             )}
-                                                            {IsMatched && <Star size={10} color="var(--success-color)" fill="var(--success-color)" />}
+                                                            {IsMatched && <Star size={12} color="var(--success-color)" fill="var(--success-color)" />}
                                                         </div>
                                                     </div>
 
-                                                    <div style={{ fontSize: '9px', color: 'var(--text-secondary)', paddingLeft: '22px', marginTop: '2px', opacity: 0.7, wordBreak: 'break-all' }}>
-                                                        ID: {t.id}
+                                                    <div style={{ fontSize: '9px', color: 'var(--text-secondary)', paddingLeft: '24px', marginTop: '2px', opacity: 0.7, wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                                                        {t.id.slice(0, 8)}...
                                                     </div>
 
 
                                                     {/* Tags Display */}
                                                     {t.tags && t.tags.length > 0 && (
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', paddingLeft: '22px' }}>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', paddingLeft: '24px' }}>
                                                             {t.tags.map(tag => (
                                                                 <span key={tag} style={{
-                                                                    fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
+                                                                    fontSize: '9px', padding: '1px 6px', borderRadius: '4px',
                                                                     background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)',
                                                                     border: '0.5px solid rgba(59, 130, 246, 0.2)'
                                                                 }}>
@@ -372,14 +425,14 @@ const LeftPanel = ({
                                                     )}
 
                                                     {expandedIds.includes(t.id) && (
-                                                        <div style={{ marginTop: '8px', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--glass-border)', marginLeft: '10px' }}>
+                                                        <div style={{ marginTop: '10px', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '1px solid var(--glass-border)', marginLeft: '10px' }}>
                                                             {t.regions && t.regions.length > 0 ? t.regions.map(r => {
                                                                 const config = typeConfig[r.type.toLowerCase()] || { label: r.type, color: '#ccc' };
                                                                 return (
-                                                                    <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '4px' }}>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: 'var(--text-primary)' }}>
-                                                                            <span style={{ color: config.color, display: 'flex' }}>{getIcon(r.type)}</span>
-                                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
+                                                                    <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: 'var(--text-primary)' }}>
+                                                                            <span style={{ color: config.color, display: 'flex', opacity: 0.8 }}>{getIcon(r.type)}</span>
+                                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                                 {r.label || config.label}
                                                                             </span>
                                                                         </div>
@@ -403,6 +456,5 @@ const LeftPanel = ({
         </aside>
     );
 };
-
 
 export default LeftPanel;

@@ -36,7 +36,7 @@ function App() {
                 padding: '0 20px'
             }}>
                 <div style={{ width: '150px' }}>
-                    <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>BabelDOC</h1>
+                    <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>YingdaoDOC</h1>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
