@@ -27,6 +27,12 @@ export default function TemplateReference() {
         fetchTemplates();
         fetchHistory();
 
+        const handleToggleSidebars = (e) => {
+            setIsPanelCollapsed(e.detail.collapsed);
+        };
+
+        window.addEventListener('toggle-sidebars', handleToggleSidebars);
+
         // Handle click outside to close dropdown
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -34,7 +40,10 @@ export default function TemplateReference() {
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('toggle-sidebars', handleToggleSidebars);
+        };
     }, []);
 
     const fetchTemplates = async () => {

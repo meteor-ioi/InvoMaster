@@ -2,11 +2,18 @@ import React, { useState, useEffect } from 'react';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
-import { Edit3, Eye, Sun, Moon, Code } from 'lucide-react';
+import { Edit3, Eye, Sun, Moon, Code, Maximize2, Minimize2 } from 'lucide-react';
 
 function App() {
     const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
     const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
+    const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
+
+    const toggleSidebars = () => {
+        const newState = !isSidebarsCollapsed;
+        setIsSidebarsCollapsed(newState);
+        window.dispatchEvent(new CustomEvent('toggle-sidebars', { detail: { collapsed: newState } }));
+    };
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -66,7 +73,27 @@ function App() {
                     ))}
                 </div>
 
-                <div style={{ width: '150px', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ width: '150px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button
+                        onClick={toggleSidebars}
+                        style={{
+                            background: 'var(--input-bg)',
+                            border: '1px solid var(--glass-border)',
+                            padding: '10px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            color: isSidebarsCollapsed ? 'var(--primary-color)' : 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}
+                        title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
+                    >
+                        {isSidebarsCollapsed ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
+                    </button>
+
                     <button
                         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                         style={{

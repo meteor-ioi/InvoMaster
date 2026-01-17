@@ -126,6 +126,15 @@ export default function TemplateCreator({ theme, setTheme }) {
 
     useEffect(() => {
         fetchTemplates();
+
+        const handleToggleSidebars = (e) => {
+            const { collapsed } = e.detail;
+            setLeftPanelCollapsed(collapsed);
+            setRightPanelCollapsed(collapsed);
+        };
+
+        window.addEventListener('toggle-sidebars', handleToggleSidebars);
+        return () => window.removeEventListener('toggle-sidebars', handleToggleSidebars);
     }, []);
 
     const fetchTemplates = async () => {
