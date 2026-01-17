@@ -659,9 +659,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                                                 </div>
                                             )}
 
-                                            {tableRefining && !showSplitPreview && (
-                                                <DataPreview tableRefining={tableRefining} />
-                                            )}
+                                            {/* DataPreview 移至分屏内部或通过 showSplitPreview 控制 */}
                                         </>
                                     )}
                                 </div>
