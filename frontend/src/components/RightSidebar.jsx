@@ -283,12 +283,6 @@ const RightSidebar = ({
                                 </div>
                             ) : selectedRegion ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    {selectedRegion.type === 'table' && (
-                                        <button onClick={() => handleEnterTableRefine(selectedRegion)} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success-color)', color: 'var(--success-color)', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}>
-                                            <Grid size={16} /> 高精度表格微调
-                                        </button>
-                                    )}
-
                                     <div>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>要素分类</p>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>

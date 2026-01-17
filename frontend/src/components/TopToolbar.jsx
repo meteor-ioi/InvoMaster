@@ -3,6 +3,8 @@ import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Has
 
 const TopToolbar = ({
     tableRefining,
+    selectedRegion,
+    handleEnterTableRefine,
     layoutSettings,
     applyStrategy,
     setLayoutSettings,
@@ -20,6 +22,8 @@ const TopToolbar = ({
     typeConfig,
     isIntegrated = false
 }) => {
+    const isTableSelected = selectedRegion?.type === 'table';
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: isIntegrated ? '0' : '10px' }}>
             {/* Layer 1: Identification Settings */}
@@ -125,24 +129,50 @@ const TopToolbar = ({
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Filter size={14} color="var(--text-secondary)" />
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>
+                            {(!isTableSelected && !loading) && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>仅查看:</span>}
                             {['table', 'title', 'figure', 'plain text', 'custom', 'abandon'].map(type => (
-                                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                <label key={type} title={typeConfig[type]?.label || type} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '11px' }}>
                                     <input
                                         type="checkbox"
                                         checked={!!viewFilters[type]}
                                         onChange={(e) => setViewFilters({ ...viewFilters, [type]: e.target.checked })}
                                         style={{ accentColor: 'var(--success-color)' }}
                                     />
-                                    {typeConfig[type]?.label || type}
+                                    {(!isTableSelected && !loading) && (typeConfig[type]?.label || type)}
                                 </label>
                             ))}
                         </div>
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    {/* Right Toolbar Empty space placeholder or Hint */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {/* 高精度表格微调按钮 */}
+                    {!tableRefining && (
+                        <button
+                            onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
+                            disabled={!isTableSelected}
+                            title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 16px',
+                                borderRadius: '8px',
+                                border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
+                                background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                cursor: isTableSelected ? 'pointer' : 'not-allowed',
+                                transition: 'all 0.3s ease',
+                                opacity: isTableSelected ? 1 : 0.5,
+                                boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none'
+                            }}
+                        >
+                            <Grid size={14} />
+                            高精度表格微调
+                        </button>
+                    )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>

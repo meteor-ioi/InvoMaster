@@ -443,6 +443,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                             <div className="glass-card" style={{ padding: '0', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '600px', background: 'var(--glass-bg)', overflow: 'hidden' }}>
                                 <TopToolbar
                                     tableRefining={tableRefining}
+                                    selectedRegion={selectedRegion}
+                                    handleEnterTableRefine={handleEnterTableRefine}
                                     layoutSettings={layoutSettings}
                                     applyStrategy={applyStrategy}
                                     setLayoutSettings={setLayoutSettings}
