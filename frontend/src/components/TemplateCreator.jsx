@@ -168,12 +168,20 @@ export default function TemplateCreator({ theme, setTheme }) {
 
     const analyze = async (targetFile, forceParams = {}) => {
         const currentFile = targetFile || file;
-        if (!currentFile) return;
+        const currentFilename = analysis?.filename;
+
+        // 如果既没有文件对象，也没有已知的文件名（用于重试），则无法分析
+        if (!currentFile && !currentFilename) return;
 
         setLoading(true);
         const formData = new FormData();
-        formData.append('file', currentFile);
-        if (targetFile) setFile(targetFile);
+
+        if (currentFile) {
+            formData.append('file', currentFile);
+            if (targetFile) setFile(targetFile);
+        } else if (currentFilename) {
+            formData.append('filename', currentFilename);
+        }
 
         try {
             const currentConf = forceParams.conf !== undefined ? forceParams.conf : confidence;

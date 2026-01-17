@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -199,7 +199,8 @@ async def root():
 
 @app.post("/analyze")
 async def analyze_document(
-    file: UploadFile = File(...), 
+    file: Optional[UploadFile] = File(None), 
+    filename: Optional[str] = Form(None),
     device: Optional[str] = None, 
     conf: float = 0.25,
     imgsz: int = 1024,
@@ -207,10 +208,27 @@ async def analyze_document(
     agnostic_nms: bool = False,
     refresh: bool = False
 ):
-    # Save uploaded file
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Determine input file path
+    if file:
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        actual_filename = file.filename
+    elif filename:
+        actual_filename = filename
+        # Check uploads
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        if not os.path.exists(file_path):
+            # Check template sources
+            source_path = os.path.join(TEMPLATES_SOURCE_DIR, filename)
+            if os.path.exists(source_path):
+                file_path = source_path
+            else:
+                 # Try to assume filename might differ in source dir (search by ID?) 
+                 # For now, simplistic check. If failed:
+                 raise HTTPException(status_code=400, detail=f"File {filename} not found on server")
+    else:
+        raise HTTPException(status_code=400, detail="No file provided")
     
     # 1. Calculate Fingerprint
     fingerprint = get_file_fingerprint(file_path)
@@ -275,7 +293,7 @@ async def analyze_document(
     return {
         "id": fingerprint[:12],
         "fingerprint": fingerprint,
-        "filename": file.filename,
+        "filename": actual_filename,
         "images": relative_images,
         "regions": matching_regions,
         "ai_regions": ai_regions if template_found else [], 
