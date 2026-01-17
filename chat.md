@@ -485,4 +485,38 @@
 - **修复方案**：
   - 在 [TopToolbar.jsx](file:///Users/icychick/Projects/industry_PDF/frontend/src/components/TopToolbar.jsx) 第 2 行添加 `BoxSelect` 导入
   - 在 [TemplateReference.jsx](file:///Users/icychick/Projects/industry_PDF/frontend/src/components/TemplateReference.jsx) 第 3 行添加 `RefreshCw` 导入
-- **验证结果**：页面恢复正常渲染，控制台无错误
+### 00:20
+**用户提问**：优化"模板制作"板块的工具栏，移除"一键清空"按钮，并把"选择区域"功能的图标和逻辑加入。
+**AI 答复**：已完成。
+- **功能移除**：在 `TopToolbar.jsx` 中移除了"一键清空"按钮及其分隔线，简化工具栏。
+- **多选功能**：实现了框选（Batch Select）功能，现在可以通过拖拽框选多个区域，并支持批量移动和批量删除。
+
+### 00:30
+**用户提问**：将"模板制作"左右侧边栏折叠后的样式修改为与"模板引用"一致（底纹和边框）。
+**AI 答复**：已完成样式同步。
+- **样式复用**：将 `TemplateReference.jsx` 中折叠面板的 `glass-card` 样式（圆角、内边距、背景模糊）应用到了 `LeftPanel.jsx` 和 `RightSidebar.jsx` 的折叠状态中。
+- **细节调整**：移除了内部按钮的重复 `glass-card` 类，避免边框叠加，确保视觉效果清爽统一。
+
+### 00:35
+**用户提问**：右侧卡片"要素编辑"文字右边的"撤回"，"重做"右边的分隔线帮我去掉。
+**AI 答复**：已移除。在 `RightSidebar.jsx` 中删除了"重做"按钮右侧的垂直分隔线 `div` 元素。
+
+### 00:40
+**用户提问**：模板引用板块中，JSON 和 XML 的白天模式样式适配不好，预览区域底色保持黑夜模式的深色即可。
+**AI 答复**：已修复。
+- **强制深色背景**：修改了 `TemplateReference.jsx` 中 JSON 和 XML 预览 `pre` 标签的样式，将背景色固定为 `rgba(15, 23, 42, 0.9)`，确保代码高亮在任何主题下都清晰可见。
+
+### 00:43
+**用户提问**：Markdown 表格导出后格式错乱，原因是存在换行符。
+**AI 答复**：已修复 Markdown 生成逻辑。
+- **格式清洗**：在 `getMarkdown` 函数中增加了数据清洗逻辑，将表格单元格内容中的换行符 `\n` 替换为 HTML 换行标签 `<br>`。
+- **验证**：修复后的 Markdown 表格结构正常，不再因内容换行而破损。
+
+### 00:45
+**用户提问**：白天模式下，Markdown 表格的底色灰色难看，换成白色。
+**AI 答复**：已调整。
+- **背景优化**：将 `TemplateReference.jsx` 中 Markdown 表格容器的背景色从半透明黑 `rgba(0,0,0,0.1)` 修改为 `var(--input-bg)`（通常为白色或极淡灰），提升了日间模式下的阅读体验。
+
+### 00:46
+**用户提问**：添加 git 快照。
+**AI 答复**：已完成。上述所有修改均已分步提交并推送到 GitHub，包含了侧边栏样式统一、Markdown 导出修复及 UI 细节优化的完整记录。
