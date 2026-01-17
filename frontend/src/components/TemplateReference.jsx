@@ -672,7 +672,7 @@ export default function TemplateReference() {
                                                         </td>
                                                         <td style={{ padding: '15px 20px', color: 'var(--text-primary)', borderBottom: idx === Object.entries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
                                                             {Array.isArray(item.content) ? (
-                                                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                                                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)' }}>
                                                                     <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%' }}>
                                                                         <tbody>
                                                                             {item.content.map((row, rIdx) => (
