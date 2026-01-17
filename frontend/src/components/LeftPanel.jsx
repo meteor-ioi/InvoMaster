@@ -111,7 +111,7 @@ const LeftPanel = ({
             </div>
 
             {collapsed ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '15px 0' }}>
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                     <div style={{
                         width: '40px',
                         height: '40px',
@@ -130,7 +130,6 @@ const LeftPanel = ({
 
                     <button
                         onClick={() => document.getElementById('panel-file-upload').click()}
-                        className="glass-card"
                         style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--primary-color)', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
                         title="上传 PDF 文件"
                     >
@@ -139,7 +138,6 @@ const LeftPanel = ({
 
                     <button
                         onClick={() => setCollapsed(false)}
-                        className="glass-card"
                         style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--accent-color)', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
                         title="模板仓库"
                     >

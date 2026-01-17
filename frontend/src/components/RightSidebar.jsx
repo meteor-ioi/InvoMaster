@@ -91,7 +91,7 @@ const RightSidebar = ({
             </div>
 
             {collapsed ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '15px 0' }}>
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                     <div style={{
                         width: '40px',
                         height: '40px',
@@ -110,7 +110,6 @@ const RightSidebar = ({
 
                     <button
                         onClick={() => setCollapsed(false)}
-                        className="glass-card"
                         style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--accent-color)', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
                         title="要素编辑"
                     >
@@ -120,7 +119,6 @@ const RightSidebar = ({
                     {!tableRefining && (
                         <button
                             onClick={handleSaveTemplate}
-                            className="glass-card"
                             style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s' }}
                             title="保存并入库"
                         >
