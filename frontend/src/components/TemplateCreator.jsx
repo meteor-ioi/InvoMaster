@@ -416,6 +416,17 @@ export default function TemplateCreator({ theme, setTheme }) {
         recordHistory(newRegions);
     };
 
+    const clearAllRegions = () => {
+        if (regions.length === 0) return;
+        if (window.confirm('确定要清空预览中的所有区块吗？此操作可以被撤销。')) {
+            setRegions([]);
+            recordHistory([]);
+            setSelectedId(null);
+            setToast({ type: 'success', text: '已清空所有区块' });
+            setTimeout(() => setToast(null), 2000);
+        }
+    };
+
     const selectedRegion = useMemo(() => regions.find(r => r.id === selectedId), [regions, selectedId]);
 
 
@@ -481,6 +492,12 @@ export default function TemplateCreator({ theme, setTheme }) {
                                     isIntegrated={true}
                                     showSplitPreview={showSplitPreview}
                                     setShowSplitPreview={setShowSplitPreview}
+                                    // New Editing Props
+                                    editorMode={editorMode}
+                                    setEditorMode={setEditorMode}
+                                    toggleRegionLock={toggleRegionLock}
+                                    deleteRegion={deleteRegion}
+                                    clearAllRegions={clearAllRegions}
                                 />
 
                                 <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>

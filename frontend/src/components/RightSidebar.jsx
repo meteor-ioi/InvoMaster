@@ -167,39 +167,6 @@ const RightSidebar = ({
                                             <RotateCw size={12} />
                                         </button>
                                         <div style={{ width: '1px', height: '12px', background: 'var(--glass-border)', margin: '0 4px' }} />
-                                        <button
-                                            disabled={!selectedId}
-                                            onClick={(e) => { e.stopPropagation(); toggleRegionLock(selectedId); }}
-                                            title={selectedRegion?.locked ? "解锁区块" : "锁定区块"}
-                                            style={{
-                                                width: '22px', height: '22px', borderRadius: '50%', border: 'none',
-                                                background: selectedRegion?.locked ? 'var(--accent-color)' : 'var(--input-bg)',
-                                                color: selectedRegion?.locked ? '#fff' : 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                cursor: selectedId ? 'pointer' : 'not-allowed',
-                                                opacity: selectedId ? 1 : 0.5
-                                            }}
-                                        >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                {selectedRegion?.locked ? (
-                                                    <>
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                                                    </>
-                                                )}
-                                            </svg>
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); setEditorMode(editorMode === 'add' ? 'view' : 'add'); }} title="新增区块" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: editorMode === 'add' ? 'var(--primary-color)' : 'var(--input-bg)', color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                            <Plus size={12} />
-                                        </button>
-                                        <button disabled={!selectedId || selectedRegion?.locked} onClick={(e) => { e.stopPropagation(); deleteRegion(selectedId); }} title="删除区块" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: '#ef4444', opacity: (selectedId && !selectedRegion?.locked) ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (selectedId && !selectedRegion?.locked) ? 'pointer' : 'not-allowed' }}>
-                                            <Minus size={12} />
-                                        </button>
                                     </>
                                 )}
                             </div>

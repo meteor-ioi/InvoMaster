@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Star, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package } from 'lucide-react';
+import { Layout, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -303,22 +302,7 @@ const LeftPanel = ({
                                     return matchMode && matchSearch;
                                 });
 
-                                // Sorting (Selected first, then Matched)
-                                const sorted = [...filtered].sort((a, b) => {
-                                    const aSelected = analysis && a.id === analysis.id;
-                                    const bSelected = analysis && b.id === analysis.id;
-                                    if (aSelected && !bSelected) return -1;
-                                    if (!aSelected && bSelected) return 1;
-
-                                    const aMatch = analysis && a.fingerprint === analysis.fingerprint;
-                                    const bMatch = analysis && b.fingerprint === analysis.fingerprint;
-                                    if (aMatch && !bMatch) return -1;
-                                    if (!aMatch && bMatch) return 1;
-
-                                    return 0;
-                                });
-
-                                if (sorted.length === 0) {
+                                if (filtered.length === 0) {
                                     return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
                                         <Package size={24} />
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
@@ -328,17 +312,13 @@ const LeftPanel = ({
                                 }
 
                                 return (
-                                    <AnimatePresence mode="popLayout">
-                                        {sorted.map(t => {
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        {filtered.map(t => {
                                             const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
                                             const IsSelected = analysis && t.id === analysis.id;
 
                                             return (
-                                                <motion.div
-                                                    layout
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                <div
                                                     key={t.id}
                                                     className={IsMatched ? 'matched-scan-effect' : ''}
                                                     onClick={() => onSelectTemplate && onSelectTemplate(t)}
@@ -348,8 +328,7 @@ const LeftPanel = ({
                                                         background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
                                                         border: IsMatched ? '2px solid var(--success-color)' : (IsSelected ? '2px solid var(--primary-color)' : '1px solid var(--glass-border)'),
                                                         marginBottom: '10px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                        cursor: 'pointer'
                                                     }}
                                                 >
                                                     <div
@@ -400,7 +379,6 @@ const LeftPanel = ({
                                                                     <Trash2 size={13} />
                                                                 </button>
                                                             )}
-                                                            {IsMatched && <Star size={12} color="var(--success-color)" fill="var(--success-color)" />}
                                                         </div>
                                                     </div>
 
@@ -443,10 +421,10 @@ const LeftPanel = ({
                                                             )}
                                                         </div>
                                                     )}
-                                                </motion.div>
+                                                </div>
                                             );
                                         })}
-                                    </AnimatePresence>
+                                    </div>
                                 );
                             })()}
                         </div>

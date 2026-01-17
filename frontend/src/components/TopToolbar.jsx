@@ -22,7 +22,13 @@ const TopToolbar = ({
     typeConfig,
     isIntegrated = false,
     showSplitPreview,
-    setShowSplitPreview
+    setShowSplitPreview,
+    // Add missing props
+    editorMode,
+    setEditorMode,
+    toggleRegionLock,
+    deleteRegion,
+    clearAllRegions
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -122,34 +128,160 @@ const TopToolbar = ({
                 borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
                     {/* 高精度表格微调入口 - 移至最左侧 */}
                     {!tableRefining && (
-                        <button
-                            onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
-                            disabled={!isTableSelected}
-                            title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '5px 16px',
-                                borderRadius: '8px',
-                                border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
-                                background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                cursor: isTableSelected ? 'pointer' : 'not-allowed',
-                                transition: 'all 0.3s ease',
-                                opacity: isTableSelected ? 1 : 0.5,
-                                boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none',
-                                marginRight: '5px'
-                            }}
-                        >
-                            <Grid size={14} />
-                            高精度表格微调
-                        </button>
+                        <>
+                            <div style={{ position: 'relative' }} ref={filterRef}>
+                                <button
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '5px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: isFilterOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <Filter size={14} color={activeFiltersCount === filterTypes.length ? "var(--text-secondary)" : "var(--primary-color)"} />
+                                    <span style={{ fontWeight: '500' }}>仅查看</span>
+                                    <div style={{
+                                        fontSize: '10px',
+                                        background: activeFiltersCount === filterTypes.length ? 'var(--glass-border)' : 'var(--primary-color)',
+                                        color: activeFiltersCount === filterTypes.length ? 'var(--text-secondary)' : '#fff',
+                                        padding: '1px 6px',
+                                        borderRadius: '10px',
+                                        marginLeft: '2px',
+                                        fontWeight: 'bold',
+                                        minWidth: '20px',
+                                        textAlign: 'center'
+                                    }}>
+                                        {activeFiltersCount === filterTypes.length ? '全部' : activeFiltersCount}
+                                    </div>
+                                    <ChevronDown size={12} style={{ transform: isFilterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                                </button>
+
+                                {isFilterOpen && (
+                                    <div className="glass-card" style={{
+                                        position: 'absolute',
+                                        top: 'calc(100% + 8px)',
+                                        left: 0,
+                                        zIndex: 1000,
+                                        minWidth: '180px',
+                                        padding: '8px',
+                                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+                                        border: '1px solid var(--glass-border)',
+                                        animation: 'fadeIn 0.2s ease-out'
+                                    }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            {filterTypes.map(type => (
+                                                <div
+                                                    key={type}
+                                                    onClick={() => setViewFilters({ ...viewFilters, [type]: !viewFilters[type] })}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '8px 10px',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        background: viewFilters[type] ? 'rgba(255,255,255,0.05)' : 'transparent',
+                                                        transition: 'all 0.2s',
+                                                        userSelect: 'none'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = viewFilters[type] ? 'rgba(255,255,255,0.05)' : 'transparent'}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <div style={{
+                                                            width: '16px',
+                                                            height: '16px',
+                                                            borderRadius: '4px',
+                                                            border: '1.5px solid',
+                                                            borderColor: viewFilters[type] ? 'var(--success-color)' : 'var(--glass-border)',
+                                                            background: viewFilters[type] ? 'var(--success-color)' : 'transparent',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'all 0.2s'
+                                                        }}>
+                                                            {viewFilters[type] && <Check size={12} color="#fff" strokeWidth={3} />}
+                                                        </div>
+                                                        <span style={{ fontSize: '13px', color: viewFilters[type] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                            {typeConfig[type]?.label || type}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div style={{
+                                            marginTop: '8px',
+                                            paddingTop: '8px',
+                                            borderTop: '1px solid var(--glass-border)',
+                                            display: 'flex',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const allChecked = activeFiltersCount < filterTypes.length;
+                                                    const nextFilters = {};
+                                                    filterTypes.forEach(t => nextFilters[t] = allChecked);
+                                                    setViewFilters(nextFilters);
+                                                }}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: 'var(--primary-color)',
+                                                    cursor: 'pointer',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '4px'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                {activeFiltersCount === filterTypes.length ? '全部取消' : '一键全选'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
+                                disabled={!isTableSelected}
+                                title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '5px 16px',
+                                    borderRadius: '8px',
+                                    border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
+                                    background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                    color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    cursor: isTableSelected ? 'pointer' : 'not-allowed',
+                                    transition: 'all 0.3s ease',
+                                    opacity: isTableSelected ? 1 : 0.5,
+                                    boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none',
+                                    marginRight: '5px'
+                                }}
+                            >
+                                <Grid size={14} />
+                                高精度表格微调
+                            </button>
+                        </>
                     )}
 
                     {tableRefining ? (
@@ -197,128 +329,89 @@ const TopToolbar = ({
                             </div>
                         </div>
                     ) : (
-                        <div style={{ position: 'relative' }} ref={filterRef}>
-                            <button
-                                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '5px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--glass-border)',
-                                    background: isFilterOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                    color: 'var(--text-secondary)',
-                                    fontSize: '12px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    outline: 'none'
-                                }}
-                            >
-                                <Filter size={14} color={activeFiltersCount === filterTypes.length ? "var(--text-secondary)" : "var(--primary-color)"} />
-                                <span style={{ fontWeight: '500' }}>仅查看</span>
-                                <div style={{
-                                    fontSize: '10px',
-                                    background: activeFiltersCount === filterTypes.length ? 'var(--glass-border)' : 'var(--primary-color)',
-                                    color: activeFiltersCount === filterTypes.length ? 'var(--text-secondary)' : '#fff',
-                                    padding: '1px 6px',
-                                    borderRadius: '10px',
-                                    marginLeft: '2px',
-                                    fontWeight: 'bold',
-                                    minWidth: '20px',
-                                    textAlign: 'center'
-                                }}>
-                                    {activeFiltersCount === filterTypes.length ? '全部' : activeFiltersCount}
-                                </div>
-                                <ChevronDown size={12} style={{ transform: isFilterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-                            </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+                            {/* Central Editing Tools */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}>
+                                <button
+                                    onClick={() => toggleRegionLock(selectedRegion?.id)}
+                                    disabled={!selectedRegion}
+                                    title={selectedRegion?.locked ? "解锁当前区块" : "锁定当前区块"}
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                        background: selectedRegion?.locked ? 'var(--accent-color)' : 'transparent',
+                                        color: selectedRegion?.locked ? '#fff' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: selectedRegion ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s',
+                                        opacity: selectedRegion ? 1 : 0.5
+                                    }}
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        {selectedRegion?.locked ? (
+                                            <>
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                            </>
+                                        )}
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => setEditorMode(editorMode === 'add' ? 'view' : 'add')}
+                                    title="新增区块"
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                        background: editorMode === 'add' ? 'var(--primary-color)' : 'transparent',
+                                        color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Plus size={16} />
+                                </button>
+                                <button
+                                    disabled={!selectedRegion || selectedRegion?.locked}
+                                    onClick={() => deleteRegion(selectedRegion.id)}
+                                    title="删除区块"
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                        background: 'transparent',
+                                        color: (selectedRegion && !selectedRegion?.locked) ? '#ef4444' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: (selectedRegion && !selectedRegion?.locked) ? 'pointer' : 'not-allowed',
+                                        opacity: (selectedRegion && !selectedRegion?.locked) ? 1 : 0.5,
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Minus size={16} />
+                                </button>
 
-                            {isFilterOpen && (
-                                <div className="glass-card" style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 8px)',
-                                    left: 0,
-                                    zIndex: 1000,
-                                    minWidth: '180px',
-                                    padding: '8px',
-                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
-                                    border: '1px solid var(--glass-border)',
-                                    animation: 'fadeIn 0.2s ease-out'
-                                }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        {filterTypes.map(type => (
-                                            <div
-                                                key={type}
-                                                onClick={() => setViewFilters({ ...viewFilters, [type]: !viewFilters[type] })}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'space-between',
-                                                    padding: '8px 10px',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer',
-                                                    background: viewFilters[type] ? 'rgba(255,255,255,0.05)' : 'transparent',
-                                                    transition: 'all 0.2s',
-                                                    userSelect: 'none'
-                                                }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = viewFilters[type] ? 'rgba(255,255,255,0.05)' : 'transparent'}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <div style={{
-                                                        width: '16px',
-                                                        height: '16px',
-                                                        borderRadius: '4px',
-                                                        border: '1.5px solid',
-                                                        borderColor: viewFilters[type] ? 'var(--success-color)' : 'var(--glass-border)',
-                                                        background: viewFilters[type] ? 'var(--success-color)' : 'transparent',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'all 0.2s'
-                                                    }}>
-                                                        {viewFilters[type] && <Check size={12} color="#fff" strokeWidth={3} />}
-                                                    </div>
-                                                    <span style={{ fontSize: '13px', color: viewFilters[type] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                                        {typeConfig[type]?.label || type}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div style={{ width: '1px', height: '14px', background: 'var(--glass-border)', margin: '0 4px' }} />
 
-                                    <div style={{
-                                        marginTop: '8px',
-                                        paddingTop: '8px',
-                                        borderTop: '1px solid var(--glass-border)',
-                                        display: 'flex',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const allChecked = activeFiltersCount < filterTypes.length;
-                                                const nextFilters = {};
-                                                filterTypes.forEach(t => nextFilters[t] = allChecked);
-                                                setViewFilters(nextFilters);
-                                            }}
-                                            style={{
-                                                fontSize: '11px',
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: 'var(--primary-color)',
-                                                cursor: 'pointer',
-                                                padding: '4px 10px',
-                                                borderRadius: '4px'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            {activeFiltersCount === filterTypes.length ? '全部取消' : '一键全选'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                                <button
+                                    onClick={clearAllRegions}
+                                    title="一键清空预览中所有区块"
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                        background: 'transparent',
+                                        color: '#ef4444',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <RefreshCw size={14} />
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
