@@ -136,8 +136,8 @@ else:
                     ) : (
                         <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px', flex: 1, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                <Layout size={14} color="var(--accent-color)" />
-                                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>可用模板 ID ({templates.length})</span>
+                                <Layout size={16} color="var(--accent-color)" />
+                                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>可用模板 ID ({templates.length})</span>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>

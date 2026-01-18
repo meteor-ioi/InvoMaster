@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -120,16 +120,29 @@ export default function TemplateReference({ device }) {
                 res = await axios.post(`${API_BASE}/analyze`, formData, {
                     params: { device }
                 });
+
+                // Build proper data structure matching the /extract endpoint format
                 const dataMap = {};
                 (res.data.regions || []).forEach(r => {
-                    const k = r.label || r.id;
-                    dataMap[k] = r.content || r.text || "";
+                    const key = r.id;
+                    dataMap[key] = {
+                        type: r.type,
+                        label: r.label || r.id,
+                        remarks: r.remarks || '',
+                        content: r.content || r.text || ''
+                    };
                 });
+
+                // Determine template name from matched template or fallback
+                const templateName = res.data.template_found && res.data.matched_template
+                    ? res.data.matched_template.name
+                    : (res.data.template_found ? '自动匹配' : '无匹配模板');
 
                 setResult({
                     status: 'success',
                     filename: res.data.filename,
-                    template_name: res.data.template_found ? "自动匹配" : "无匹配模板",
+                    template_name: templateName,
+                    mode: 'auto',
                     data: dataMap,
                     raw_regions: res.data.regions
                 });
@@ -312,7 +325,7 @@ export default function TemplateReference({ device }) {
     });
 
     const getSelectedName = () => {
-        if (selectedTemplate === 'auto') return "⚡️ 自动识别匹配";
+        if (selectedTemplate === 'auto') return "自动识别匹配";
         const found = templates.find(t => t.id === selectedTemplate);
         return found ? found.name : "未知模板";
     };
@@ -421,6 +434,10 @@ export default function TemplateReference({ device }) {
                         <>
                             {/* Card 1: Extraction Settings */}
                             <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
+                                    <Settings size={16} color="var(--accent-color)" />
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>识别配置</span>
+                                </div>
                                 {/* Mode Selector */}
                                 <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                                     <button
@@ -453,7 +470,6 @@ export default function TemplateReference({ device }) {
 
                                 {/* 模板选择器 */}
                                 <div style={{ position: 'relative' }} ref={dropdownRef}>
-                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: '500' }}>识别模板</p>
                                     <div
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                         style={{
@@ -573,7 +589,6 @@ export default function TemplateReference({ device }) {
 
                                 {/* File Upload */}
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>上传单据 (PDF)</label>
                                     <div style={{
                                         border: '1px dashed var(--glass-border)', borderRadius: '12px',
                                         padding: '24px 15px', textAlign: 'center', cursor: 'pointer',
@@ -609,8 +624,8 @@ export default function TemplateReference({ device }) {
                             {/* Card 2: Extraction History */}
                             <div className="glass-card" style={{ flex: 1, padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                    <Clock size={14} color="var(--accent-color)" />
-                                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>最近提取历史</span>
+                                    <Clock size={16} color="var(--accent-color)" />
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>最近提取历史</span>
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                     {history.length === 0 ? (

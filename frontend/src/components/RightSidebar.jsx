@@ -322,12 +322,15 @@ const RightSidebar = ({
                             style={{
                                 padding: '15px',
                                 flexDirection: 'column',
-                                gap: '10px',
+                                gap: '15px',
                                 borderRadius: '16px',
                                 display: 'flex'
                             }}
                         >
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>模板类型</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
+                                <Package size={16} color="var(--accent-color)" />
+                                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
+                            </div>
                             <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                                 <button
                                     onClick={() => setTemplateMode('auto')}
@@ -367,11 +370,11 @@ const RightSidebar = ({
                                 </button>
                             </div>
 
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px', marginTop: '5px' }}>保存模板名称</p>
                             <input
                                 type="text"
                                 value={templateName}
                                 onChange={(e) => setTemplateName(e.target.value)}
+                                placeholder="请输入保存模板名称"
                                 style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
                             />
 
@@ -383,8 +386,7 @@ const RightSidebar = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '10px',
-                                    marginTop: '5px'
+                                    gap: '10px'
                                 }}
                             >
                                 <Save size={16} /> 保存并入库
