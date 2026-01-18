@@ -1,3 +1,11 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "huggingface_hub",
+# ]
+# ///
+
 """
 Script to download required AI models for Industry PDF.
 Downloads:

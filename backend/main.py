@@ -17,7 +17,7 @@ from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
-from format_utils import convert_to_format
+# from format_utils import convert_to_format # Removed as module no longer exists
 import config  # 统一配置管理
 
 app = FastAPI(title="HITL Document Extraction API")

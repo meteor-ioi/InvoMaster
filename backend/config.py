@@ -51,15 +51,14 @@ def get_base_dir() -> Path:
 def get_user_data_dir() -> Path:
     """
     获取用户数据目录（可写）
-    - macOS: ~/Library/Application Support/IndustryPDF
-    - Windows: %AppData%/IndustryPDF
-    - Linux: ~/.local/share/IndustryPDF
-    
-    该目录用于存储：上传文件、模板定义、数据库、历史记录等
+    - 开发环境：使用 backend/data 目录
+    - 打包环境：使用系统标准路径（Application Support / AppData）
     """
     if not is_frozen():
-        # 开发环境：使用项目内的 data 目录
-        return get_base_dir() / "data"
+        # 开发环境：固定使用 backend 目录下的 data 文件夹
+        dev_data = get_base_dir() / "data"
+        dev_data.mkdir(parents=True, exist_ok=True)
+        return dev_data
     
     plat = get_platform()
     
