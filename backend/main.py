@@ -749,6 +749,8 @@ async def extract_with_custom_template(
             
             result_map[key] = {
                 "content": r.get("content", ""),
+                "x": r.get("x"),  # 保留x坐标用于前端排序
+                "y": r.get("y"),  # 保留y坐标用于前端排序
                 **meta
             }
             

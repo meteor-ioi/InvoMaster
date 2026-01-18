@@ -23,6 +23,11 @@ export default function TemplateReference({ device }) {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
     const dropdownRef = useRef(null);
 
+    // --- Table Column Resize States ---
+    const [fieldDefWidth, setFieldDefWidth] = useState(140);
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeRef = useRef(null);
+
     useEffect(() => {
         fetchTemplates();
         fetchHistory();
@@ -33,6 +38,26 @@ export default function TemplateReference({ device }) {
 
         window.addEventListener('toggle-sidebars', handleToggleSidebars);
 
+        // Handle column resize
+        const handleMouseMove = (e) => {
+            if (isResizing && resizeRef.current) {
+                const containerLeft = resizeRef.current.getBoundingClientRect().left;
+                const newWidth = e.clientX - containerLeft;
+                if (newWidth >= 100 && newWidth <= 400) {
+                    setFieldDefWidth(newWidth);
+                }
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
         // Handle click outside to close dropdown
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -42,9 +67,11 @@ export default function TemplateReference({ device }) {
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
             window.removeEventListener('toggle-sidebars', handleToggleSidebars);
         };
-    }, []);
+    }, [isResizing]);
 
     const fetchTemplates = async () => {
         try {
@@ -129,7 +156,9 @@ export default function TemplateReference({ device }) {
                         type: r.type,
                         label: r.label || r.id,
                         remarks: r.remarks || '',
-                        content: r.content || r.text || ''
+                        content: r.content || r.text || '',
+                        x: r.x,  // 保留x坐标用于排序
+                        y: r.y   // 保留y坐标用于排序
                     };
                 });
 
@@ -161,12 +190,24 @@ export default function TemplateReference({ device }) {
         }
     };
 
+    // 按页面位置排序(从左上到右下):优先按 y 坐标,同一水平线上按 x 坐标
+    const getSortedEntries = (data) => {
+        const entries = Object.entries(data);
+        return entries.sort(([, a], [, b]) => {
+            // 优先按 y 坐标(从上到下)
+            const yDiff = (a.y || 0) - (b.y || 0);
+            if (Math.abs(yDiff) > 0.01) return yDiff;
+            // 同一水平线上,按 x 坐标(从左到右)
+            return (a.x || 0) - (b.x || 0);
+        });
+    };
+
     // --- Data Conversion Logic ---
     const getMarkdown = () => {
         if (!result) return "";
         let md = "";
 
-        Object.entries(result.data).forEach(([regionId, item]) => {
+        getSortedEntries(result.data).forEach(([regionId, item]) => {
             const { type, label, remarks, content } = item;
 
             // 区域标题
@@ -218,7 +259,7 @@ export default function TemplateReference({ device }) {
         xml += `  <metadata>\n    <filename>${result.filename}</filename>\n    <template>${result.template_name}</template>\n    <mode>${result.mode}</mode>\n  </metadata>\n`;
         xml += `  <regions>\n`;
 
-        Object.entries(result.data).forEach(([regionId, item]) => {
+        getSortedEntries(result.data).forEach(([regionId, item]) => {
             xml += `    <region id="${regionId}">\n`;
             xml += `      <type>${item.type}</type>\n`;
             xml += `      <label>${item.label || ''}</label>\n`;
@@ -254,7 +295,7 @@ export default function TemplateReference({ device }) {
         csv += `匹配模板,${result.template_name}\n`;
         csv += `识别模式,${result.mode}\n\n`;
 
-        Object.entries(result.data).forEach(([regionId, item]) => {
+        getSortedEntries(result.data).forEach(([regionId, item]) => {
             csv += `>>> 区域: ${item.label || regionId} [${item.type}]\n`;
             if (item.remarks) {
                 // Handle commas/quotes in remarks
@@ -746,7 +787,7 @@ export default function TemplateReference({ device }) {
                     <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
                         {!result ? (
                             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '20px', opacity: 0.5 }}>
-                                <div style={{ padding: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}>
+                                <div style={{ width: '144px', height: '144px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <FileText size={64} style={{ opacity: 0.3 }} />
                                 </div>
                                 <p style={{ fontSize: '1.2rem', fontWeight: '500' }}>待执行: 请上传文件并点击"开始提取"</p>
@@ -765,28 +806,51 @@ export default function TemplateReference({ device }) {
                                 </div>
 
                                 {outputFormat === 'markdown' && (
-                                    <div style={{ animation: 'slideUp 0.3s ease' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                    <div ref={resizeRef} style={{ animation: 'slideUp 0.3s ease', position: 'relative', userSelect: isResizing ? 'none' : 'auto' }}>
+                                        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                            <colgroup>
+                                                <col style={{ width: `${fieldDefWidth}px` }} />
+                                                <col />
+                                            </colgroup>
                                             <thead>
                                                 <tr style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-                                                    <th style={{ padding: '15px 20px', textAlign: 'left', fontSize: '13px', color: 'var(--primary-color)', borderBottom: '1px solid var(--glass-border)' }}>字段定义</th>
+                                                    <th style={{ padding: '15px 20px', textAlign: 'left', fontSize: '13px', color: 'var(--primary-color)', borderBottom: '1px solid var(--glass-border)', position: 'relative' }}>
+                                                        字段定义
+                                                        <div
+                                                            onMouseDown={() => setIsResizing(true)}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                right: '-4px',
+                                                                top: 0,
+                                                                bottom: 0,
+                                                                width: '8px',
+                                                                cursor: 'col-resize',
+                                                                background: isResizing ? 'var(--primary-color)' : 'transparent',
+                                                                transition: 'background 0.2s',
+                                                                zIndex: 10
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)'}
+                                                            onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
+                                                        />
+                                                    </th>
                                                     <th style={{ padding: '15px 20px', textAlign: 'left', fontSize: '13px', color: 'var(--primary-color)', borderBottom: '1px solid var(--glass-border)' }}>核心提取值</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {Object.entries(result.data).map(([k, item], idx) => (
+                                                {getSortedEntries(result.data).map(([k, item], idx) => (
                                                     <tr key={idx} style={{ background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                                                        <td style={{ padding: '15px 20px', verticalAlign: 'top', borderBottom: idx === Object.entries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
+                                                        <td style={{ padding: '15px 20px', verticalAlign: 'top', borderBottom: idx === getSortedEntries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
                                                             <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px', color: 'var(--text-primary)' }}>{k}</div>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary-color)' }} />
-                                                                    类型: <code style={{ color: 'var(--primary-color)' }}>{item.type}</code>
-                                                                </span>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                                                                 {item.label && <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>🔖 标签: {item.label}</span>}
+                                                                {item.remarks && (
+                                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                                                                        💬 备注: {item.remarks}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </td>
-                                                        <td style={{ padding: '15px 20px', color: 'var(--text-primary)', borderBottom: idx === Object.entries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
+                                                        <td style={{ padding: '15px 20px', color: 'var(--text-primary)', borderBottom: idx === getSortedEntries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
                                                             {Array.isArray(item.content) ? (
                                                                 <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)' }}>
                                                                     <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%' }}>
