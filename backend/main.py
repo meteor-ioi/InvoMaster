@@ -9,7 +9,7 @@ import hashlib
 import json
 import time
 import pdfplumber
-from typing import List, Optional
+from typing import List, Optional, Any
 
 # Local imports
 from utils import pdf_to_images
@@ -51,7 +51,8 @@ class Region(BaseModel):
     height: float
     label: Optional[str] = None
     remarks: Optional[str] = None # Added: User notes
-    text: Optional[str] = None # For extracted text
+    text: Optional[str] = None # Deprecated: Use content instead
+    content: Optional[Any] = None # Added: Cached extracted data (string or list)
     table_settings: Optional[dict] = None # For table-specific logic
 
 class ExtractRequest(BaseModel):
@@ -378,8 +379,29 @@ async def analyze_from_source(template_id: str):
 
     with open(t_path, "r", encoding="utf-8") as f:
         t_data = json.load(f)
-        regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-        matching_regions = extract_text_from_regions(source_path, regions_objs, image_path=image_paths[0] if image_paths else None)
+        regions_data = t_data.get("regions", [])
+        
+        # Check if we have cached content for all regions
+        has_all_content = all("content" in r and r["content"] is not None for r in regions_data)
+        
+        if has_all_content:
+            print(f"Using cached content for template {template_id}")
+            matching_regions = regions_data
+        else:
+            print(f"Missing cached content for template {template_id}, performing extraction...")
+            regions_objs = [Region(**r) for r in regions_data]
+            matching_regions = extract_text_from_regions(source_path, regions_objs, image_path=image_paths[0] if image_paths else None)
+            
+            # --- Persist the cache back to the JSON file ---
+            try:
+                # Convert back to dict for JSON serialization
+                # Note: Region model includes 'content' now
+                t_data["regions"] = matching_regions
+                with open(t_path, "w", encoding="utf-8") as f:
+                    json.dump(t_data, f, indent=2, ensure_ascii=False)
+                print(f"Extraction result cached for template {template_id}")
+            except Exception as e:
+                print(f"Failed to cache template results: {e}")
 
     return {
         "id": template_id,

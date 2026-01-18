@@ -221,6 +221,19 @@ export default function TemplateCreator({ theme, setTheme, device }) {
     };
 
     const handleSelectTemplate = async (template) => {
+        // 1. Proactively set layout if available in the template list
+        if (template.regions) {
+            const mappedRegions = template.regions.map(r => ({
+                ...r,
+                label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
+            }));
+            setRegions(mappedRegions);
+        }
+        setTemplateName(template.name);
+        setAnalysis(null); // Clear previous analysis but keep regions for layout preview
+        setStep('review');
+        setEditorMode('view');
+
         setLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/templates/${template.id}/analyze`);
@@ -230,10 +243,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                 label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
             }));
             setRegions(mappedRegions);
-            setTemplateName(template.name);
             setFile(null); // Clear local file as we are using server source
-            setStep('review');
-            setEditorMode('view');
             setTableRefining(null);
         } catch (err) {
             console.error('从源文件库加载失败', err);
@@ -523,7 +533,9 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                     {loading && (
                                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', borderRadius: '12px' }}>
                                             <div className="loading-spinner" />
-                                            <p style={{ color: 'white' }}>正在处理 PDF 单据...</p>
+                                            <p style={{ color: 'white' }}>
+                                                {analysis === null && regions.length > 0 ? "正在加载模板源文件..." : "正在处理 PDF 单据..."}
+                                            </p>
                                         </div>
                                     )}
 
@@ -606,7 +618,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                                     }}
                                                 >
                                                     <DocumentEditor
-                                                        image={`${API_BASE}/static/${analysis.images[0]}`}
+                                                        image={analysis ? `${API_BASE}/static/${analysis.images[0]}` : null}
                                                         regions={regions}
                                                         viewFilters={viewFilters}
                                                         setRegions={setRegions}

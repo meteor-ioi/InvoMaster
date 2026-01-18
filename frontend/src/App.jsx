@@ -6,7 +6,7 @@ import ApiCall from './components/ApiCall';
 import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft, Cpu, Zap, Box } from 'lucide-react';
 
 function App() {
-    const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
+    const [view, setView] = useState('reference'); // 'creator', 'reference', 'apicall'
     const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
     const [device, setDevice] = useState(localStorage.getItem('babeldoc-device') || 'cpu');
     const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
@@ -108,7 +108,13 @@ function App() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)'
+                }}>
                     {tabs.map(tab => (
                         <button
                             key={tab.id}

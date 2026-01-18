@@ -40,7 +40,12 @@ def pdf_to_images(pdf_path, output_dir, dpi=200, target_long_side=4000, max_px=8
         
         img_filename = f"page_{i+1}.png"
         img_path = os.path.join(output_dir, img_filename)
-        img.save(img_path)
+        if not os.path.exists(img_path) or os.path.getsize(img_path) == 0:
+            img.save(img_path)
+            # print(f"Saved: {img_path}")
+        else:
+            # print(f"Skipped existing: {img_path}")
+            pass
         image_paths.append(img_path)
         
     doc.close()
