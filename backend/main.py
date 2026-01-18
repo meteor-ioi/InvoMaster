@@ -514,8 +514,8 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                 "cells": cells,
                 "preview": table_data,
                 "snapped_bbox": {
-                    "x": orig_bbox[0] / float(page.width),
-                    "y": orig_bbox[1] / float(page.height),
+                    "x": (orig_bbox[0] - x0_off) / float(page.width),
+                    "y": (orig_bbox[1] - y0_off) / float(page.height),
                     "width": (orig_bbox[2] - orig_bbox[0]) / float(page.width),
                     "height": (orig_bbox[3] - orig_bbox[1]) / float(page.height)
                 }
