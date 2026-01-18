@@ -144,13 +144,14 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
     with pdfplumber.open(pdf_path) as pdf:
         first_page = pdf.pages[0]
         width, height = first_page.width, first_page.height
+        page_bbox = first_page.bbox # (x0, top, x1, bottom)
         
         # Check if page is scanned (no text objects)
         if is_page_scanned(first_page):
             print(f"Scanned PDF detected, attempting OCR injection...")
             if image_path and os.path.exists(image_path):
                 try:
-                    ocr_chars = get_ocr_chars_for_page(image_path, width, height)
+                    ocr_chars = get_ocr_chars_for_page(image_path, width, height, page_bbox)
                     inject_ocr_chars_to_page(first_page, ocr_chars)
                     print(f"OCR injection successful: {len(ocr_chars)} chars")
                 except Exception as e:
@@ -160,11 +161,13 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
         
         for reg in regions:
             # Convert normalized to physical coordinates (x1, y1, x2, y2)
+            # Use page.bbox offset for robust mapping
+            x0_off, y0_off = page_bbox[0], page_bbox[1]
             bbox = (
-                reg.x * width,
-                reg.y * height,
-                (reg.x + reg.width) * width,
-                (reg.y + reg.height) * height
+                x0_off + reg.x * width,
+                y0_off + reg.y * height,
+                x0_off + (reg.x + reg.width) * width,
+                y0_off + (reg.y + reg.height) * height
             )
             
             # Crop region
@@ -412,7 +415,7 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                 img_path = os.path.join(UPLOAD_DIR, img_subdir, "page_1.png")
                 if os.path.exists(img_path):
                     try:
-                        ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height)
+                        ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height, page.bbox)
                         inject_ocr_chars_to_page(page, ocr_chars)
                         print(f"OCR injection successful for table analysis")
                     except Exception as e:
@@ -420,12 +423,14 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                 else:
                     print(f"Image not found for OCR: {img_path}")
             
-            # Use original requested bbox directly to ensure stability
+            # Use original requested bbox with page offset to ensure stability
+            # page.bbox is (x0, top, x1, bottom)
+            x0_off, y0_off = page.bbox[0], page.bbox[1]
             orig_bbox = [
-                req.x * float(page.width),
-                req.y * float(page.height),
-                (req.x + req.width) * float(page.width),
-                (req.y + req.height) * float(page.height)
+                x0_off + req.x * float(page.width),
+                y0_off + req.y * float(page.height),
+                x0_off + (req.x + req.width) * float(page.width),
+                y0_off + (req.y + req.height) * float(page.height)
             ]
             
             bbox = tuple(orig_bbox)

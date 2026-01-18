@@ -54,7 +54,9 @@ def ocr_box_to_pdfplumber_chars(
     confidence: float,
     scale_x: float,
     scale_y: float,
-    pdf_height: float
+    pdf_height: float,
+    x0_offset: float = 0,
+    y0_offset: float = 0
 ) -> List[Dict[str, Any]]:
     """
     Convert a single OCR result box to a list of pdfplumber-compatible 'char' dictionaries.
@@ -71,10 +73,10 @@ def ocr_box_to_pdfplumber_chars(
     y1_px = max(y_coords)
     
     # Convert to PDF coordinates (points)
-    x0_total = x0_px * scale_x
-    x1_total = x1_px * scale_x
-    top = y0_px * scale_y
-    bottom = y1_px * scale_y
+    x0_total = x0_offset + (x0_px * scale_x)
+    x1_total = x0_offset + (x1_px * scale_x)
+    top = y0_offset + (y0_px * scale_y)
+    bottom = y0_offset + (y1_px * scale_y)
     height = bottom - top
     width_total = x1_total - x0_total
     
@@ -88,7 +90,6 @@ def ocr_box_to_pdfplumber_chars(
         
     char_width = width_total / num_chars if num_chars > 0 else 0
     if char_width <= 0:
-        # Fallback for very narrow blocks or single symbols with zero width in OCR
         char_width = 1.0 
     
     for i, char_text in enumerate(text):
@@ -101,8 +102,10 @@ def ocr_box_to_pdfplumber_chars(
             "x1": c_x1,
             "top": top,
             "bottom": bottom,
-            "y0": pdf_height - bottom,
-            "y1": pdf_height - top,
+            # For y0/y1 (y-up), we calculate from bottom edge
+            # This is a bit complex with offsets, so we use top/bottom primarily
+            "y0": (y0_offset + pdf_height) - bottom,
+            "y1": (y0_offset + pdf_height) - top,
             "width": char_width,
             "height": height,
             "size": size,
@@ -121,7 +124,8 @@ def ocr_box_to_pdfplumber_chars(
 def get_ocr_chars_for_page(
     image_path: str,
     pdf_width: float,
-    pdf_height: float
+    pdf_height: float,
+    page_bbox: Tuple[float, float, float, float] = (0, 0, 0, 0)
 ) -> List[Dict[str, Any]]:
     """
     Run OCR on a page image and return pdfplumber-compatible char objects.
@@ -137,10 +141,15 @@ def get_ocr_chars_for_page(
     # Run OCR
     ocr_results = run_ocr_on_image(image_path)
     
+    # Offsets from page bbox
+    x0_off, y0_off = page_bbox[0], page_bbox[1]
+    
     # Convert to pdfplumber format
     all_chars = []
     for box, text, confidence in ocr_results:
-        char_objs = ocr_box_to_pdfplumber_chars(box, text, confidence, scale_x, scale_y, pdf_height)
+        char_objs = ocr_box_to_pdfplumber_chars(
+            box, text, confidence, scale_x, scale_y, pdf_height, x0_off, y0_off
+        )
         all_chars.extend(char_objs)
     
     print(f"OCR detected {len(all_chars)} characters from {image_path}")
