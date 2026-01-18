@@ -7,6 +7,7 @@ import uvicorn
 import shutil
 import hashlib
 import json
+import time
 import pdfplumber
 from typing import List, Optional
 
@@ -292,6 +293,8 @@ async def analyze_document(
 
     # 4. Use AI (Apply frontend params)
     engine = get_layout_engine()
+    device_used = device or engine.device
+    start_time = time.time()
     try:
         # Override with layout inference even if template exists if we want to "re-identify"
         ai_regions = engine.predict(
@@ -302,6 +305,7 @@ async def analyze_document(
             iou=iou,
             agnostic_nms=agnostic_nms
         )
+        inference_time = time.time() - start_time
         # If refreshing or no template found, use AI results
         if refresh or not template_found:
             matching_regions = ai_regions
@@ -321,7 +325,9 @@ async def analyze_document(
         "ai_regions": ai_regions if template_found else [], 
         "template_found": template_found,
         "matched_template": matched_template_info,
-        "is_source": False
+        "is_source": False,
+        "device_used": device_used,
+        "inference_time": round(inference_time, 3) if 'inference_time' in locals() else 0
     }
 
 @app.get("/templates/{template_id}/analyze")

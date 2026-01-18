@@ -30,7 +30,9 @@ const TopToolbar = ({
     deleteRegion,
     clearAllRegions,
     selectedIds,
-    setSelectedIds
+    setSelectedIds,
+    deviceUsed,
+    inferenceTime
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -419,13 +421,17 @@ const TopToolbar = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
-                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
+                        <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
                         <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-                        <button onClick={() => setZoom(z => Math.min(2.0, z + 0.1))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
+                        <button onClick={() => setZoom(z => Math.min(5.0, z + 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
                         <button onClick={() => {
-                            if (zoom < 1.49) setZoom(1.5);
+                            if (zoom < 0.99) setZoom(1.0);
+                            else if (zoom < 1.49) setZoom(1.5);
                             else if (zoom < 1.99) setZoom(2.0);
-                            else setZoom(1.0);
+                            else if (zoom < 2.99) setZoom(3.0);
+                            else if (zoom < 3.99) setZoom(4.0);
+                            else if (zoom < 4.99) setZoom(5.0);
+                            else setZoom(0.5);
                         }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
                     </div>
 

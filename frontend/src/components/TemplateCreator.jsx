@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload } from 'lucide-react';
+import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload, Hash, Zap } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './DocumentEditor';
 import TopToolbar from './TopToolbar';
 import LeftPanel from './LeftPanel';
@@ -9,7 +9,7 @@ import DataPreview from './DataPreview';
 
 const API_BASE = 'http://localhost:8000';
 
-export default function TemplateCreator({ theme, setTheme }) {
+export default function TemplateCreator({ theme, setTheme, device }) {
     const [file, setFile] = useState(null);
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -116,11 +116,12 @@ export default function TemplateCreator({ theme, setTheme }) {
     const [selectedId, setSelectedId] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]); // Multiple selection support
     const [confidence, setConfidence] = useState(0.25);
-    const [device, setDevice] = useState('mps');
     const [zoom, setZoom] = useState(1.0);
     const [showRegions, setShowRegions] = useState(true);
     const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
     const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+    const [lastDeviceUsed, setLastDeviceUsed] = useState(null);
+    const [inferenceTime, setInferenceTime] = useState(0);
     const [showSplitPreview, setShowSplitPreview] = useState(false);
     const [splitPercent, setSplitPercent] = useState(50);
     const [isResizingSplit, setIsResizingSplit] = useState(false);
@@ -198,6 +199,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                 }
             });
             setAnalysis(res.data);
+            if (res.data.device_used) setLastDeviceUsed(res.data.device_used);
+            if (res.data.inference_time) setInferenceTime(res.data.inference_time);
             const mappedRegions = (res.data.regions || []).map(r => ({
                 ...r,
                 label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
@@ -512,6 +515,8 @@ export default function TemplateCreator({ theme, setTheme }) {
                                     clearAllRegions={clearAllRegions}
                                     selectedIds={selectedIds}
                                     setSelectedIds={setSelectedIds}
+                                    deviceUsed={lastDeviceUsed}
+                                    inferenceTime={inferenceTime}
                                 />
 
                                 <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
@@ -669,6 +674,45 @@ export default function TemplateCreator({ theme, setTheme }) {
                                         </>
                                     )}
                                 </div>
+
+                                {/* Footer Bar for Metrics */}
+                                {(lastDeviceUsed || inferenceTime > 0) && (
+                                    <div style={{
+                                        height: '42px',
+                                        borderTop: '1px solid var(--glass-border)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-end',
+                                        padding: '0 20px',
+                                        gap: '20px',
+                                        background: 'rgba(255,255,255,0.02)'
+                                    }}>
+                                        {lastDeviceUsed && (
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: 'var(--primary-color)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                <Hash size={12} /> {lastDeviceUsed.toUpperCase()}
+                                            </div>
+                                        )}
+                                        {inferenceTime > 0 && (
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: 'var(--success-color)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                <Zap size={12} /> {(inferenceTime * 1000).toFixed(0)}ms
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}

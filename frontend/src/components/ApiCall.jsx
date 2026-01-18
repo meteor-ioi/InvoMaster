@@ -4,7 +4,7 @@ import { Code, Copy, Terminal, ChevronDown, Check, ChevronLeft, ChevronRight, Se
 
 const API_BASE = 'http://localhost:8000';
 
-export default function ApiCall({ theme }) {
+export default function ApiCall({ theme, device }) {
     const [templates, setTemplates] = useState([]);
     const [copied, setCopied] = useState(null);
     const [selectedLanguage, setSelectedLanguage] = useState('python');
@@ -35,7 +35,8 @@ export default function ApiCall({ theme }) {
 # 1. 准备参数
 url = "${API_BASE}/extract"
 params = {
-    "template_id": "YOUR_TEMPLATE_ID" # 替换为实际模板 ID
+    "template_id": "YOUR_TEMPLATE_ID", # 替换为实际模板 ID
+    "device": "${device}" # 硬件加速设备: cpu, cuda, mps
 }
 
 # 2. 上传文件进行提取
@@ -52,7 +53,7 @@ if response.status_code == 200:
 else:
     print("错误信息:", response.text)`;
 
-    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=YOUR_TEMPLATE_ID" \\
+    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=YOUR_TEMPLATE_ID&device=${device}" \\
   -F "file=@/path/to/invoice.pdf"`;
 
     const filteredTemplates = templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));

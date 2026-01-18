@@ -4,7 +4,7 @@ import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, Fil
 
 const API_BASE = 'http://localhost:8000';
 
-export default function TemplateReference() {
+export default function TemplateReference({ device }) {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('auto');
     const [file, setFile] = useState(null);
@@ -117,11 +117,13 @@ export default function TemplateReference() {
 
             let res;
             if (selectedTemplate === 'auto') {
-                res = await axios.post(`${API_BASE}/analyze`, formData);
+                res = await axios.post(`${API_BASE}/analyze`, formData, {
+                    params: { device }
+                });
                 const dataMap = {};
                 (res.data.regions || []).forEach(r => {
                     const k = r.label || r.id;
-                    dataMap[k] = r.text || "";
+                    dataMap[k] = r.content || r.text || "";
                 });
 
                 setResult({
