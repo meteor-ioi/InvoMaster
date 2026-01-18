@@ -12,6 +12,8 @@ import numpy as np
 from PIL import Image
 
 # Lazy load RapidOCR to avoid import overhead if not used
+import config # 引入配置管理
+
 _ocr_engine = None
 
 def get_ocr_engine():
@@ -20,7 +22,17 @@ def get_ocr_engine():
     if _ocr_engine is None:
         try:
             from rapidocr_onnxruntime import RapidOCR
-            _ocr_engine = RapidOCR()
+            
+            kwargs = {}
+            # 在打包环境中，强制使用本地模型文件
+            if config.is_frozen():
+                # 假设模型文件已按标准命名放入 OCR_MODELS_DIR
+                kwargs['det_model_path'] = str(config.OCR_MODELS_DIR / "ch_PP-OCRv4_det_infer.onnx")
+                kwargs['cls_model_path'] = str(config.OCR_MODELS_DIR / "ch_ppocr_mobile_v2.0_cls_infer.onnx")
+                kwargs['rec_model_path'] = str(config.OCR_MODELS_DIR / "ch_PP-OCRv4_rec_infer.onnx")
+                print(f"Initializing RapidOCR in frozen mode with models at: {config.OCR_MODELS_DIR}")
+            
+            _ocr_engine = RapidOCR(**kwargs)
             print("RapidOCR engine initialized successfully.")
         except ImportError as e:
             print(f"Failed to import RapidOCR: {e}")

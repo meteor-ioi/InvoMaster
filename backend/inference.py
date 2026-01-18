@@ -1,5 +1,7 @@
 import torch
 import os
+import config # 引入配置管理
+
 # Try to import from doclayout_yolo first, which handles YOLOv10 architecture correctly
 try:
     from doclayout_yolo import YOLOv10 as YOLO
@@ -20,9 +22,13 @@ def get_device(force_mps=False):
     return "cpu"
 
 class LayoutEngine:
-    def __init__(self, model_path="data/models/yolov10-doclayout.pt", device=None):
-        if not os.path.exists(model_path):
+    def __init__(self, model_path=None, device=None):
+        if model_path is None:
+            model_path = str(config.YOLO_MODEL_PATH)
+
+        if not os.path.exists(model_path) and not config.is_frozen():
             # Fallback to standard yolov8n if doclayout is missing during first run
+            # Only do this in dev mode, in frozen mode we expect model to be present
             print(f"Warning: {model_path} not found. Using fallback model.")
             model_path = "yolov8n.pt"
             

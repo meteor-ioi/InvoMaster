@@ -3,8 +3,9 @@ import json
 import os
 import datetime
 from typing import List, Optional, Dict
+import config  # 引入配置管理
 
-DB_PATH = "data/metadata.db"
+DB_PATH = str(config.DB_PATH)
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)

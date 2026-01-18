@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Currently targeting macOS and Windows. Ubuntu can be added.
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv
+
+      # ------------------------------------------------------------
+      # 1. Prepare Environment & Models
+      # ------------------------------------------------------------
+      - name: Download AI Models
+        run: uv run python scripts/download_models.py
+        env:
+            HF_ENDPOINT: "https://hf-mirror.com" 
+
+      # ------------------------------------------------------------
+      # 2. Build Frontend
+      # ------------------------------------------------------------
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: npm run build
+
+      # ------------------------------------------------------------
+      # 3. Build Backend
+      # ------------------------------------------------------------
+      - name: Setup Backend Environment
+        working-directory: backend
+        # Using uv to manage deps
+        run: |
+          uv sync
+          uv pip install pyinstaller
+
+      - name: Build Backend Executable
+        working-directory: backend
+        run: uv run pyinstaller --clean build.spec
+
+      # ------------------------------------------------------------
+      # 4. Package Electron App
+      # ------------------------------------------------------------
+      - name: Install Electron Dependencies
+        working-directory: electron
+        run: npm install
+
+      - name: Build & Release Electron App
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist
+
+      # Artifacts are automatically uploaded to GitHub Release by electron-builder

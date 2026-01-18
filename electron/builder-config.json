@@ -1,0 +1,43 @@
+{
+    "appId": "com.antigravity.industrypdf",
+    "productName": "Industry PDF",
+    "directories": {
+        "output": "dist",
+        "buildResources": "build"
+    },
+    "files": [
+        "**/*",
+        "../frontend/dist/**/*"
+    ],
+    "extraResources": [
+        {
+            "from": "../backend/dist/industry_pdf_backend",
+            "to": "backend/industry_pdf_backend"
+        },
+        {
+            "from": "../backend/dist/industry_pdf_backend.exe",
+            "to": "backend/industry_pdf_backend.exe"
+        }
+    ],
+    "mac": {
+        "target": [
+            "dmg",
+            "zip"
+        ],
+        "category": "public.app-category.productivity",
+        "hardenedRuntime": true,
+        "gatekeeperAssess": false
+    },
+    "win": {
+        "target": [
+            "nsis"
+        ],
+        "icon": "build/icon.ico"
+    },
+    "linux": {
+        "target": [
+            "AppImage"
+        ],
+        "category": "Office"
+    }
+}

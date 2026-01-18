@@ -18,18 +18,18 @@ from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
 from format_utils import convert_to_format
+import config  # 统一配置管理
 
 app = FastAPI(title="HITL Document Extraction API")
 
-# Storage paths
-UPLOAD_DIR = "data/uploads"
-TEMPLATES_DIR = "data/templates" # Root dir
-TEMPLATES_AUTO_DIR = "data/templates/auto"
-TEMPLATES_CUSTOM_DIR = "data/templates/custom"
-TEMPLATES_SOURCE_DIR = "data/template_sources"
+# Storage paths - 从 config 模块获取
+UPLOAD_DIR = str(config.UPLOAD_DIR)
+TEMPLATES_DIR = str(config.TEMPLATES_DIR)
+TEMPLATES_AUTO_DIR = str(config.TEMPLATES_AUTO_DIR)
+TEMPLATES_CUSTOM_DIR = str(config.TEMPLATES_CUSTOM_DIR)
+TEMPLATES_SOURCE_DIR = str(config.TEMPLATES_SOURCE_DIR)
 
-for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR]:
-    os.makedirs(d, exist_ok=True)
+# 目录已在 config 模块初始化时创建
 
 # Enable CORS
 app.add_middleware(
@@ -77,7 +77,7 @@ class Template(BaseModel):
     tags: List[str] = [] # Added for metadata
     filename: Optional[str] = None
 
-HISTORY_FILE = "data/history.jsonl"
+HISTORY_FILE = str(config.HISTORY_FILE)
 
 def append_history(item: dict):
     with open(HISTORY_FILE, "a", encoding="utf-8") as f:
