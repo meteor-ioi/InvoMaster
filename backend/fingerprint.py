@@ -3,11 +3,16 @@ import pdfplumber
 import os
 import re
 import json
+import numpy as np
+import fitz  # PyMuPDF
+from PIL import Image
 from typing import List, Dict, Optional, Tuple
 from difflib import SequenceMatcher
+from inference import get_layout_engine
 
 class FingerprintEngine:
     def __init__(self):
+        # 复用项目中已有的 LayoutEngine
         pass
 
     def get_md5(self, file_path: str) -> str:
@@ -19,119 +24,144 @@ class FingerprintEngine:
 
     def extract_features(self, file_path: str) -> Dict:
         """
-        Extracts lightweight features: Aspect Ratio, Metadata, and Header/Footer text.
+        Extracts visual layout features using DocLayout-YOLO.
+        Features include: box categories and their relative positions.
         """
         features = {
+            "version": "v2_visual",
             "md5": self.get_md5(file_path),
             "aspect_ratio": 0.0,
-            "metadata": {},
-            "header_text": "",
-            "footer_text": ""
+            "layout_boxes": [] # List of [class_id, x_center, y_center, width, height]
         }
         
         try:
+            # 1. 基础宽高比 (使用 pdfplumber 快速获取)
             with pdfplumber.open(file_path) as pdf:
                 if len(pdf.pages) > 0:
                     page = pdf.pages[0]
-                    # 1. Aspect Ratio
                     features["aspect_ratio"] = round(float(page.width) / float(page.height), 3)
+            
+            # 2. 视觉布局提取 (复用 singleton 引擎)
+            engine_instance = get_layout_engine()
+            model = engine_instance.model
+            
+            # 将 PDF 第一页转为图像进行推理
+            doc = fitz.open(file_path)
+            if len(doc) > 0:
+                page = doc[0]
+                # 渲染页面的缩放比例（200 dpi 左右足够识别布局）
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                
+                # 执行推理
+                results = model.predict(img)
+                
+                if results and len(results) > 0:
+                    result = results[0]
+                    boxes = result.boxes
                     
-                    # 2. Metadata
-                    meta = pdf.metadata or {}
-                    # Only keep relevant keys to avoid bloat
-                    for key in ["Author", "Producer", "Creator"]:
-                        if key in meta:
-                            features["metadata"][key] = str(meta[key])
+                    layout_data = []
+                    # 遍历识别出的区块
+                    for box in boxes:
+                        cls_id = int(box.cls[0].item())
+                        # 归一化 xywh 坐标 (0-1)
+                        xywh = box.xywhn[0].tolist()
+                        # [类别, x_center, y_center, width, height]
+                        layout_data.append([cls_id] + [round(v, 4) for v in xywh])
                     
-                    # 3. Header Text (Top 15%)
-                    header_bbox = (0, 0, page.width, page.height * 0.15)
-                    header_page = page.within_bbox(header_bbox)
-                    features["header_text"] = self._normalize_text(header_page.extract_text() or "")
-                    
-                    # 4. Footer Text (Bottom 10%)
-                    footer_bbox = (0, page.height * 0.90, page.width, page.height)
-                    footer_page = page.within_bbox(footer_bbox)
-                    features["footer_text"] = self._normalize_text(footer_page.extract_text() or "")
+                    # 按 Y 轴中心点排序，确保指纹序列的一致性
+                    layout_data.sort(key=lambda x: x[2])
+                    features["layout_boxes"] = layout_data
+                
+                doc.close()
                     
         except Exception as e:
-            print(f"Error extracting features: {e}")
+            print(f"Error extracting visual features: {e}")
             
         return features
 
-    def _normalize_text(self, text: str) -> str:
-        # Remove digits, special chars, extra whitespace
-        text = re.sub(r'\d+', '', text)
-        text = re.sub(r'[^\w\s]', '', text)
-        text = re.sub(r'\s+', ' ', text)
-        return text.lower().strip()[:500]
+    def _get_layout_signature(self, boxes: List[List]) -> str:
+        # 将类别 ID 转换为字符序列，便于 SequenceMatcher 进行快速模糊匹配
+        return "".join([chr(65 + b[0]) for b in boxes])
 
     def calculate_score(self, target: Dict, candidate_features: Dict) -> float:
         """
-        Weights: 
-        Aspect Ratio: Hard Gate (if diff > 0.02, score=0)
-        Header Text: 50%
-        Footer Text: 30%
-        Metadata: 20%
+        Calculates similarity using visual layout alignment.
+        1. Aspect Ratio (Hard gate)
+        2. Layout Category Sequence (60%)
+        3. Spatial Position Correlation (40%)
         """
-        # 0. Aspect Ratio Filter
+        # 0. 版本兼容性检查 (如果候选是旧版，返回 0)
+        if candidate_features.get("version") != "v2_visual":
+            return 0.0
+
+        # 1. 宽高比硬过滤 (容差 0.03)
         t_ar = target.get("aspect_ratio", 0)
         c_ar = candidate_features.get("aspect_ratio", 0)
-        if abs(t_ar - c_ar) > 0.02:
+        if abs(t_ar - c_ar) > 0.03:
             return 0.0
             
-        score = 0.0
+        t_boxes = target.get("layout_boxes", [])
+        c_boxes = candidate_features.get("layout_boxes", [])
         
-        # 1. Header Similarity (50%)
-        header_sim = SequenceMatcher(None, target.get("header_text", ""), candidate_features.get("header_text", "")).ratio()
-        score += header_sim * 0.5
-        
-        # 2. Footer Similarity (30%)
-        footer_sim = SequenceMatcher(None, target.get("footer_text", ""), candidate_features.get("footer_text", "")).ratio()
-        score += footer_sim * 0.3
-        
-        # 3. Metadata Similarity (20%)
-        t_meta = target.get("metadata", {})
-        c_meta = candidate_features.get("metadata", {})
-        meta_matches = 0
-        total_meta_keys = len(t_meta)
-        if total_meta_keys > 0:
-            for k, v in t_meta.items():
-                if c_meta.get(k) == v:
-                    meta_matches += 1
-            score += (meta_matches / total_meta_keys) * 0.2
-        else:
-            # If no metadata, redistribute weight to header/footer
-            score += (header_sim * 0.1 + footer_sim * 0.1)
+        if not t_boxes or not c_boxes:
+            return 0.0
             
-        return score
+        # 2. 类别序列相似度 (60%)
+        # 按 Y 轴排序已在 extract_features 中完成
+        t_sig = self._get_layout_signature(t_boxes)
+        c_sig = self._get_layout_signature(c_boxes)
+        
+        seq_sim = SequenceMatcher(None, t_sig, c_sig).ratio()
+        
+        # 如果序列差异过大，直接返回
+        if seq_sim < 0.4:
+            return seq_sim * 0.6
+            
+        # 3. 空间位置校验 (40%)
+        # 简单的线性对比（由于已排序并归一化）
+        # 我们取前 N 个匹配的区块计算 Y 轴偏差均值
+        y_diffs = []
+        min_len = min(len(t_boxes), len(c_boxes))
+        for i in range(min_len):
+            if t_boxes[i][0] == c_boxes[i][0]: # 类别相同才比对坐标
+                diff = abs(t_boxes[i][2] - c_boxes[i][2]) # Y_center 偏差
+                y_diffs.append(max(0, 1 - (diff * 5))) # 偏差越大得分越低，20% 偏差即为 0
+        
+        spatial_sim = sum(y_diffs) / min_len if y_diffs else 0.0
+            
+        return (seq_sim * 0.6) + (spatial_sim * 0.4)
 
     def find_best_match(self, 
                         target_file: str, 
                         candidates: List[Dict], 
-                        threshold: float = 0.8) -> Tuple[Optional[Dict], float]:
+                        threshold: float = 0.7) -> Tuple[Optional[Dict], float]:
         
-        # 1. MD5 Fast Match
+        # 1. MD5 Fast Match (首选完全匹配)
         target_md5 = self.get_md5(target_file)
         for cand in candidates:
+            # 兼容字段名 fingerprint，通常存储的是 md5
             if cand.get('fingerprint') == target_md5:
                 return cand, 1.0
                 
-        # 2. Weighted Match
+        # 2. 视觉特征提取与对比
         target_features = self.extract_features(target_file)
         best_score = 0.0
         best_cand = None
         
         for cand in candidates:
-            # candidate.fingerprint_text is stored as JSON string of features in our schema
+            # candidate.fingerprint_text 存储的是特征 JSON 字符串
             try:
-                cand_features = json.loads(cand.get('fingerprint_text') or '{}')
+                raw_fp = cand.get('fingerprint_text') or '{}'
+                cand_features = json.loads(raw_fp)
                 if not cand_features: continue
                 
                 score = self.calculate_score(target_features, cand_features)
                 if score > best_score:
                     best_score = score
                     best_cand = cand
-            except:
+            except Exception as e:
+                print(f"Match error for candidate {cand.get('id')}: {e}")
                 continue
                 
         if best_score >= threshold:

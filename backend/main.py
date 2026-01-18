@@ -15,6 +15,7 @@ from utils import pdf_to_images
 from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
+from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
 
 app = FastAPI(title="HITL Document Extraction API")
 
@@ -133,15 +134,29 @@ def get_file_fingerprint(file_path):
         hasher.update(buf)
     return hasher.hexdigest()
 
-def extract_text_from_regions(pdf_path, regions: List[Region]):
+def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optional[str] = None):
     """
     Uses pdfplumber to extract text from specific normalized coordinates.
     Supports high-precision table extraction if region type is 'table'.
+    For scanned PDFs, automatically injects OCR results if no text is found.
     """
     results = []
     with pdfplumber.open(pdf_path) as pdf:
         first_page = pdf.pages[0]
         width, height = first_page.width, first_page.height
+        
+        # Check if page is scanned (no text objects)
+        if is_page_scanned(first_page):
+            print(f"Scanned PDF detected, attempting OCR injection...")
+            if image_path and os.path.exists(image_path):
+                try:
+                    ocr_chars = get_ocr_chars_for_page(image_path, width, height)
+                    inject_ocr_chars_to_page(first_page, ocr_chars)
+                    print(f"OCR injection successful: {len(ocr_chars)} chars")
+                except Exception as e:
+                    print(f"OCR injection failed: {e}")
+            else:
+                print(f"No image path provided for OCR, extraction may fail")
         
         for reg in regions:
             # Convert normalized to physical coordinates (x1, y1, x2, y2)
@@ -242,8 +257,8 @@ async def analyze_document(
         # Get all candidates
         candidates = db.get_all_auto_templates()
         if candidates:
-            # Match using engine
-            match_cand, score = fp_engine.find_best_match(file_path, candidates, threshold=0.85)
+            # Match using engine (Threshold tuned for DocLayout-YOLO: 0.7)
+            match_cand, score = fp_engine.find_best_match(file_path, candidates, threshold=0.7)
             
             if match_cand:
                 print(f"Matched template {match_cand['id']} with score {score}")
@@ -252,11 +267,15 @@ async def analyze_document(
                      try:
                         with open(t_path, "r", encoding="utf-8") as f:
                             t_data = json.load(f)
+                            # Ensure images are generated before extraction if needed for OCR
+                            img_subdir = f"images_{fingerprint[:8]}"
+                            img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
+                            image_paths = pdf_to_images(file_path, img_save_path)
+                            
+                            regions_objs = [Region(**r) for r in t_data.get("regions", [])]
+                            matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
                             template_found = True
                             matched_template_info = match_cand
-                            # Apply regions to current file
-                            regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-                            matching_regions = extract_text_from_regions(file_path, regions_objs)
                      except Exception as e:
                          print(f"Error loading matched template {match_cand['id']}: {e}")
             else:
@@ -351,7 +370,7 @@ async def analyze_from_source(template_id: str):
     with open(t_path, "r", encoding="utf-8") as f:
         t_data = json.load(f)
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-        matching_regions = extract_text_from_regions(source_path, regions_objs)
+        matching_regions = extract_text_from_regions(source_path, regions_objs, image_path=image_paths[0] if image_paths else None)
 
     return {
         "id": template_id,
@@ -382,7 +401,24 @@ async def analyze_table_structure(req: TableAnalysisRequest):
         
     try:
         with pdfplumber.open(file_path) as pdf:
-            page = pdf.pages[0] 
+            page = pdf.pages[0]
+            
+            # Check if page is scanned (no text objects) and inject OCR if needed
+            if is_page_scanned(page):
+                print(f"Scanned PDF detected in /table/analyze, attempting OCR...")
+                # Find corresponding image from fingerprint
+                fingerprint = get_file_fingerprint(file_path)
+                img_subdir = f"images_{fingerprint[:8]}"
+                img_path = os.path.join(UPLOAD_DIR, img_subdir, "page_1.png")
+                if os.path.exists(img_path):
+                    try:
+                        ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height)
+                        inject_ocr_chars_to_page(page, ocr_chars)
+                        print(f"OCR injection successful for table analysis")
+                    except Exception as e:
+                        print(f"OCR injection failed: {e}")
+                else:
+                    print(f"Image not found for OCR: {img_path}")
             
             # Use original requested bbox directly to ensure stability
             orig_bbox = [
@@ -580,6 +616,57 @@ async def delete_template(template_id: str):
 
     return {"status": "success", "message": f"Template {template_id} deleted"}
 
+@app.post("/templates/migrate")
+async def migrate_templates_fingerprints():
+    """
+    Utility to upgrade all existing templates to v2_visual fingerprints.
+    It uses the preserved source PDFs in data/template_sources.
+    """
+    templates = db.list_templates()
+    migrated_count = 0
+    errors = []
+    
+    for t in templates:
+        t_id = t['id']
+        source_pdf = os.path.join(TEMPLATES_SOURCE_DIR, f"{t_id}.pdf")
+        
+        if os.path.exists(source_pdf):
+            try:
+                # 重新提取视觉特征
+                new_features = fp_engine.extract_features(source_pdf)
+                features_json = json.dumps(new_features)
+                
+                # 更新数据库
+                db.save_template(
+                    t_id=t_id,
+                    mode=t['mode'],
+                    name=t['name'],
+                    filename=t['filename'],
+                    fingerprint=t['fingerprint'],
+                    fingerprint_text=features_json,
+                    tags=t['tags']
+                )
+                
+                # 同步更新 JSON 文件内容 (可选但推荐保持一致)
+                if t['filename'] and os.path.exists(t['filename']):
+                    with open(t['filename'], "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    data['fingerprint_text'] = features_json
+                    with open(t['filename'], "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=2, ensure_ascii=False)
+                        
+                migrated_count += 1
+            except Exception as e:
+                errors.append({"id": t_id, "error": str(e)})
+        else:
+            errors.append({"id": t_id, "error": "Source PDF not found in repository"})
+            
+    return {
+        "status": "success" if not errors else "partial",
+        "migrated": migrated_count,
+        "errors": errors
+    }
+
 
 @app.post("/extract/{template_id}")
 async def extract_with_custom_template(
@@ -609,9 +696,14 @@ async def extract_with_custom_template(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 3. Extract using forced regions
+        # 3. Extract using forced regions (Generate images first for OCR support)
+        fingerprint = get_file_fingerprint(file_path)
+        img_subdir = f"images_{fingerprint[:8]}"
+        img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
+        image_paths = pdf_to_images(file_path, img_save_path)
+        
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-        extracted_regions = extract_text_from_regions(file_path, regions_objs)
+        extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
         
         # 4. Format Output Structure
         result_map = {}

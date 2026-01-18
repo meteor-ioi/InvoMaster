@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -11,7 +11,7 @@ export default function TemplateReference() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [history, setHistory] = useState([]);
-    const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml'
+    const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml', 'csv'
     const [copied, setCopied] = useState(false);
     const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(null);
 
@@ -232,11 +232,52 @@ export default function TemplateReference() {
         return xml;
     };
 
+    const getCsv = () => {
+        if (!result) return "";
+        let csv = "\uFEFF"; // BOM to force Excel to read as UTF-8
+        csv += `文件名称,${result.filename}\n`;
+        csv += `匹配模板,${result.template_name}\n`;
+        csv += `识别模式,${result.mode}\n\n`;
+
+        Object.entries(result.data).forEach(([regionId, item]) => {
+            csv += `>>> 区域: ${item.label || regionId} [${item.type}]\n`;
+            if (item.remarks) {
+                // Handle commas/quotes in remarks
+                let r = String(item.remarks).replace(/"/g, '""');
+                if (r.search(/("|,|\n)/g) >= 0) r = `"${r}"`;
+                csv += `备注,${r}\n`;
+            }
+
+            if (Array.isArray(item.content)) {
+                // Table content
+                if (item.content.length > 0) {
+                    item.content.forEach(row => {
+                        const escapedRow = row.map(cell => {
+                            if (cell === null || cell === undefined) return '';
+                            let s = String(cell).replace(/"/g, '""');
+                            if (s.search(/("|,|\n)/g) >= 0) s = `"${s}"`;
+                            return s;
+                        });
+                        csv += escapedRow.join(',') + '\n';
+                    });
+                }
+            } else {
+                // Text content
+                let s = String(item.content || '').replace(/"/g, '""');
+                if (s.search(/("|,|\n)/g) >= 0) s = `"${s}"`;
+                csv += `内容,${s}\n`;
+            }
+            csv += '\n'; // Empty line between regions
+        });
+        return csv;
+    };
+
     const handleCopy = () => {
         let text = "";
         if (outputFormat === 'markdown') text = getMarkdown();
         else if (outputFormat === 'json') text = JSON.stringify(getJson(), null, 2);
         else if (outputFormat === 'xml') text = getXml();
+        else if (outputFormat === 'csv') text = getCsv();
 
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -251,6 +292,7 @@ export default function TemplateReference() {
         if (outputFormat === 'markdown') { content = getMarkdown(); ext = "md"; }
         else if (outputFormat === 'json') { content = JSON.stringify(getJson(), null, 2); ext = "json"; type = "application/json"; }
         else if (outputFormat === 'xml') { content = getXml(); ext = "xml"; type = "application/xml"; }
+        else if (outputFormat === 'csv') { content = getCsv(); ext = "csv"; type = "text/csv;charset=utf-8;"; }
 
         const blob = new Blob([content], { type });
         const url = URL.createObjectURL(blob);
@@ -652,8 +694,10 @@ export default function TemplateReference() {
                                 <div style={{ display: 'flex', background: 'var(--input-bg)', padding: '3px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                                     {[
                                         { id: 'markdown', label: 'MD', icon: <FileText size={14} /> },
+
                                         { id: 'json', label: 'JSON', icon: <FileJson size={14} /> },
-                                        { id: 'xml', label: 'XML', icon: <FileCode size={14} /> }
+                                        { id: 'xml', label: 'XML', icon: <FileCode size={14} /> },
+                                        { id: 'csv', label: 'CSV', icon: <FileSpreadsheet size={14} /> }
                                     ].map(f => (
                                         <button
                                             key={f.id}
@@ -778,6 +822,20 @@ export default function TemplateReference() {
                                         color: '#60a5fa'
                                     }}>
                                         {getXml()}
+                                    </pre>
+                                )}
+
+                                {outputFormat === 'csv' && (
+                                    <pre className="custom-scrollbar" style={{
+                                        background: 'rgba(15, 23, 42, 0.9)',
+                                        padding: '24px', borderRadius: '16px',
+                                        overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
+                                        border: '1px solid var(--glass-border)',
+                                        animation: 'slideUp 0.3s ease',
+                                        maxHeight: '600px',
+                                        color: '#f472b6' // Pinkish/Rose for CSV
+                                    }}>
+                                        {getCsv()}
                                     </pre>
                                 )}
                             </div>

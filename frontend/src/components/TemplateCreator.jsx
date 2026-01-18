@@ -203,7 +203,7 @@ export default function TemplateCreator({ theme, setTheme }) {
                 label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
             }));
             setRegions(mappedRegions);
-            setTemplateName(res.data.template_found ? `识别_${res.data.filename}` : `模型_${res.data.filename}`);
+            setTemplateName(res.data.template_found ? (res.data.matched_template?.name || `识别_${res.data.filename}`) : `模型_${res.data.filename}`);
             // If template found, use its mode, otherwise default to auto
             setTemplateMode(res.data.matched_template?.mode || 'auto');
             setStep('review');

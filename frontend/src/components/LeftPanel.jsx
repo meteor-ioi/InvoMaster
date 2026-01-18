@@ -312,8 +312,9 @@ const LeftPanel = ({
                                 return (
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         {filtered.map(t => {
-                                            const IsMatched = analysis && t.fingerprint === analysis.fingerprint;
-                                            const IsSelected = analysis && t.id === analysis.id;
+                                            const matchedId = analysis?.matched_template?.id;
+                                            const IsMatched = analysis && (t.id === matchedId);
+                                            const IsSelected = analysis && (t.id === analysis.id || t.id === matchedId);
 
                                             return (
                                                 <div
@@ -323,10 +324,11 @@ const LeftPanel = ({
                                                     style={{
                                                         padding: '10px',
                                                         borderRadius: '10px',
-                                                        background: (IsMatched || IsSelected) ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)',
+                                                        background: IsMatched ? 'rgba(16, 185, 129, 0.12)' : (IsSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)'),
                                                         border: IsMatched ? '2px solid var(--success-color)' : (IsSelected ? '2px solid var(--primary-color)' : '1px solid var(--glass-border)'),
                                                         marginBottom: '10px',
-                                                        cursor: 'pointer'
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s ease'
                                                     }}
                                                 >
                                                     <div

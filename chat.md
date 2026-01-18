@@ -537,3 +537,30 @@
 - **右侧主栏**：API 代码预览区域放置在右侧主内容区，同样高度固定并支持内部滚动。
 - **一致性**：实现了全站三大核心板块（模板制作、模板引用、API 调用）的布局逻辑和视觉风格的高度统一。
 
+
+## 2026-01-18
+
+### 13:38
+**用户提问**：帮我启动项目，咱们继续开发吧
+**AI 答复**：已成功启动后端（端口 8000）和前端（端口 5173）服务。
+- 后端使用 `uv run python run_server.py` 启动。
+- 前端使用 `npm run dev` 启动，并在 Chrome 浏览器中打开页面。
+
+### 13:54
+**用户提问**：为扫描版 PDF 增加 RapidOCR 支持，实现与 pdfplumber 表格微调功能的协同。
+**AI 答复**：已完成 RapidOCR 集成。
+- **核心原理**：采用"OCR 注入"策略，将 RapidOCR 识别出的文字坐标转换为 pdfplumber 可识别的"char"对象格式，注入到 pdfplumber 的页面对象中。
+- **新增依赖**：在 `pyproject.toml` 中添加了 `rapidocr-onnxruntime>=1.4.0`。
+- **新增模块**：创建了 [ocr_utils.py](file:///Users/icychick/Projects/industry_PDF/backend/ocr_utils.py)，包含：
+  - `get_ocr_engine()`：单例模式加载 RapidOCR 引擎
+  - `get_ocr_chars_for_page()`：将 OCR 结果转换为 pdfplumber 兼容格式
+  - `inject_ocr_chars_to_page()`：将 OCR 字符注入 pdfplumber 页面
+  - `is_page_scanned()`：判断页面是否为扫描件
+### 14:23
+**用户提问**：识别图片型 pdf 后，点击“高精度表格微调”后，提示“获取表格结构分析失败”。
+**AI 答复**：已修复该问题。
+- **原因分析**：经日志分析，发现 `pdfplumber` 在处理注入的 OCR 字符时，由于缺少 `doctop`、`y0`、`y1` 等关键空间属性导致报错 `KeyError: 'doctop'`。此外，OCR 识别出的整体文本块缺乏字符级间距，影响了表格边框的自动推断。
+- **修复方案**：
+  1. **补全属性**：在注入对象中完整补齐了 `doctop`、`y0`、`y1`、`size`、`adv` 等 `pdfplumber` 必需的坐标属性。
+  2. **字符拆分**：实现了将 OCR 识别的文本块自动拆分为单个字符对象，从而极大地提升了 `pdfplumber` 基于“文字对齐”策略进行表格识别的精度。
+- **验证**：后端服务已自动重载，现在扫描件的“高精度表格微调”应能正常显示预览和结构线。
