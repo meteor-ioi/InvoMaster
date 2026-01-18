@@ -282,6 +282,32 @@ const RightSidebar = ({
                                                     </button>
                                                 );
                                             })}
+
+                                            <button
+                                                onClick={() => selectedRegion.type === 'table' && handleEnterTableRefine(selectedRegion)}
+                                                disabled={selectedRegion.type !== 'table' || selectedRegion.locked}
+                                                style={{
+                                                    gridColumn: 'span 3',
+                                                    marginTop: '4px',
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px',
+                                                    cursor: selectedRegion.type === 'table' && !selectedRegion.locked ? 'pointer' : 'not-allowed',
+                                                    background: selectedRegion.type === 'table' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
+                                                    border: selectedRegion.type === 'table' ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
+                                                    color: selectedRegion.type === 'table' ? 'var(--success-color)' : 'var(--text-secondary)',
+                                                    opacity: selectedRegion.type === 'table' ? 1 : 0.5,
+                                                    transition: 'all 0.3s'
+                                                }}
+                                            >
+                                                <Grid size={14} />
+                                                高精度表格微调
+                                            </button>
                                         </div>
                                     </div>
 

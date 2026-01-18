@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
-import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft, Cpu, Zap, Box } from 'lucide-react';
+import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft, Cpu, Zap, Box, Monitor } from 'lucide-react';
 
 function App() {
     const [view, setView] = useState('reference'); // 'creator', 'reference', 'apicall'
-    const [theme, setTheme] = useState(localStorage.getItem('babeldoc-theme') || 'dark');
+    // 主题模式: 'system' | 'light' | 'dark'
+    const [themeMode, setThemeMode] = useState(localStorage.getItem('babeldoc-theme-mode') || 'system');
+    // 实际应用的主题: 'light' | 'dark'
+    const [appliedTheme, setAppliedTheme] = useState('dark');
     const [device, setDevice] = useState(localStorage.getItem('babeldoc-device') || 'cpu');
     const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
 
@@ -17,10 +20,40 @@ function App() {
         window.dispatchEvent(new CustomEvent('toggle-sidebars', { detail: { collapsed: newState } }));
     };
 
+    // 获取系统主题偏好
+    const getSystemTheme = () => {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    // 根据主题模式计算实际应用的主题
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('babeldoc-theme', theme);
-    }, [theme]);
+        let newAppliedTheme;
+
+        if (themeMode === 'system') {
+            newAppliedTheme = getSystemTheme();
+        } else {
+            newAppliedTheme = themeMode;
+        }
+
+        setAppliedTheme(newAppliedTheme);
+        document.documentElement.setAttribute('data-theme', newAppliedTheme);
+        localStorage.setItem('babeldoc-theme-mode', themeMode);
+    }, [themeMode]);
+
+    // 监听系统主题变化
+    useEffect(() => {
+        if (themeMode !== 'system') return;
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = (e) => {
+            const newTheme = e.matches ? 'dark' : 'light';
+            setAppliedTheme(newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+        };
+
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, [themeMode]);
 
     useEffect(() => {
         localStorage.setItem('babeldoc-device', device);
@@ -164,7 +197,11 @@ function App() {
                         </button>
 
                         <button
-                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            onClick={() => {
+                                // 循环切换: system -> light -> dark -> system
+                                const nextMode = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
+                                setThemeMode(nextMode);
+                            }}
                             style={{
                                 background: 'var(--input-bg)',
                                 border: '1px solid var(--glass-border)',
@@ -178,9 +215,15 @@ function App() {
                                 transition: 'all 0.2s ease',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                             }}
-                            title={theme === 'dark' ? '切换至浅色模式' : '切换至深色模式'}
+                            title={
+                                themeMode === 'system' ? '跟随系统主题' :
+                                    themeMode === 'light' ? '白天主题' :
+                                        '黑夜主题'
+                            }
                         >
-                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                            {themeMode === 'system' ? <Monitor size={18} /> :
+                                themeMode === 'light' ? <Sun size={18} /> :
+                                    <Moon size={18} />}
                         </button>
                     </div>
                 </div>
@@ -188,9 +231,9 @@ function App() {
 
             {/* 内容区域 */}
             <main style={{ flex: 1, position: 'relative' }}>
-                {view === 'creator' && <TemplateCreator theme={theme} setTheme={setTheme} device={device} />}
-                {view === 'reference' && <TemplateReference theme={theme} device={device} />}
-                {view === 'apicall' && <ApiCall theme={theme} device={device} />}
+                {view === 'creator' && <TemplateCreator theme={appliedTheme} setTheme={setThemeMode} device={device} />}
+                {view === 'reference' && <TemplateReference theme={appliedTheme} device={device} />}
+                {view === 'apicall' && <ApiCall theme={appliedTheme} device={device} />}
             </main>
         </div>
     );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -27,6 +27,14 @@ export default function TemplateReference({ device }) {
     const [fieldDefWidth, setFieldDefWidth] = useState(140);
     const [isResizing, setIsResizing] = useState(false);
     const resizeRef = useRef(null);
+
+    // --- Batch Processing States ---
+    const [files, setFiles] = useState([]);                    // File[] - 待处理文件列表
+    const [batchResults, setBatchResults] = useState(new Map()); // Map<filename, result>
+    const [processingIndex, setProcessingIndex] = useState(-1);  // 当前处理的文件索引 (-1 表示未在处理)
+    const [isBatchMode, setIsBatchMode] = useState(false);       // 是否处于批处理模式
+    const [isDragging, setIsDragging] = useState(false);         // 拖拽状态
+    const [isConfigCollapsed, setIsConfigCollapsed] = useState(false); // 识别配置卡片折叠状态
 
     useEffect(() => {
         fetchTemplates();
@@ -130,7 +138,79 @@ export default function TemplateReference({ device }) {
     };
 
     const handleFileUpload = (e) => {
-        if (e.target.files[0]) setFile(e.target.files[0]);
+        const selectedFiles = Array.from(e.target.files);
+        processSelectedFiles(selectedFiles);
+    };
+
+    // 统一处理文件选择逻辑（用于点击上传和拖拽上传）
+    const processSelectedFiles = (selectedFiles) => {
+        if (selectedFiles.length === 0) return;
+
+        // 过滤只保留 PDF 文件
+        const pdfFiles = selectedFiles.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (pdfFiles.length === 0) {
+            alert('请选择 PDF 文件');
+            return;
+        }
+
+        // 将新文件追加到待处理任务列表
+        setFiles(prev => [...prev, ...pdfFiles]);
+
+        // 如果当前没有选中的文件，则默认选中第一个
+        if (!file && pdfFiles.length > 0 && files.length === 0) {
+            setFile(pdfFiles[0]);
+            setIsBatchMode(pdfFiles.length > 1);
+        } else if (files.length > 0 || pdfFiles.length > 1) {
+            setIsBatchMode(true);
+        }
+
+        setResult(null);
+        setSelectedHistoryIndex(null);
+    };
+
+    const handleDeleteQueueItem = (index, e) => {
+        e.stopPropagation();
+        const removedFile = files[index];
+        const newFiles = files.filter((_, i) => i !== index);
+        setFiles(newFiles);
+
+        // 如果删除的是当前选中的文件
+        if (file && file.name === removedFile.name) {
+            setFile(newFiles.length > 0 ? newFiles[0] : null);
+        }
+
+        if (newFiles.length <= 1) {
+            setIsBatchMode(false);
+        }
+    };
+
+    // 拖拽事件处理
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // 只有当离开整个拖拽区域时才取消拖拽状态
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        const droppedFiles = Array.from(e.dataTransfer.files);
+        processSelectedFiles(droppedFiles);
     };
 
     const handleExecute = async () => {
@@ -142,52 +222,138 @@ export default function TemplateReference({ device }) {
             const formData = new FormData();
             formData.append('file', file);
 
-            let res;
+            let resultObj;
             if (selectedTemplate === 'auto') {
-                res = await axios.post(`${API_BASE}/analyze`, formData, {
+                const res = await axios.post(`${API_BASE}/analyze`, formData, {
                     params: { device }
                 });
 
-                // Build proper data structure matching the /extract endpoint format
-                const dataMap = {};
-                (res.data.regions || []).forEach(r => {
-                    const key = r.id;
-                    dataMap[key] = {
-                        type: r.type,
-                        label: r.label || r.id,
-                        remarks: r.remarks || '',
-                        content: r.content || r.text || '',
-                        x: r.x,  // 保留x坐标用于排序
-                        y: r.y   // 保留y坐标用于排序
-                    };
-                });
-
-                // Determine template name from matched template or fallback
+                const dataMap = buildDataMap(res.data);
                 const templateName = res.data.template_found && res.data.matched_template
                     ? res.data.matched_template.name
                     : (res.data.template_found ? '自动匹配' : '无匹配模板');
 
-                setResult({
+                resultObj = {
                     status: 'success',
                     filename: res.data.filename,
                     template_name: templateName,
                     mode: 'auto',
                     data: dataMap,
                     raw_regions: res.data.regions
-                });
+                };
+                setResult(resultObj);
             } else {
-                res = await axios.post(`${API_BASE}/extract`, formData, {
+                const res = await axios.post(`${API_BASE}/extract`, formData, {
                     params: { template_id: selectedTemplate }
                 });
-                setResult(res.data);
-                fetchHistory(); // Refresh history
+                resultObj = res.data;
+                setResult(resultObj);
             }
+            // 提取成功后刷新历史记录
+            fetchHistory();
+
+            // 处理完成后从待处理列表中移除该文件
+            setFiles(prev => prev.filter(f => f.name !== file.name));
+            setFile(null); // Clear selected file after processing
+            setIsBatchMode(false); // Reset to single mode if no files left or one file left
         } catch (err) {
             console.error(err);
             alert("执行失败: " + (err.response?.data?.detail || err.message));
         } finally {
             setLoading(false);
         }
+    };
+
+    // 辅助函数：从分析结果构建数据映射
+    const buildDataMap = (resData) => {
+        const dataMap = {};
+        (resData.regions || []).forEach(r => {
+            const key = r.id;
+            dataMap[key] = {
+                type: r.type,
+                label: r.label || r.id,
+                remarks: r.remarks || '',
+                content: r.content || r.text || '',
+                x: r.x,
+                y: r.y
+            };
+        });
+        return dataMap;
+    };
+
+    // 批量执行处理
+    const handleBatchExecute = async () => {
+        if (files.length === 0) return;
+
+        setLoading(true);
+        setResult(null);
+        setSelectedHistoryIndex(null);
+        setBatchResults(new Map());
+
+        const newResults = new Map();
+
+        for (let i = 0; i < files.length; i++) {
+            setProcessingIndex(i);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', files[i]);
+
+                let resultObj;
+                if (selectedTemplate === 'auto') {
+                    const res = await axios.post(`${API_BASE}/analyze`, formData, {
+                        params: { device }
+                    });
+
+                    const dataMap = buildDataMap(res.data);
+                    const templateName = res.data.template_found && res.data.matched_template
+                        ? res.data.matched_template.name
+                        : (res.data.template_found ? '自动匹配' : '无匹配模板');
+
+                    resultObj = {
+                        status: 'success',
+                        filename: res.data.filename,
+                        template_name: templateName,
+                        mode: 'auto',
+                        data: dataMap,
+                        raw_regions: res.data.regions
+                    };
+                } else {
+                    const res = await axios.post(`${API_BASE}/extract`, formData, {
+                        params: { template_id: selectedTemplate }
+                    });
+                    resultObj = res.data;
+                }
+
+                newResults.set(files[i].name, resultObj);
+                setBatchResults(new Map(newResults));
+
+                // 处理完每个文件后立即刷新历史记录，实现自动同步
+                fetchHistory();
+
+                // 自动显示第一个完成的结果
+                if (i === 0) {
+                    setResult(resultObj);
+                }
+            } catch (err) {
+                console.error(`处理文件 ${files[i].name} 失败:`, err);
+                const errorResult = {
+                    status: 'error',
+                    filename: files[i].name,
+                    template_name: '处理失败',
+                    error: err.response?.data?.detail || err.message,
+                    data: {}
+                };
+                newResults.set(files[i].name, errorResult);
+            }
+        }
+
+        // 批量处理完成后，移除所有已处理的文件名对应的列表项
+        const finishedNames = Array.from(newResults.keys());
+        setFiles(prev => prev.filter(f => !finishedNames.includes(f.name)));
+
+        setProcessingIndex(-1);
+        setLoading(false);
     };
 
     // 按页面位置排序(从左上到右下):优先按 y 坐标,同一水平线上按 x 坐标
@@ -448,19 +614,19 @@ export default function TemplateReference({ device }) {
                             <button
                                 onClick={() => document.getElementById('ref-upload-collapsed').click()}
                                 style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--primary-color)', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                                title="上传 PDF"
+                                title="上传 PDF（支持多选）"
                             >
                                 <Upload size={18} />
-                                <input id="ref-upload-collapsed" type="file" className="hidden" accept="application/pdf" onChange={handleFileUpload} />
+                                <input id="ref-upload-collapsed" type="file" multiple className="hidden" accept="application/pdf" onChange={handleFileUpload} />
                             </button>
 
                             <button
-                                onClick={handleExecute}
-                                disabled={!file || loading}
-                                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s', opacity: (!file || loading) ? 0.5 : 1 }}
-                                title="开始提取"
+                                onClick={isBatchMode ? handleBatchExecute : handleExecute}
+                                disabled={(!file && files.length === 0) || loading}
+                                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s', opacity: ((!file && files.length === 0) || loading) ? 0.5 : 1 }}
+                                title={isBatchMode ? `批量提取 ${files.length} 个文件` : '开始提取'}
                             >
-                                <Play size={18} />
+                                {loading ? <RefreshCw size={18} className="animate-spin" /> : <Play size={18} />}
                             </button>
 
                             <button
@@ -474,244 +640,367 @@ export default function TemplateReference({ device }) {
                     ) : (
                         <>
                             {/* Card 1: Extraction Settings */}
-                            <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                    <Settings size={16} color="var(--accent-color)" />
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>识别配置</span>
-                                </div>
-                                {/* Mode Selector */}
-                                <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-                                    <button
-                                        onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
-                                        style={{
-                                            flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                                            fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
-                                            background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                            color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                            fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                        }}
-                                    >
-                                        <Sparkles size={12} /> 标准模式
-                                    </button>
-                                    <button
-                                        onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
-                                        style={{
-                                            flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                                            fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
-                                            background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                            color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                            fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                        }}
-                                    >
-                                        <User size={12} /> 自定义模式
-                                    </button>
+                            <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: isConfigCollapsed ? '0' : '15px', transition: 'all 0.3s ease' }}>
+                                <div
+                                    onClick={() => setIsConfigCollapsed(!isConfigCollapsed)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        cursor: 'pointer',
+                                        paddingBottom: isConfigCollapsed ? '0' : '5px',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Settings size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>识别配置</span>
+                                        {isConfigCollapsed && (file || files.length > 0) && (
+                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                                                {file ? file.name : `${files.length} 个文件`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{
+                                        transition: 'transform 0.3s ease',
+                                        transform: isConfigCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
+                                    }}>
+                                        <ChevronUp size={16} color="var(--text-secondary)" />
+                                    </div>
                                 </div>
 
-                                {/* 模板选择器 */}
-                                <div style={{ position: 'relative' }} ref={dropdownRef}>
-                                    <div
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px',
-                                            borderRadius: '10px',
-                                            background: 'var(--input-bg)',
-                                            border: `1px solid ${isDropdownOpen ? 'var(--accent-color)' : 'var(--glass-border)'}`,
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            cursor: 'pointer',
-                                            boxShadow: isDropdownOpen ? '0 0 0 2px rgba(139, 92, 246, 0.1)' : 'none',
-                                            transition: 'all 0.2s ease',
-                                            height: '36px'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                            {selectedTemplate === 'auto' ? <Sparkles size={14} color="var(--primary-color)" /> : <Layout size={14} color="var(--accent-color)" />}
-                                            <span style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {getSelectedName()}
-                                            </span>
-                                        </div>
-                                        <ChevronDown size={14} color="var(--text-secondary)" />
+                                {/* 可折叠内容 */}
+                                <div style={{
+                                    overflow: 'hidden',
+                                    maxHeight: isConfigCollapsed ? '0' : '500px',
+                                    opacity: isConfigCollapsed ? 0 : 1,
+                                    transition: 'all 0.3s ease',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '15px'
+                                }}>
+                                    {/* Mode Selector */}
+                                    <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                                        <button
+                                            onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
+                                            style={{
+                                                flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                                                fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                                background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                                color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                                fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                            }}
+                                        >
+                                            <Sparkles size={12} /> 标准模式
+                                        </button>
+                                        <button
+                                            onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
+                                            style={{
+                                                flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                                                fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                                background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                                color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                                fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                            }}
+                                        >
+                                            <User size={12} /> 自定义模式
+                                        </button>
                                     </div>
 
-                                    {isDropdownOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            right: 0,
-                                            marginTop: '6px',
-                                            background: 'var(--glass-bg)',
-                                            backdropFilter: 'blur(20px)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: '12px',
-                                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                                            zIndex: 50,
-                                            overflow: 'hidden',
-                                            animation: 'slideUp 0.2s ease'
-                                        }}>
-                                            <div style={{ padding: '8px', borderBottom: '1px solid var(--glass-border)' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px' }}>
-                                                    <Search size={12} color="var(--text-secondary)" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="搜索模板..."
-                                                        value={searchQuery}
-                                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        style={{
-                                                            border: 'none',
-                                                            background: 'transparent',
-                                                            outline: 'none',
-                                                            fontSize: '12px',
-                                                            color: 'var(--text-primary)',
-                                                            width: '100%'
-                                                        }}
-                                                        autoFocus
-                                                    />
-                                                </div>
+                                    {/* 模板选择器 */}
+                                    <div style={{ position: 'relative' }} ref={dropdownRef}>
+                                        <div
+                                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px',
+                                                borderRadius: '10px',
+                                                background: 'var(--input-bg)',
+                                                border: `1px solid ${isDropdownOpen ? 'var(--accent-color)' : 'var(--glass-border)'}`,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                cursor: 'pointer',
+                                                boxShadow: isDropdownOpen ? '0 0 0 2px rgba(139, 92, 246, 0.1)' : 'none',
+                                                transition: 'all 0.2s ease',
+                                                height: '36px'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                                {selectedTemplate === 'auto' ? <Sparkles size={14} color="var(--primary-color)" /> : <Layout size={14} color="var(--accent-color)" />}
+                                                <span style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {getSelectedName()}
+                                                </span>
                                             </div>
-                                            <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="custom-scrollbar">
-                                                <div
-                                                    onClick={() => { setSelectedTemplate('auto'); setIsDropdownOpen(false); }}
-                                                    className="list-item-hover"
-                                                    style={{
-                                                        padding: '8px 12px',
-                                                        fontSize: '12px',
-                                                        color: 'var(--text-primary)',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                                        color: selectedTemplate === 'auto' ? 'var(--primary-color)' : 'var(--text-primary)',
-                                                        borderBottom: '1px solid var(--glass-border)'
-                                                    }}
-                                                >
-                                                    {selectedTemplate === 'auto' && <Check size={12} />}
-                                                    <Sparkles size={12} />
-                                                    自动识别匹配
-                                                </div>
+                                            <ChevronDown size={14} color="var(--text-secondary)" />
+                                        </div>
 
-                                                {filteredTemplates.length === 0 ? (
-                                                    <div style={{ padding: '15px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
-                                                        无匹配模板
-                                                    </div>
-                                                ) : (
-                                                    filteredTemplates.map(t => (
-                                                        <div
-                                                            key={t.id}
-                                                            onClick={() => { setSelectedTemplate(t.id); setIsDropdownOpen(false); }}
-                                                            className="list-item-hover"
+                                        {isDropdownOpen && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                right: 0,
+                                                marginTop: '6px',
+                                                background: 'var(--glass-bg)',
+                                                backdropFilter: 'blur(20px)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                                zIndex: 50,
+                                                overflow: 'hidden',
+                                                animation: 'slideUp 0.2s ease'
+                                            }}>
+                                                <div style={{ padding: '8px', borderBottom: '1px solid var(--glass-border)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px' }}>
+                                                        <Search size={12} color="var(--text-secondary)" />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="搜索模板..."
+                                                            value={searchQuery}
+                                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                                            onClick={(e) => e.stopPropagation()}
                                                             style={{
-                                                                padding: '8px 12px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                outline: 'none',
                                                                 fontSize: '12px',
                                                                 color: 'var(--text-primary)',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '8px',
-                                                                background: selectedTemplate === t.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                                                color: selectedTemplate === t.id ? 'var(--primary-color)' : 'var(--text-primary)'
+                                                                width: '100%'
                                                             }}
-                                                        >
-                                                            {selectedTemplate === t.id && <Check size={12} />}
-                                                            {t.name}
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="custom-scrollbar">
+                                                    <div
+                                                        onClick={() => { setSelectedTemplate('auto'); setIsDropdownOpen(false); }}
+                                                        className="list-item-hover"
+                                                        style={{
+                                                            padding: '8px 12px',
+                                                            fontSize: '12px',
+                                                            color: 'var(--text-primary)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px',
+                                                            background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                            color: selectedTemplate === 'auto' ? 'var(--primary-color)' : 'var(--text-primary)',
+                                                            borderBottom: '1px solid var(--glass-border)'
+                                                        }}
+                                                    >
+                                                        {selectedTemplate === 'auto' && <Check size={12} />}
+                                                        <Sparkles size={12} />
+                                                        自动识别匹配
+                                                    </div>
 
-                                {/* File Upload */}
-                                <div>
-                                    <div style={{
-                                        border: '1px dashed var(--glass-border)', borderRadius: '12px',
-                                        padding: '24px 15px', textAlign: 'center', cursor: 'pointer',
-                                        background: 'rgba(255,255,255,0.02)',
-                                        transition: 'all 0.2s ease'
-                                    }} onClick={() => document.getElementById('ref-upload-side').click()} className="upload-zone-hover">
-                                        {file ? (
-                                            <div style={{ color: 'var(--success-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                                <FileText size={24} />
-                                                <span style={{ fontSize: '11px', fontWeight: '500', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
-                                            </div>
-                                        ) : (
-                                            <div style={{ color: 'var(--text-secondary)' }}>
-                                                <Upload size={24} style={{ marginBottom: '4px', opacity: 0.5 }} />
-                                                <p style={{ fontSize: '10px' }}>点击或拖拽 PDF</p>
+                                                    {filteredTemplates.length === 0 ? (
+                                                        <div style={{ padding: '15px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                                                            无匹配模板
+                                                        </div>
+                                                    ) : (
+                                                        filteredTemplates.map(t => (
+                                                            <div
+                                                                key={t.id}
+                                                                onClick={() => { setSelectedTemplate(t.id); setIsDropdownOpen(false); }}
+                                                                className="list-item-hover"
+                                                                style={{
+                                                                    padding: '8px 12px',
+                                                                    fontSize: '12px',
+                                                                    color: 'var(--text-primary)',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px',
+                                                                    background: selectedTemplate === t.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                                    color: selectedTemplate === t.id ? 'var(--primary-color)' : 'var(--text-primary)'
+                                                                }}
+                                                            >
+                                                                {selectedTemplate === t.id && <Check size={12} />}
+                                                                {t.name}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
-                                        <input id="ref-upload-side" type="file" className="hidden" accept="application/pdf" onChange={handleFileUpload} />
                                     </div>
-                                </div>
 
-                                <button
-                                    className="btn-primary"
-                                    onClick={handleExecute}
-                                    disabled={!file || loading || (selectionMode === 'custom' && !selectedTemplate)}
-                                    style={{ width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: (!file || loading) ? 0.6 : 1 }}
-                                >
-                                    {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
-                                    {loading ? '处理中...' : '开始提取数据'}
-                                </button>
+                                    {/* File Upload */}
+                                    <div>
+                                        <div
+                                            style={{
+                                                border: isDragging ? '2px dashed var(--primary-color)' : '1px dashed var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '24px 15px',
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                background: isDragging ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.02)',
+                                                transition: 'all 0.2s ease',
+                                                transform: isDragging ? 'scale(1.02)' : 'scale(1)'
+                                            }}
+                                            onClick={() => document.getElementById('ref-upload-side').click()}
+                                            onDragOver={handleDragOver}
+                                            onDragEnter={handleDragEnter}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={handleDrop}
+                                            className="upload-zone-hover"
+                                        >
+                                            {isDragging ? (
+                                                <div style={{ color: 'var(--primary-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                    <Upload size={24} />
+                                                    <p style={{ fontSize: '11px', fontWeight: '500' }}>释放文件以上传</p>
+                                                </div>
+                                            ) : file ? (
+                                                <div style={{ color: 'var(--success-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                    <FileText size={24} />
+                                                    <span style={{ fontSize: '11px', fontWeight: '500', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                                                </div>
+                                            ) : files.length > 0 ? (
+                                                <div style={{ color: 'var(--primary-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                                    <Package size={24} />
+                                                    <span style={{ fontSize: '11px', fontWeight: '500' }}>已选择 {files.length} 个文件</span>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setFiles([]); setIsBatchMode(false); setBatchResults(new Map()); }}
+                                                        style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                                                    >
+                                                        清空
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div style={{ color: 'var(--text-secondary)' }}>
+                                                    <Upload size={24} style={{ marginBottom: '4px', opacity: 0.5 }} />
+                                                    <p style={{ fontSize: '10px' }}>点击或拖拽 PDF（支持多选）</p>
+                                                </div>
+                                            )}
+                                            <input id="ref-upload-side" type="file" multiple className="hidden" accept="application/pdf" onChange={handleFileUpload} />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        className="btn-primary"
+                                        onClick={isBatchMode ? handleBatchExecute : handleExecute}
+                                        disabled={(!file && files.length === 0) || loading || (selectionMode === 'custom' && !selectedTemplate)}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
+                                    >
+                                        {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                                        {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Card 2: Extraction History */}
                             <div className="glass-card" style={{ flex: 1, padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
                                     <Clock size={16} color="var(--accent-color)" />
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>最近提取历史</span>
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>提取记录</span>
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
-                                    {history.length === 0 ? (
+                                    {/* 统一的提取记录列表 (Pending + Processing + History) */}
+                                    {files.length === 0 && history.length === 0 ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
                                             <Clock size={24} />
                                             <span style={{ fontSize: '11px' }}>暂无记录</span>
                                         </div>
                                     ) : (
-                                        history.map((h, i) => (
-                                            <div
-                                                key={i}
-                                                onClick={() => handleViewHistory(h.index)}
-                                                style={{
-                                                    padding: '10px',
-                                                    borderRadius: '10px',
-                                                    background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                                    border: '1px solid var(--glass-border)',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    position: 'relative'
-                                                }}
-                                                className="list-item-hover"
-                                            >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
-                                                    <button
-                                                        onClick={(e) => handleDeleteHistory(h.index, e)}
-                                                        style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444', marginLeft: '6px' }}
+                                        <>
+                                            {/* 待处理/处理中的任务 */}
+                                            {files.map((f, i) => {
+                                                const isProcessing = processingIndex === i || (loading && !isBatchMode && file?.name === f.name);
+                                                return (
+                                                    <div
+                                                        key={`queue-${f.name}-${i}`}
+                                                        style={{
+                                                            padding: '10px',
+                                                            borderRadius: '10px',
+                                                            background: isProcessing ? 'rgba(59, 130, 246, 0.05)' : 'var(--input-bg)',
+                                                            border: isProcessing ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                            opacity: 1,
+                                                            transition: 'all 0.2s',
+                                                            cursor: 'default'
+                                                        }}
                                                     >
-                                                        <Trash2 size={12} />
-                                                    </button>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: 'bold',
+                                                                color: 'var(--text-primary)',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                                flex: 1
+                                                            }}>
+                                                                {f.name}
+                                                            </span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                {isProcessing ? (
+                                                                    <RefreshCw size={12} className="animate-spin" color="var(--primary-color)" />
+                                                                ) : (
+                                                                    <Clock size={12} color="var(--text-secondary)" opacity={0.5} />
+                                                                )}
+                                                                <button
+                                                                    onClick={(e) => handleDeleteQueueItem(i, e)}
+                                                                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444' }}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ fontSize: '9px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                                            {isProcessing ? '处理中...' : '待提取'}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* 已完成的历史记录 */}
+                                            {history.map((h, hIdx) => (
+                                                <div
+                                                    key={`history-${h.index}`}
+                                                    onClick={() => handleViewHistory(h.index)}
+                                                    style={{
+                                                        padding: '10px',
+                                                        borderRadius: '10px',
+                                                        background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                        border: '1px solid var(--glass-border)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    className="list-item-hover"
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <CheckCircle size={12} color="var(--success-color)" />
+                                                            <button
+                                                                onClick={(e) => handleDeleteHistory(h.index, e)}
+                                                                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444' }}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
+                                                        <span style={{ fontSize: '9px', opacity: 0.5 }}>
+                                                            {new Date(h.timestamp).toLocaleString('zh-CN', {
+                                                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                                                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                                hour12: false
+                                                            }).replace(/\//g, '-')}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
-                                                    <span style={{ fontSize: '9px', opacity: 0.5 }}>{new Date(h.timestamp).toLocaleTimeString()}</span>
-                                                </div>
-                                            </div>
-                                        ))
+                                            ))}
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </>
                     )}
                 </aside>
-
                 {/* Results Panel */}
                 <div className="glass-card" style={{
                     padding: '0',

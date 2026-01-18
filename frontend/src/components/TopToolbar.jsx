@@ -259,32 +259,6 @@ const TopToolbar = ({
                                     </div>
                                 )}
                             </div>
-
-                            <button
-                                onClick={() => isTableSelected && handleEnterTableRefine(selectedRegion)}
-                                disabled={!isTableSelected}
-                                title={isTableSelected ? "进入高精度表格微调" : "请先在图中选择一个表格要素"}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '5px 16px',
-                                    borderRadius: '8px',
-                                    border: isTableSelected ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
-                                    background: isTableSelected ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                    color: isTableSelected ? 'var(--success-color)' : 'var(--text-secondary)',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    cursor: isTableSelected ? 'pointer' : 'not-allowed',
-                                    transition: 'all 0.3s ease',
-                                    opacity: isTableSelected ? 1 : 0.5,
-                                    boxShadow: isTableSelected ? '0 2px 10px rgba(16, 185, 129, 0.1)' : 'none',
-                                    marginRight: '5px'
-                                }}
-                            >
-                                <Grid size={14} />
-                                高精度表格微调
-                            </button>
                         </>
                     )}
 
