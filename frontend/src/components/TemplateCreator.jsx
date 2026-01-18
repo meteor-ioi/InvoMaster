@@ -6,8 +6,7 @@ import TopToolbar from './TopToolbar';
 import LeftPanel from './LeftPanel';
 import RightSidebar from './RightSidebar';
 import DataPreview from './DataPreview';
-
-const API_BASE = 'http://localhost:8000';
+import { API_BASE } from '../config';
 
 export default function TemplateCreator({ theme, setTheme, device }) {
     const [file, setFile] = useState(null);
@@ -123,8 +122,45 @@ export default function TemplateCreator({ theme, setTheme, device }) {
     const [lastDeviceUsed, setLastDeviceUsed] = useState(null);
     const [inferenceTime, setInferenceTime] = useState(0);
     const [showSplitPreview, setShowSplitPreview] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
     const [splitPercent, setSplitPercent] = useState(50);
     const [isResizingSplit, setIsResizingSplit] = useState(false);
+
+    // --- 在版面分析模式下触发数据提取 ---
+    useEffect(() => {
+        if (showSplitPreview && !tableRefining && (selectedId || selectedIds.length > 0)) {
+            handleExtractRegionsData();
+        }
+    }, [showSplitPreview, selectedId, selectedIds, tableRefining]);
+
+    const handleExtractRegionsData = async () => {
+        if (!analysis || !showSplitPreview) return;
+
+        const targetIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
+        if (targetIds.length === 0) return;
+
+        // 仅提取尚未获取内容或位置发生变动的要素（简化逻辑：每次开启或切换选中时刷新）
+        const targetRegions = regions.filter(r => targetIds.includes(r.id));
+
+        setPreviewLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('filename', analysis.filename);
+            formData.append('regions', JSON.stringify(targetRegions));
+
+            const res = await axios.post(`${API_BASE}/regions/extract`, formData);
+
+            // 更新 regions 状态中的 content 字段
+            setRegions(prev => prev.map(r => {
+                const updated = res.data.find(ur => ur.id === r.id);
+                return updated ? { ...r, ...updated } : r;
+            }));
+        } catch (err) {
+            console.error('批量提取要素数据失败', err);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchTemplates();
@@ -595,7 +631,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                                 className="split-container"
                                                 style={{
                                                     display: 'grid',
-                                                    gridTemplateColumns: (tableRefining && showSplitPreview) ? `${splitPercent}% 4px 1fr` : '1fr',
+                                                    gridTemplateColumns: showSplitPreview ? `${splitPercent}% 4px 1fr` : '1fr',
                                                     gap: '0',
                                                     flex: 1,
                                                     minHeight: 0,
@@ -639,7 +675,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                                     />
                                                 </div>
 
-                                                {tableRefining && showSplitPreview && (
+                                                {showSplitPreview && (
                                                     <>
                                                         <div
                                                             style={{
@@ -676,7 +712,13 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                                             }}
                                                         />
                                                         <div style={{ minWidth: 0, minHeight: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)', height: '100%' }}>
-                                                            <DataPreview tableRefining={tableRefining} isSplit={true} />
+                                                            <DataPreview
+                                                                tableRefining={tableRefining}
+                                                                isSplit={true}
+                                                                regions={tableRefining ? [] : (selectedIds.length > 0 ? regions.filter(r => selectedIds.includes(r.id)) : (selectedId ? regions.filter(r => r.id === selectedId) : []))}
+                                                                typeConfig={TYPE_CONFIG}
+                                                                loading={previewLoading}
+                                                            />
                                                         </div>
                                                     </>
                                                 )}

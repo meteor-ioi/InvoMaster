@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Code, Copy, Terminal, ChevronDown, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8000';
+import { API_BASE } from '../config';
 
 export default function ApiCall({ theme, device }) {
     const [templates, setTemplates] = useState([]);
@@ -35,13 +34,13 @@ export default function ApiCall({ theme, device }) {
 # 1. 准备参数
 url = "${API_BASE}/extract"
 params = {
-    "template_id": "YOUR_TEMPLATE_ID", # 替换为实际模板 ID
-    "device": "${device}" # 硬件加速设备: cpu, cuda, mps
+    "template_id": "auto", # 选择自动模式 auto 或输入模板id
+    "device": "auto"        # 可选类型：auto, cpu, gpu, mps
 }
 
 # 2. 上传文件进行提取
 files = {
-    "file": open("fapiao.pdf", "rb")
+    "file": open("document.pdf", "rb")
 }
 
 response = requests.post(url, params=params, files=files)
@@ -49,12 +48,45 @@ response = requests.post(url, params=params, files=files)
 # 3. 处理解析结果
 if response.status_code == 200:
     result = response.json()
-    print("提取成功:", result['data'])
+    print("提取成功:", result["data"])
 else:
     print("错误信息:", response.text)`;
 
-    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=YOUR_TEMPLATE_ID&device=${device}" \\
-  -F "file=@/path/to/invoice.pdf"`;
+    const jsCode = `// 使用 Fetch API 发起请求
+const formData = new FormData();
+formData.append('file', fileInput.files[0]); // 获取上传的文件对象
+
+const url = new URL("${API_BASE}/extract");
+url.searchParams.append('template_id', 'auto'); // 自动模式：auto 或输入模板id
+url.searchParams.append('device', 'auto');      // 可选类型：auto, cpu, gpu, mps
+
+fetch(url, {
+    method: 'POST',
+    body: formData
+})
+.then(response => response.json())
+.then(result => {
+    if (result.status === "success") {
+        console.log("提取结果:", result.data);
+    } else {
+        console.error("执行失败:", result.message);
+    }
+})
+.catch(error => {
+    console.error("网络错误:", error);
+});`;
+
+    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=auto&device=auto" \\
+  -F "file=@/path/to/document.pdf"`;
+
+    const getCodeSnippet = (lang) => {
+        switch (lang) {
+            case 'python': return pythonCode;
+            case 'javascript': return jsCode;
+            case 'curl': return curlCode;
+            default: return pythonCode;
+        }
+    };
 
     const filteredTemplates = templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -159,6 +191,40 @@ else:
                             </div>
 
                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
+                                {/* Special "Auto" option */}
+                                <div style={{
+                                    padding: '12px',
+                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--primary-color)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px',
+                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }} className="list-item-hover">
+                                    <div style={{ position: 'absolute', right: '-10px', top: '-10px', opacity: 0.1 }}>
+                                        <Sparkles size={40} />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Sparkles size={14} color="var(--primary-color)" />
+                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--primary-color)' }}>自动识别匹配 (推荐)</div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '4px' }}>
+                                        <code style={{ fontSize: '10px', color: 'var(--primary-color)', fontWeight: 'bold' }}>auto</code>
+                                        <button
+                                            onClick={() => handleCopy('auto', 'auto')}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === 'auto' ? 'var(--success-color)' : 'var(--primary-color)' }}
+                                            title="复制 auto ID"
+                                        >
+                                            {copied === 'auto' ? <Check size={12} /> : <Copy size={12} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style={{ height: '1px', background: 'var(--glass-border)', margin: '4px 0' }} />
+
                                 {filteredTemplates.length === 0 ? (
                                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontSize: '12px' }}>
                                         未找到匹配模板
@@ -229,6 +295,7 @@ else:
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
                             <div style={{ position: 'relative' }}>
                                 <select
                                     value={selectedLanguage}
@@ -248,12 +315,13 @@ else:
                                     }}
                                 >
                                     <option value="python">Python</option>
+                                    <option value="javascript">JavaScript</option>
                                     <option value="curl">cURL</option>
                                 </select>
                                 <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
                             </div>
                             <button
-                                onClick={() => handleCopy(selectedLanguage === 'python' ? pythonCode : curlCode, 'code')}
+                                onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
                                 style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px' }}
                             >
                                 {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
@@ -270,7 +338,7 @@ else:
                                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                                 color: '#e2e8f0'
                             }}>
-                                {selectedLanguage === 'python' ? pythonCode : curlCode}
+                                {getCodeSnippet(selectedLanguage)}
                             </pre>
                         </div>
                     </div>

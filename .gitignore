@@ -22,3 +22,5 @@ frontend/build/
 .gemini/
 .agent/
 .system_generated/
+chat.md
+PROJECT_RULES.md

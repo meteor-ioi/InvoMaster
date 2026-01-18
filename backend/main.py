@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -17,6 +17,7 @@ from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
+from format_utils import convert_to_format
 
 app = FastAPI(title="HITL Document Extraction API")
 
@@ -228,6 +229,9 @@ async def analyze_document(
     agnostic_nms: bool = False,
     refresh: bool = False
 ):
+    if device and device.lower() == "auto":
+        device = None
+    
     # Determine input file path
     if file:
         file_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -327,9 +331,7 @@ async def analyze_document(
             "type": r_dict.get('type'),
             "label": r_dict.get('label') or rid,
             "remarks": r_dict.get('remarks') or '',
-            "content": r_dict.get('content', r_dict.get('text', '')),
-            "x": r_dict.get('x'),
-            "y": r_dict.get('y')
+            "content": r_dict.get('content', r_dict.get('text', ''))
         }
     
     template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "AI识别")
@@ -343,7 +345,8 @@ async def analyze_document(
         "result_summary": result_map
     })
 
-    return {
+    base_response = {
+        "status": "success",
         "id": fingerprint[:12],
         "fingerprint": fingerprint,
         "filename": actual_filename,
@@ -353,9 +356,12 @@ async def analyze_document(
         "template_found": template_found,
         "matched_template": matched_template_info,
         "is_source": False,
+        "data": result_map,
         "device_used": device_used,
         "inference_time": round(inference_time, 3) if 'inference_time' in locals() else 0
     }
+
+    return base_response
 
 @app.get("/templates/{template_id}/analyze")
 async def analyze_from_source(template_id: str):
@@ -582,6 +588,43 @@ async def analyze_table_structure(req: TableAnalysisRequest):
             f.write(f"--- Error in /table/analyze ---\n{error_msg}\n")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/regions/extract")
+async def extract_multiple_regions(
+    filename: str = Form(...),
+    regions: str = Form(...) # JSON string of regions
+):
+    """
+    Extract data from multiple regions for previewing.
+    """
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+         # Also check source lib
+         source_path = os.path.join(TEMPLATES_SOURCE_DIR, filename)
+         if os.path.exists(source_path):
+             file_path = source_path
+         else:
+             raise HTTPException(status_code=404, detail=f"File {filename} not found")
+    
+    try:
+        regions_list = json.loads(regions)
+        region_objs = [Region(**r) for r in regions_list]
+        
+        # Get fingerprint to locate images if needed for OCR
+        fingerprint = get_file_fingerprint(file_path)
+        img_subdir = f"images_{fingerprint[:8]}"
+        img_path = os.path.join(UPLOAD_DIR, img_subdir, "page_1.png")
+        
+        results = extract_text_from_regions(
+            file_path, 
+            region_objs, 
+            image_path=img_path if os.path.exists(img_path) else None
+        )
+        return results
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/templates")
 async def list_templates(mode: Optional[str] = None, tag: Optional[str] = None):
     return db.list_templates(mode=mode, tag=tag)
@@ -730,11 +773,19 @@ async def migrate_templates_fingerprints():
 @app.post("/extract/{template_id}")
 async def extract_with_custom_template(
     template_id: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    device: Optional[str] = None
 ):
     """
     CUSTOM MODE: Explicitly apply a template to an uploaded file, ignoring fingerprint.
+    IF template_id is 'auto', it performs automatic matching (similar to /analyze).
     """
+    if device and device.lower() == "auto":
+        device = None
+
+    if template_id.lower() == "auto":
+        return await analyze_document(file=file, device=device)
+
     # 1. Look up template
     t_record = db.get_template(template_id)
     if not t_record:
@@ -775,8 +826,6 @@ async def extract_with_custom_template(
             
             result_map[key] = {
                 "content": r.get("content", ""),
-                "x": r.get("x"),  # 保留x坐标用于前端排序
-                "y": r.get("y"),  # 保留y坐标用于前端排序
                 **meta
             }
             
@@ -792,7 +841,7 @@ async def extract_with_custom_template(
             "result_summary": result_map
         })
             
-        return {
+        base_response = {
             "status": "success",
             "filename": file.filename,
             "template_name": t_data.get("name"),
@@ -800,6 +849,8 @@ async def extract_with_custom_template(
             "data": result_map,
             "raw_regions": extracted_regions
         }
+
+        return base_response
         
     except Exception as e:
         print(f"Extraction error: {e}")
@@ -811,11 +862,12 @@ async def extract_with_custom_template(
 @app.post("/extract")
 async def extract_from_template_legacy(
     template_id: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    device: Optional[str] = None
 ):
     # Deprecated or strictly Auto-mode compatible
     # Forward to new handler for now
-    return await extract_with_custom_template(template_id, file)
+    return await extract_with_custom_template(template_id, file, device=device)
 
 @app.get("/history")
 async def get_history():

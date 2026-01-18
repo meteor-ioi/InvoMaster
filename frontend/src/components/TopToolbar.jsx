@@ -136,6 +136,29 @@ const TopToolbar = ({
                     {/* 高精度表格微调入口 - 移至最左侧 */}
                     {!tableRefining && (
                         <>
+                            <button
+                                onClick={() => setShowSplitPreview(!showSplitPreview)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '5px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid',
+                                    borderColor: showSplitPreview ? 'var(--primary-color)' : 'var(--glass-border)',
+                                    background: showSplitPreview ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    color: showSplitPreview ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    marginRight: '5px'
+                                }}
+                            >
+                                <Layout size={14} />
+                                {showSplitPreview ? '收起预览' : '数据预览'}
+                            </button>
+
                             <div style={{ position: 'relative' }} ref={filterRef}>
                                 <button
                                     onClick={() => setIsFilterOpen(!isFilterOpen)}
