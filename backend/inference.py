@@ -104,14 +104,15 @@ class LayoutEngine:
         # 添加 batch 维度
         img_array = np.expand_dims(img_array, axis=0)
         
-        return img_array, scale, (orig_width, orig_height)
+        return img_array, scale, (orig_width, orig_height), (new_width, new_height)
 
-    def postprocess_outputs(self, outputs, scale, orig_size, conf=0.25, iou=0.45, imgsz=1024):
+    def postprocess_outputs(self, outputs, scale, orig_size, resized_size, conf=0.25, iou=0.45, imgsz=1024):
         """
         后处理 ONNX 模型输出
         """
         # YOLOv10 输出格式: [batch, num_boxes, 6] -> [x1, y1, x2, y2, confidence, class]
         predictions = outputs[0][0]  # 取第一个 batch
+        resized_w, resized_h = resized_size  # 实际缩放后的图像尺寸
         
         boxes = []
         for pred in predictions:
@@ -121,11 +122,19 @@ class LayoutEngine:
             if confidence < conf:
                 continue
             
-            # 将坐标归一化（ONNX 输出的是绝对像素值，相对于 imgsz）
-            x1_norm = x1 / imgsz
-            y1_norm = y1 / imgsz
-            x2_norm = x2 / imgsz
-            y2_norm = y2 / imgsz
+            # 使用实际缩放后尺寸归一化（关键修复）
+            # YOLO 输出的坐标是相对于 imgsz x imgsz 画布的绝对像素值
+            # 但图像只占据画布的 (0,0) 到 (resized_w, resized_h) 区域
+            x1_norm = x1 / resized_w
+            y1_norm = y1 / resized_h
+            x2_norm = x2 / resized_w
+            y2_norm = y2 / resized_h
+            
+            # 裁剪到 [0, 1] 范围
+            x1_norm = max(0.0, min(1.0, x1_norm))
+            y1_norm = max(0.0, min(1.0, y1_norm))
+            x2_norm = max(0.0, min(1.0, x2_norm))
+            y2_norm = max(0.0, min(1.0, y2_norm))
             
             boxes.append({
                 'x1': float(x1_norm),
@@ -146,13 +155,13 @@ class LayoutEngine:
         print(f"Running ONNX prediction (conf={conf}, imgsz={imgsz})")
         
         # 预处理
-        input_data, scale, orig_size = self.preprocess_image(image_path, imgsz)
+        input_data, scale, orig_size, resized_size = self.preprocess_image(image_path, imgsz)
         
         # 推理
         outputs = self.session.run(None, {self.input_name: input_data})
         
         # 后处理
-        boxes = self.postprocess_outputs(outputs, scale, orig_size, conf, iou, imgsz)
+        boxes = self.postprocess_outputs(outputs, scale, orig_size, resized_size, conf, iou, imgsz)
         
         # 转换为项目格式
         regions = []
