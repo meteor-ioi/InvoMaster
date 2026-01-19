@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Sparkles } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
@@ -444,6 +444,7 @@ const DocumentEditor = ({
                         const config = TYPE_CONFIG[reg.type?.toLowerCase()] || TYPE_CONFIG['custom'];
                         const isSelected = selectedId === reg.id || (selectedIds && selectedIds.includes(reg.id));
                         const isFaded = tableRefining && tableRefining.id !== reg.id;
+                        const isRefinedTable = reg.type === 'table' && reg.table_settings;
 
                         if (isFaded) return null;
 
@@ -634,20 +635,22 @@ const DocumentEditor = ({
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             padding: `2px 8px`,
-                                            background: config.color,
+                                            background: isRefinedTable ? 'linear-gradient(135deg, #10b981, #3b82f6)' : config.color,
                                             color: '#fff',
                                             fontSize: `11px`,
                                             fontWeight: 'bold',
                                             borderRadius: '3px 3px 3px 0',
                                             whiteSpace: 'nowrap',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                            boxShadow: isRefinedTable ? '0 2px 10px rgba(16, 185, 129, 0.4)' : '0 2px 4px rgba(0,0,0,0.3)',
                                             opacity: 0.9,
                                             transformOrigin: 'top left',
                                             gap: `6px`,
                                             cursor: 'default',
-                                            pointerEvents: 'auto' // Only label content captures events
+                                            pointerEvents: 'auto',
+                                            border: isRefinedTable ? '1px solid rgba(255,255,255,0.3)' : 'none'
                                         }}
                                     >
+                                        {isRefinedTable && <Sparkles size={11} style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }} />}
                                         <div
                                             onClick={(e) => {
                                                 e.stopPropagation();
