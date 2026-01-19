@@ -135,12 +135,12 @@ const RightSidebar = ({
                         className="glass-card"
                         style={{
                             width: '100%',
-                            flex: 1,
+                            height: 'auto',
                             padding: '15px',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '12px',
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             borderRadius: '16px'
                         }}
                     >
@@ -352,7 +352,9 @@ const RightSidebar = ({
                                 flexDirection: 'column',
                                 gap: '15px',
                                 borderRadius: '16px',
-                                display: 'flex'
+                                display: 'flex',
+                                flex: 1,
+                                overflowY: 'auto'
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
