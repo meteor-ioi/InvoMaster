@@ -911,34 +911,60 @@ async def extract_with_custom_template(
     """
     CUSTOM MODE: Explicitly apply a template to an uploaded file, ignoring fingerprint.
     IF template_id is 'auto', it performs automatic matching (similar to /analyze).
+    Also records the task to API Task Queue for persistence.
     """
-    if device and device.lower() == "auto":
-        device = None
+    # 0. Pre-resolve template name for Task creation
+    template_name = "自动识别"
+    if template_id.lower() != "auto":
+        t_record = db.get_template(template_id)
+        if t_record:
+            template_name = t_record['name']
+        else:
+            template_name = "Unknown"
 
-    if template_id.lower() == "auto":
-        return await analyze_document(file=file, device=device)
+    # 1. Create Task (Pending -> Processing)
+    task_id = create_task(file.filename, template_id, template_name)
+    update_task_status(task_id, 'processing')
 
-    # 1. Look up template
-    t_record = db.get_template(template_id)
-    if not t_record:
-        raise HTTPException(status_code=404, detail="Template not found in DB")
-        
-    mode_dir = TEMPLATES_AUTO_DIR if t_record['mode'] == 'auto' else TEMPLATES_CUSTOM_DIR
-    t_path = os.path.join(mode_dir, f"{template_id}.json")
-    
-    if not os.path.exists(t_path):
-        raise HTTPException(status_code=404, detail="Template definition file missing")
-        
-    with open(t_path, "r", encoding="utf-8") as f:
-        t_data = json.load(f)
-        
     try:
-        # 2. Save Uploaded File for processing
+        if device and device.lower() == "auto":
+            device = None
+
+        # --- Branch A: Auto Mode ---
+        if template_id.lower() == "auto":
+            result = await analyze_document(file=file, device=device)
+            
+            # Update Task
+            task_result_data = {
+                "filename": result.get("filename"),
+                "template_name": result.get("template_name", "AI识别"),
+                "mode": result.get("mode", "auto"),
+                "data": result.get("data", {})
+            }
+            update_task_status(task_id, 'completed', result=task_result_data)
+            return result
+
+        # --- Branch B: Custom Mode ---
+        # 1. Look up template
+        t_record = db.get_template(template_id)
+        if not t_record:
+            raise HTTPException(status_code=404, detail="Template not found in DB")
+            
+        mode_dir = TEMPLATES_AUTO_DIR if t_record['mode'] == 'auto' else TEMPLATES_CUSTOM_DIR
+        t_path = os.path.join(mode_dir, f"{template_id}.json")
+        
+        if not os.path.exists(t_path):
+            raise HTTPException(status_code=404, detail="Template definition file missing")
+            
+        with open(t_path, "r", encoding="utf-8") as f:
+            t_data = json.load(f)
+            
+        # 2. Save Uploaded File
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 3. Extract using forced regions (Generate images first for OCR support)
+        # 3. Extract
         fingerprint = get_file_fingerprint(file_path)
         img_subdir = f"images_{fingerprint[:8]}"
         img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
@@ -947,21 +973,17 @@ async def extract_with_custom_template(
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
         extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
         
-        # 4. Format Output Structure
+        # 4. Format Output
         result_map = {}
         for r in extracted_regions:
-            # 直接使用区域 ID 作为 Key，确保唯一性
             key = r.get("id")
-            
-            # 过滤不需要的原始坐标及冗余文本字段
             meta = {k: v for k, v in r.items() if k not in ["x", "y", "width", "height", "content", "text", "id", "table_settings"]}
-            
             result_map[key] = {
                 "content": r.get("content", ""),
                 **meta
             }
             
-        # 5. Log History
+        # 5. Log to OLD History (keep for compatibility)
         import datetime
         timestamp = datetime.datetime.now().isoformat()
         append_history({
@@ -982,12 +1004,22 @@ async def extract_with_custom_template(
             "raw_regions": extracted_regions
         }
 
+        # 6. Update Task Status
+        task_result_data = {
+            "filename": file.filename,
+            "template_name": t_data.get("name"),
+            "mode": t_record['mode'],
+            "data": result_map
+        }
+        update_task_status(task_id, 'completed', result=task_result_data)
+
         return base_response
         
     except Exception as e:
         print(f"Extraction error: {e}")
         import traceback
         traceback.print_exc()
+        update_task_status(task_id, 'failed', error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

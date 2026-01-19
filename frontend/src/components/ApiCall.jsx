@@ -228,8 +228,8 @@ const formData = new FormData();
 formData.append('file', fileInput.files[0]); // 获取上传的文件对象
 
 const url = new URL("${API_BASE}/extract");
-url.searchParams.append('template_id', '${selectedTemplateId}'); // 自动模式：auto 或输入模板id
-url.searchParams.append('device', '${device || 'auto'}');      // 可选类型：auto, cpu, cuda, mps
+url.searchParams.append('template_id', '${selectedTemplateId}');
+url.searchParams.append('device', '${device || 'auto'}');
 
 fetch(url, {
     method: 'POST',
@@ -240,7 +240,7 @@ fetch(url, {
     if (result.status === "success") {
         console.log("提取结果:", result.data);
     } else {
-        console.error("执行失败:", result.message);
+        console.error("执行失败:", result.detail || result.message);
     }
 })
 .catch(error => {
