@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function TemplateReference({ device, headerCollapsed = false }) {
@@ -10,7 +10,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [history, setHistory] = useState([]);
-    const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml', 'csv'
+    const [outputFormat, setOutputFormat] = useState('json'); // 'json', 'markdown', 'csv', 'xml'
     const [copied, setCopied] = useState(false);
     const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(null);
     const [selectedHistory, setSelectedHistory] = useState(new Set()); // Set of history indices
@@ -178,7 +178,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                 filename: historyItem.filename,
                 template_name: historyItem.template_name,
                 mode: historyItem.mode || 'custom_forced',
-                data: historyItem.result_summary
+                data: historyItem.result_summary,
+                timestamp: historyItem.timestamp
             });
             setSelectedHistoryIndex(index);
         } catch (err) {
@@ -289,7 +290,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                     template_name: templateName,
                     mode: 'auto',
                     data: dataMap,
-                    raw_regions: res.data.regions
+                    raw_regions: res.data.regions,
+                    timestamp: new Date().toISOString()
                 };
                 setResult(resultObj);
             } else {
@@ -366,7 +368,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                         template_name: templateName,
                         mode: 'auto',
                         data: dataMap,
-                        raw_regions: res.data.regions
+                        raw_regions: res.data.regions,
+                        timestamp: new Date().toISOString()
                     };
                 } else {
                     const res = await axios.post(`${API_BASE}/extract`, formData, {
@@ -392,7 +395,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                     filename: files[i].name,
                     template_name: '处理失败',
                     error: err.response?.data?.detail || err.message,
-                    data: {}
+                    data: {},
+                    timestamp: new Date().toISOString()
                 };
                 newResults.set(files[i].name, errorResult);
             }
@@ -421,25 +425,24 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
     // --- Data Conversion Logic ---
     const getMarkdown = () => {
         if (!result) return "";
-        let md = "";
+        let md = `# 提取结果报告: ${result.filename}\n`;
+        md += `> 匹配模板: ${result.template_name} | 提取时间: ${new Date(result.timestamp || new Date()).toLocaleString()}\n\n`;
+        md += "---\n\n";
 
         getSortedEntries(result.data).forEach(([regionId, item]) => {
             const { type, label, remarks, content } = item;
 
-            // 区域标题
-            md += `## ${label || regionId}\n\n`;
+            // 区域标题与类型
+            md += `### ${label || regionId} \`[${type}]\`\n\n`;
 
-            // 元数据信息
-            md += `**区域ID**: \`${regionId}\` | **类型**: \`${type}\`\n\n`;
             if (remarks) {
-                md += `> **业务备注**: ${remarks}\n\n`;
+                md += `**备注**: ${remarks}\n\n`;
             }
 
             // 根据类型渲染内容
             if (type === 'table' && Array.isArray(content)) {
-                // 表格类型:渲染为 Markdown 表格
                 if (content.length > 0) {
-                    const sanitize = (cell) => String(cell || '').replace(/\n/g, '<br>');
+                    const sanitize = (cell) => String(cell || '').replace(/\n/g, '<br>').replace(/\|/g, '\\|');
 
                     md += `| ${content[0].map(sanitize).join(' | ')} |\n`;
                     md += `| ${content[0].map(() => '---').join(' | ')} |\n`;
@@ -447,20 +450,14 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                         md += `| ${row.map(sanitize).join(' | ')} |\n`;
                     });
                 }
-            } else if (type === 'figure') {
-                // 图片类型:使用引用块
-                md += `> 🖼️ ${content || '(无文本内容)'}\n`;
-            } else if (type === 'title') {
-                // 标题类型:使用加粗
-                md += `**${content}**\n`;
             } else {
-                // 普通文本:直接显示
                 md += `${content}\n`;
             }
 
             md += "\n---\n\n";
         });
 
+        md += `\n*Generated by Industry PDF Analyzer*`;
         return md;
     };
 
@@ -543,6 +540,128 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
         });
         return csv;
     };
+
+    // --- 数据预览渲染辅助函数 ---
+
+    // JSON 语法高亮渲染
+    const renderJsonWithHighlight = (data) => {
+        const jsonString = JSON.stringify(data, null, 2);
+
+        // 简单的语法高亮实现
+        const highlighted = jsonString
+            .replace(/("(?:\\.|[^"\\])*")\s*:/g, '<span style="color: #60a5fa;">$1</span>:') // 键名 - 蓝色
+            .replace(/:\s*("(?:\\.|[^"\\])*")/g, ': <span style="color: #34d399;">$1</span>') // 字符串值 - 绿色
+            .replace(/:\s*(-?\d+\.?\d*)/g, ': <span style="color: #fbbf24;">$1</span>') // 数值 - 橙色
+            .replace(/:\s*(true|false|null)/g, ': <span style="color: #a78bfa;">$1</span>'); // 布尔/null - 紫色
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {Object.entries(data).map(([key, item]) => (
+                    <div
+                        key={key}
+                        style={{
+                            background: 'var(--input-bg)',
+                            borderRadius: '10px',
+                            border: '1px solid var(--glass-border)',
+                            padding: '12px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{
+                                fontSize: '10px',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: item.type === 'table' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: item.type === 'table' ? 'var(--accent-color)' : 'var(--primary-color)',
+                                fontWeight: 'bold'
+                            }}>
+                                {item.type}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                {item.label || key}
+                            </span>
+                        </div>
+                        <div style={{
+                            fontSize: '13px',
+                            color: 'var(--text-primary)',
+                            background: 'rgba(255,255,255,0.02)',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            lineHeight: '1.6',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                            {item.type === 'table' && Array.isArray(item.content) ? (
+                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)' }}>
+                                                {item.content[0]?.map((cell, cIdx) => (
+                                                    <th key={cIdx} style={{
+                                                        padding: '10px 15px',
+                                                        color: 'var(--primary-color)',
+                                                        fontWeight: 'bold',
+                                                        borderRight: cIdx === item.content[0].length - 1 ? 'none' : '1px solid var(--glass-border)'
+                                                    }}>{cell}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {item.content.slice(1).map((row, rowIndex) => (
+                                                <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 2 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                                    {row.map((cell, cIdx) => (
+                                                        <td key={cIdx} style={{
+                                                            padding: '10px 15px',
+                                                            color: 'var(--text-primary)',
+                                                            borderRight: cIdx === row.length - 1 ? 'none' : '1px solid var(--glass-border)'
+                                                        }}>{cell}</td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div style={{ whiteSpace: 'pre-wrap' }}>{String(item.content)}</div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    // XML 语法高亮渲染
+    const renderXmlWithHighlight = () => {
+        const xmlString = getXml();
+
+        // XML 语法高亮
+        const highlighted = xmlString
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/(&lt;\/?)([\w-]+)/g, '$1<span style="color: #60a5fa; font-weight: bold;">$2</span>') // 标签名 - 蓝色
+            .replace(/([\w-]+)=("(?:\\.|[^"\\])*")/g, '<span style="color: #22d3ee;">$1</span>=<span style="color: #34d399;">$2</span>') // 属性 - 青色和绿色
+            .replace(/(&lt;!\[CDATA\[)([\s\S]*?)(\]\]&gt;)/g, '$1<span style="color: #34d399;">$2</span>$3'); // CDATA - 绿色
+
+        return (
+            <pre className="custom-scrollbar" style={{
+                background: 'rgba(15, 23, 42, 0.9)',
+                padding: '24px',
+                borderRadius: '16px',
+                overflow: 'auto',
+                fontSize: '13px',
+                lineHeight: '1.8',
+                border: '1px solid var(--glass-border)',
+                animation: 'slideUp 0.3s ease',
+                maxHeight: '600px',
+                color: '#cbd5e1',
+                fontFamily: 'monospace'
+            }} dangerouslySetInnerHTML={{ __html: highlighted }} />
+        );
+    };
+
+
 
     const handleCopy = () => {
         let text = "";
@@ -1197,11 +1316,10 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', background: 'var(--input-bg)', padding: '3px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                                     {[
-                                        { id: 'markdown', label: 'MD', icon: <FileText size={14} /> },
-
                                         { id: 'json', label: 'JSON', icon: <FileJson size={14} /> },
-                                        { id: 'xml', label: 'XML', icon: <FileCode size={14} /> },
-                                        { id: 'csv', label: 'CSV', icon: <FileSpreadsheet size={14} /> }
+                                        { id: 'markdown', label: 'MD', icon: <FileText size={14} /> },
+                                        { id: 'csv', label: 'CSV', icon: <FileSpreadsheet size={14} /> },
+                                        { id: 'xml', label: 'XML', icon: <FileCode size={14} /> }
                                     ].map(f => (
                                         <button
                                             key={f.id}
@@ -1219,13 +1337,6 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         </button>
                                     ))}
                                 </div>
-                                <div style={{ width: '1px', height: '20px', background: 'var(--glass-border)', margin: '0 5px' }} />
-                                <button className="icon-btn" title="拷贝内容" onClick={handleCopy} style={{ padding: '8px' }}>
-                                    {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
-                                </button>
-                                <button className="icon-btn" title="下载文件" onClick={handleDownload} style={{ padding: '8px' }}>
-                                    <Download size={16} />
-                                </button>
                             </div>
                         )}
                     </div>
@@ -1240,129 +1351,126 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                             </div>
                         ) : (
                             <div className="animate-fade-in">
-                                <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-                                    <div style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)', fontSize: '13px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Sparkles size={14} />
-                                        <span>匹配模板: <b>{result.template_name}</b></span>
+                                <div style={{ marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}>{result.filename}</h3>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>{result.template_name}</span>
+                                            <span style={{ opacity: 0.5 }}>·</span>
+                                            <span>
+                                                {new Date(result.timestamp || new Date()).toLocaleString('zh-CN', {
+                                                    year: 'numeric', month: '2-digit', day: '2-digit',
+                                                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                    hour12: false
+                                                }).replace(/\//g, '-')}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)', fontSize: '13px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <CheckCircle size={14} />
-                                        <span>状态: <b>解析成功</b></span>
-                                    </div>
+                                    {result.status === 'error' ? (
+                                        <div style={{
+                                            padding: '6px 16px',
+                                            borderRadius: '8px',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            color: 'var(--error-color, #ef4444)',
+                                            fontSize: '11px',
+                                            fontWeight: 'bold',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}>
+                                            <AlertCircle size={14} />
+                                            <span>解析失败</span>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={handleCopy}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderRadius: '6px',
+                                                    padding: '6px 12px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '11px',
+                                                    color: 'var(--text-primary)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
+                                            >
+                                                {copied ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制</>}
+                                            </button>
+                                            <button
+                                                onClick={handleDownload}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderRadius: '6px',
+                                                    padding: '6px 12px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '11px',
+                                                    color: 'var(--text-primary)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
+                                            >
+                                                <Download size={12} /> 下载
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {outputFormat === 'markdown' && (
-                                    <div ref={resizeRef} style={{ animation: 'slideUp 0.3s ease', position: 'relative', userSelect: isResizing ? 'none' : 'auto' }}>
-                                        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                                            <colgroup>
-                                                <col style={{ width: `${fieldDefWidth}px` }} />
-                                                <col />
-                                            </colgroup>
-                                            <thead>
-                                                <tr style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-                                                    <th style={{ padding: '15px 20px', textAlign: 'left', fontSize: '13px', color: 'var(--primary-color)', borderBottom: '1px solid var(--glass-border)', position: 'relative' }}>
-                                                        字段定义
-                                                        <div
-                                                            onMouseDown={() => setIsResizing(true)}
-                                                            style={{
-                                                                position: 'absolute',
-                                                                right: '-4px',
-                                                                top: 0,
-                                                                bottom: 0,
-                                                                width: '8px',
-                                                                cursor: 'col-resize',
-                                                                background: isResizing ? 'var(--primary-color)' : 'transparent',
-                                                                transition: 'background 0.2s',
-                                                                zIndex: 10
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)'}
-                                                            onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
-                                                        />
-                                                    </th>
-                                                    <th style={{ padding: '15px 20px', textAlign: 'left', fontSize: '13px', color: 'var(--primary-color)', borderBottom: '1px solid var(--glass-border)' }}>核心提取值</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {getSortedEntries(result.data).map(([k, item], idx) => (
-                                                    <tr key={idx} style={{ background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                                                        <td style={{ padding: '15px 20px', verticalAlign: 'top', borderBottom: idx === getSortedEntries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px', color: 'var(--text-primary)' }}>{k}</div>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                                {item.label && <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>🔖 标签: {item.label}</span>}
-                                                                {item.remarks && (
-                                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                                                                        💬 备注: {item.remarks}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: '15px 20px', color: 'var(--text-primary)', borderBottom: idx === getSortedEntries(result.data).length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                            {Array.isArray(item.content) ? (
-                                                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)' }}>
-                                                                    <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%' }}>
-                                                                        <tbody>
-                                                                            {item.content.map((row, rIdx) => (
-                                                                                <tr key={rIdx} style={{ background: rIdx === 0 ? 'rgba(255,255,255,0.05)' : 'transparent', borderBottom: rIdx === item.content.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                                                    {row.map((cell, cIdx) => (
-                                                                                        <td key={cIdx} style={{ padding: '8px 12px', borderRight: cIdx === row.length - 1 ? 'none' : '1px solid var(--glass-border)', fontWeight: rIdx === 0 ? 'bold' : 'normal', color: rIdx === 0 ? 'var(--primary-color)' : 'inherit' }}>
-                                                                                            {cell}
-                                                                                        </td>
-                                                                                    ))}
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            ) : (
-                                                                <div style={{ lineHeight: '1.6', fontSize: '13px', whiteSpace: 'pre-wrap' }}>{String(item.content)}</div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <pre className="custom-scrollbar" style={{
+                                        background: 'rgba(15, 23, 42, 0.9)',
+                                        padding: '24px',
+                                        borderRadius: '16px',
+                                        overflow: 'auto',
+                                        fontSize: '13px',
+                                        lineHeight: '1.6',
+                                        border: '1px solid var(--glass-border)',
+                                        animation: 'slideUp 0.3s ease',
+                                        maxHeight: '600px',
+                                        color: '#cbd5e1',
+                                        fontFamily: 'monospace',
+                                        whiteSpace: 'pre-wrap'
+                                    }}>
+                                        {getMarkdown()}
+                                    </pre>
                                 )}
 
                                 {outputFormat === 'json' && (
-                                    <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(15, 23, 42, 0.9)',
-                                        padding: '24px', borderRadius: '16px',
-                                        overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
-                                        border: '1px solid var(--glass-border)',
-                                        animation: 'slideUp 0.3s ease',
-                                        maxHeight: '600px',
-                                        color: '#34d399'
-                                    }}>
-                                        {JSON.stringify(getJson(), null, 2)}
-                                    </pre>
+                                    <div style={{ animation: 'slideUp 0.3s ease' }}>
+                                        {renderJsonWithHighlight(getJson())}
+                                    </div>
                                 )}
 
-                                {outputFormat === 'xml' && (
-                                    <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(15, 23, 42, 0.9)',
-                                        padding: '24px', borderRadius: '16px',
-                                        overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
-                                        border: '1px solid var(--glass-border)',
-                                        animation: 'slideUp 0.3s ease',
-                                        maxHeight: '600px',
-                                        color: '#60a5fa'
-                                    }}>
-                                        {getXml()}
-                                    </pre>
-                                )}
+                                {outputFormat === 'xml' && renderXmlWithHighlight()}
 
                                 {outputFormat === 'csv' && (
                                     <pre className="custom-scrollbar" style={{
                                         background: 'rgba(15, 23, 42, 0.9)',
-                                        padding: '24px', borderRadius: '16px',
-                                        overflow: 'auto', fontSize: '13px', lineHeight: '1.6',
+                                        padding: '24px',
+                                        borderRadius: '16px',
+                                        overflow: 'auto',
+                                        fontSize: '13px',
+                                        lineHeight: '1.6',
                                         border: '1px solid var(--glass-border)',
                                         animation: 'slideUp 0.3s ease',
                                         maxHeight: '600px',
-                                        color: '#f472b6' // Pinkish/Rose for CSV
+                                        color: '#cbd5e1',
+                                        fontFamily: 'monospace',
+                                        whiteSpace: 'pre'
                                     }}>
-                                        {getCsv()}
+                                        {getCsv().replace(/^\uFEFF/, '')}
                                     </pre>
                                 )}
                             </div>

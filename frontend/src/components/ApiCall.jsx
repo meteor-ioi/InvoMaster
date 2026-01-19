@@ -96,6 +96,19 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
         setTimeout(() => setCopied(null), 2000);
     };
 
+    const handleDownload = (data, filename) => {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.split('.')[0] + '_result.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     // 切换记录选择状态
     const toggleRecordSelection = (recordId, e) => {
         e.stopPropagation();
@@ -288,23 +301,42 @@ fetch(url, {
                             {record.templateName} · {new Date(record.timestamp).toLocaleString('zh-CN')}
                         </span>
                     </div>
-                    <button
-                        onClick={() => handleCopy(JSON.stringify(record.result.data, null, 2), 'preview-json')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'var(--input-bg)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '6px',
-                            padding: '6px 12px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            color: 'var(--text-primary)'
-                        }}
-                    >
-                        {copied === 'preview-json' ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制 JSON</>}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={() => handleCopy(JSON.stringify(record.result.data, null, 2), 'preview-json')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'var(--input-bg)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                color: 'var(--text-primary)'
+                            }}
+                        >
+                            {copied === 'preview-json' ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制</>}
+                        </button>
+                        <button
+                            onClick={() => handleDownload(record.result.data, record.filename)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'var(--input-bg)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                color: 'var(--text-primary)'
+                            }}
+                        >
+                            <Download size={12} /> 下载
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -542,7 +574,7 @@ fetch(url, {
                                 {/* 可折叠内容 */}
                                 <div style={{
                                     overflow: 'hidden',
-                                    maxHeight: isTemplatesCollapsed ? '0' : '500px',
+                                    maxHeight: isTemplatesCollapsed ? '0' : '352px',
                                     opacity: isTemplatesCollapsed ? 0 : 1,
                                     transition: 'all 0.3s ease',
                                     display: 'flex',
@@ -567,7 +599,7 @@ fetch(url, {
                                         />
                                     </div>
 
-                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px' }} className="custom-scrollbar">
+                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '262px' }} className="custom-scrollbar">
                                         {/* Special "Auto" option */}
                                         <div
                                             onClick={() => setSelectedTemplateId('auto')}
@@ -607,7 +639,7 @@ fetch(url, {
                                                 未找到匹配模板
                                             </div>
                                         ) : (
-                                            filteredTemplates.map(t => (
+                                            filteredTemplates.slice(0, 4).map(t => (
                                                 <div key={t.id}
                                                     onClick={() => setSelectedTemplateId(t.id)}
                                                     style={{
@@ -686,27 +718,6 @@ fetch(url, {
                                             style={{ display: 'none' }}
                                             accept=".pdf,.jpg,.jpeg,.png"
                                         />
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            style={{
-                                                background: 'var(--primary-color)',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                padding: '2px 6px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                marginLeft: '8px',
-                                                opacity: 0.8
-                                            }}
-                                            title="测试 API: 上传文件创建一个新任务"
-                                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-                                        >
-                                            <Upload size={10} color="white" />
-                                            <span style={{ fontSize: '10px', color: 'white' }}>Test API</span>
-                                        </button>
                                     </div>
                                     {apiCallRecords.length > 0 && selectedRecords.size > 0 && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -797,12 +808,6 @@ fetch(url, {
                                                         </span>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                             {getStatusIcon(record.status)}
-                                                            <button
-                                                                onClick={(e) => handleDeleteRecord(record.id, e)}
-                                                                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444' }}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
                                                         </div>
                                                     </div>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -929,11 +934,73 @@ fetch(url, {
                                 </div>
                                 <button
                                     onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px' }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'var(--primary-color)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#fff',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        padding: '0 12px',
+                                        height: '28px',
+                                        borderRadius: '6px',
+                                        transition: 'all 0.2s'
+                                    }}
                                 >
                                     {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
                                 </button>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'var(--accent-color)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#fff',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        padding: '0 12px',
+                                        height: '28px',
+                                        borderRadius: '6px',
+                                        transition: 'all 0.2s',
+                                        opacity: 0.9
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
+                                >
+                                    <Upload size={14} /> Test API
+                                </button>
                             </div>
+                        )}
+                        {rightPanelMode === 'preview' && (
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    background: 'var(--accent-color)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#fff',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    padding: '0 12px',
+                                    height: '28px',
+                                    borderRadius: '6px',
+                                    transition: 'all 0.2s',
+                                    opacity: 0.9
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
+                            >
+                                <Upload size={14} /> Test API
+                            </button>
                         )}
                     </div>
 

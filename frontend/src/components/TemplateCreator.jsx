@@ -938,7 +938,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
                     {step === 'complete' && (
                         <div className="glass-card" style={{
-                            padding: '80px',
+                            padding: '40px',
                             textAlign: 'center',
                             height: '100%',
                             display: 'flex',
@@ -946,13 +946,11 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}>
-                            <div style={{ width: '80px', height: '80px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 30px', color: 'var(--success-color)' }}>
+                            <div style={{ width: '80px', height: '80px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--success-color)' }}>
                                 <CheckCircle size={40} />
                             </div>
                             <h2 style={{ marginBottom: '10px' }}>识别模板已沉淀</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>
-                                该单据的指纹与布局规则已关联，且源 PDF 已备份至库中。<br />
-                                后续可随时从列表中再次加载修改。
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>
                             </p>
                             <button className="btn-primary" onClick={() => setStep('review')} style={{ padding: '12px 32px' }}>返回工作台</button>
                         </div>
