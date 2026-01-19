@@ -81,10 +81,10 @@ function App() {
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             {/* 顶栏导航 */}
             <header style={{
-                height: isHeaderCollapsed ? '20px' : '60px',
+                height: isHeaderCollapsed ? '36px' : '60px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: isHeaderCollapsed ? 'center' : 'space-between',
+                justifyContent: 'space-between',
                 background: 'var(--glass-bg)',
                 backdropFilter: 'blur(10px)',
                 borderBottom: '1px solid var(--glass-border)',
@@ -96,73 +96,141 @@ function App() {
                 overflow: 'visible'
             }}>
                 {isHeaderCollapsed ? (
-                    // 折叠状态：悬浮胶囊
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {/* 当前 Tab 图标 */}
+                    // 折叠状态：完整缩小版布局
+                    <>
+                        {/* 左侧：硬件加速（缩小版） */}
                         <div style={{
-                            padding: '4px 8px',
-                            borderRadius: '8px',
-                            background: 'var(--primary-color)',
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            color: 'white',
-                            fontSize: '11px',
-                            fontWeight: 'bold'
+                            gap: '3px',
+                            background: 'var(--input-bg)',
+                            border: '1px solid var(--glass-border)',
+                            padding: '2px',
+                            borderRadius: '8px',
+                            position: 'relative'
                         }}>
-                            {tabs.find(t => t.id === view)?.icon}
-                            <span>{tabs.find(t => t.id === view)?.label}</span>
+                            {devices.map(d => (
+                                <button
+                                    key={d.id}
+                                    onClick={() => setDevice(d.id)}
+                                    style={{
+                                        padding: '3px 6px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: device === d.id ? 'white' : 'var(--text-secondary)',
+                                        fontSize: '9px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        position: 'relative',
+                                        zIndex: 1,
+                                        transition: 'color 0.2s ease'
+                                    }}
+                                >
+                                    {React.cloneElement(d.icon, { size: 11 })}
+                                    {d.label}
+                                    {device === d.id && (
+                                        <motion.div
+                                            layoutId="device-bg-mini"
+                                            style={{
+                                                position: 'absolute',
+                                                inset: 0,
+                                                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                                                borderRadius: '6px',
+                                                zIndex: -1
+                                            }}
+                                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                        />
+                                    )}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* 迷你主题按钮 */}
-                        <button
-                            onClick={() => {
-                                const nextMode = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
-                                setThemeMode(nextMode);
-                            }}
-                            style={{
-                                background: 'var(--input-bg)',
-                                border: '1px solid var(--glass-border)',
-                                padding: '4px',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                color: 'var(--text-primary)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease'
-                            }}
-                            title={
-                                themeMode === 'system' ? '跟随系统主题' :
-                                    themeMode === 'light' ? '白天主题' :
-                                        '黑夜主题'
-                            }
-                        >
-                            {themeMode === 'system' ? <Monitor size={14} /> :
-                                themeMode === 'light' ? <Sun size={14} /> :
-                                    <Moon size={14} />}
-                        </button>
+                        {/* 中间：Tab 导航（缩小图标版） */}
+                        <div style={{
+                            position: 'absolute',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            display: 'flex',
+                            gap: '6px'
+                        }}>
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setView(tab.id)}
+                                    style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: view === tab.id ? 'var(--primary-color)' : 'transparent',
+                                        color: view === tab.id ? 'white' : 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {React.cloneElement(tab.icon, { size: 13 })}
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
 
-                        {/* 迷你侧边栏按钮 */}
-                        <button
-                            onClick={toggleSidebars}
-                            style={{
-                                background: 'var(--input-bg)',
-                                border: '1px solid var(--glass-border)',
-                                padding: '4px',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                color: isSidebarsCollapsed ? 'var(--primary-color)' : 'var(--text-primary)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease'
-                            }}
-                            title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
-                        >
-                            {isSidebarsCollapsed ? <ChevronsLeftRight size={14} /> : <ChevronsRightLeft size={14} />}
-                        </button>
-                    </div>
+                        {/* 右侧：功能按钮组（缩小版） */}
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                                onClick={toggleSidebars}
+                                style={{
+                                    background: 'var(--input-bg)',
+                                    border: '1px solid var(--glass-border)',
+                                    padding: '5px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    color: isSidebarsCollapsed ? 'var(--primary-color)' : 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
+                            >
+                                {isSidebarsCollapsed ? <ChevronsLeftRight size={13} /> : <ChevronsRightLeft size={13} />}
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    const nextMode = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
+                                    setThemeMode(nextMode);
+                                }}
+                                style={{
+                                    background: 'var(--input-bg)',
+                                    border: '1px solid var(--glass-border)',
+                                    padding: '5px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                title={
+                                    themeMode === 'system' ? '跟随系统主题' :
+                                        themeMode === 'light' ? '白天主题' :
+                                            '黑夜主题'
+                                }
+                            >
+                                {themeMode === 'system' ? <Monitor size={13} /> :
+                                    themeMode === 'light' ? <Sun size={13} /> :
+                                        <Moon size={13} />}
+                            </button>
+                        </div>
+                    </>
                 ) : (
                     // 展开状态：完整内容
                     <>
