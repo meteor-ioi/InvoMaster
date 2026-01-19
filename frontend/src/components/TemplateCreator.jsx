@@ -13,6 +13,13 @@ export default function TemplateCreator({ theme, setTheme, device }) {
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState('review'); // Default to review mode directly
+
+    const DEFAULT_TABLE_SETTINGS = {
+        vertical_strategy: 'text',
+        horizontal_strategy: 'text',
+        snap_tolerance: 6,
+        join_tolerance: 3,
+    };
     const [templates, setTemplates] = useState([]);
     const [templateName, setTemplateName] = useState('');
 
@@ -407,10 +414,19 @@ export default function TemplateCreator({ theme, setTheme, device }) {
 
     const handleEnterTableRefine = async (region, settingsOverride = null) => {
         setLoading(true);
-        const s = settingsOverride || region.table_settings || tableSettings;
 
-        if (region.table_settings && !settingsOverride) {
+        // 确定最终使用的设置：优先级 override > 已保存的设置 > 默认设置
+        let s;
+        if (settingsOverride) {
+            s = settingsOverride;
+        } else if (region.table_settings) {
+            s = region.table_settings;
+            // 同步到 UI 状态，以便侧边栏显示正确
             setTableSettings(region.table_settings);
+        } else {
+            s = DEFAULT_TABLE_SETTINGS;
+            // 关键修复：如果没有保存过设置，则重置 UI 状态为默认，防止继承上一个表格的残留
+            setTableSettings(DEFAULT_TABLE_SETTINGS);
         }
 
         try {
