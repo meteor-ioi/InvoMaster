@@ -412,7 +412,11 @@ function App() {
             </header>
 
             {/* 内容区域 */}
-            <main style={{ flex: 1, position: 'relative' }}>
+            <main style={{
+                height: isHeaderCollapsed ? 'calc(100vh - 36px)' : 'calc(100vh - 60px)',
+                position: 'relative',
+                overflow: 'auto'
+            }}>
                 {view === 'creator' && <TemplateCreator theme={appliedTheme} setTheme={setThemeMode} device={device} />}
                 {view === 'reference' && <TemplateReference theme={appliedTheme} device={device} />}
                 {view === 'apicall' && <ApiCall theme={appliedTheme} device={device} />}
