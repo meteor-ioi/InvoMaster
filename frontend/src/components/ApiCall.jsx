@@ -20,6 +20,7 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const [selectedRecords, setSelectedRecords] = useState(new Set());
     const [selectedRecordId, setSelectedRecordId] = useState(null);
     const [rightPanelMode, setRightPanelMode] = useState('code'); // 'code' | 'preview'
+    const [activeSideTab, setActiveSideTab] = useState('templates'); // 'templates' | 'records'
     const [activeTab, setActiveTab] = useState('auto'); // 'auto' | 'custom'
     const fileInputRef = useRef(null);
 
@@ -477,55 +478,15 @@ fetch(url, {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 border: '1px solid var(--glass-border)',
-                                color: 'var(--primary-color)'
+                                color: activeSideTab === 'templates' ? 'var(--primary-color)' : 'var(--accent-color)'
                             }}>
-                                <Server size={18} />
-                            </div>
-                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
-                            <div
-                                title={`可用模板数: ${templates.length}`}
-                                style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    border: '1px solid var(--primary-color)',
-                                    background: 'rgba(59, 130, 246, 0.1)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'var(--primary-color)',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {templates.length}
-                            </div>
-                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
-                            <div
-                                title={`调用记录: ${apiCallRecords.length}`}
-                                onClick={() => setIsPanelCollapsed(false)}
-                                style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    border: '1px solid var(--accent-color)',
-                                    background: 'rgba(139, 92, 246, 0.1)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'var(--accent-color)',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {apiCallRecords.length}
+                                {activeSideTab === 'templates' ? <Package size={18} /> : <Clock size={18} />}
                             </div>
                         </div>
                     ) : (
                         <>
-                            {/* Card 1: 可用模板 ID (可折叠) */}
-                            <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: isTemplatesCollapsed ? '0' : '15px', transition: 'all 0.3s ease' }}>
+                            {/* Tabbed Card: Templates & Records */}
+                            <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                                 <div
                                     onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
                                     style={{
