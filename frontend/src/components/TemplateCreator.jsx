@@ -326,7 +326,8 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                     imgsz: layoutSettings.imgsz,
                     iou: layoutSettings.iou,
                     agnostic_nms: layoutSettings.agnostic_nms,
-                    refresh: isRefresh
+                    refresh: isRefresh,
+                    skip_history: true  // 模板制作不记录历史
                 }
             });
             setAnalysis(res.data);
