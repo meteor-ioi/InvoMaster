@@ -167,6 +167,8 @@ class TaskWorker:
             matching_regions = engine.predict(image_paths[0])
         
         # 构建结果
+        # Sort spatially
+        matching_regions = self.main_module.sort_regions_spatially(matching_regions)
         result_map = {}
         for r in matching_regions:
             r_dict = r if isinstance(r, dict) else (
@@ -223,6 +225,8 @@ class TaskWorker:
         )
         
         # 构建结果
+        # Sort spatially
+        extracted_regions = self.main_module.sort_regions_spatially(extracted_regions)
         result_map = {}
         for r in extracted_regions:
             key = r.get("id")

@@ -343,6 +343,20 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
             
     return results
 
+def sort_regions_spatially(regions):
+    """
+    Sort regions from top-left to bottom-right (reading order).
+    Priority: Y coordinate (top to bottom), then X coordinate (left to right).
+    Handles both Dict and Object (with attributes).
+    """
+    def get_sort_key(r):
+        if isinstance(r, dict):
+            return (r.get('y', 0), r.get('x', 0))
+        else:
+            # Handle Region objects or similar
+            return (getattr(r, 'y', 0), getattr(r, 'x', 0))
+    return sorted(regions, key=get_sort_key)
+
 @app.get("/health")
 async def root():
     return {"message": "HITL Document Extraction API is running"}
@@ -452,6 +466,8 @@ async def analyze_document(
             matching_regions = []
     
     # 5. 构建结果数据 (始终需要用于响应)
+    # Sort matching_regions spatially before building the map
+    matching_regions = sort_regions_spatially(matching_regions)
     result_map = {}
     for r in matching_regions:
         # Normalize region data (might be Region object or dict)
@@ -974,6 +990,9 @@ async def extract_with_custom_template(
         extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
         
         # 4. Format Output
+        # Sort extracted_regions spatially
+        extracted_regions = sort_regions_spatially(extracted_regions)
+        
         result_map = {}
         for r in extracted_regions:
             key = r.get("id")
