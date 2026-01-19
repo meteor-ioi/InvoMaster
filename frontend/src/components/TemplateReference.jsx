@@ -903,8 +903,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                             flexDirection: 'column',
                                             gap: '15px',
                                             animation: 'fadeIn 0.3s ease',
-                                            overflow: 'auto'
-                                        }} className="custom-scrollbar">
+                                            overflow: 'hidden'
+                                        }}>
                                             {/* 模板选择器 */}
                                             <div style={{ position: 'relative' }} ref={dropdownRef}>
                                                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
@@ -1097,9 +1097,20 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                 </div>
                                             </div>
 
-                                            {/* File Queue List */}
+                                            {/* Execute Button - Moved here */}
+                                            <button
+                                                className="btn-primary"
+                                                onClick={isBatchMode ? handleBatchExecute : handleExecute}
+                                                disabled={(!file && files.length === 0) || loading}
+                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
+                                            >
+                                                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                                                {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
+                                            </button>
+
+                                            {/* File Queue List - Moved below button */}
                                             {files.length > 0 && (
-                                                <div>
+                                                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                                                     <div style={{
                                                         fontSize: '11px',
                                                         color: 'var(--text-secondary)',
@@ -1141,7 +1152,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                         </button>
                                                     </div>
                                                     <div style={{
-                                                        maxHeight: '200px',
+                                                        flex: 1,
                                                         overflowY: 'auto',
                                                         display: 'flex',
                                                         flexDirection: 'column',
@@ -1242,15 +1253,6 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                 </div>
                                             )}
 
-                                            <button
-                                                className="btn-primary"
-                                                onClick={isBatchMode ? handleBatchExecute : handleExecute}
-                                                disabled={(!file && files.length === 0) || loading}
-                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
-                                            >
-                                                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
-                                                {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
-                                            </button>
                                         </div>
                                     )}
 
