@@ -277,6 +277,10 @@ select {
   }
 }
 
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .nav-tab-hover:hover {
   background: var(--input-bg) !important;
   color: var(--text-primary) !important;
