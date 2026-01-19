@@ -1063,15 +1063,10 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                             <span style={{ fontSize: '11px', fontWeight: '500', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                                                         </div>
                                                     ) : files.length > 0 ? (
-                                                        <div style={{ color: 'var(--primary-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                                                            <Package size={24} />
-                                                            <span style={{ fontSize: '11px', fontWeight: '500' }}>已选择 {files.length} 个文件</span>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setFiles([]); setIsBatchMode(false); setBatchResults(new Map()); }}
-                                                                style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                                                            >
-                                                                清空
-                                                            </button>
+                                                        <div style={{ color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                                            <Package size={20} />
+                                                            <span style={{ fontSize: '11px', fontWeight: '500' }}>添加更多文件</span>
+                                                            <span style={{ fontSize: '10px', opacity: 0.7 }}>点击或拖拽添加</span>
                                                         </div>
                                                     ) : (
                                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
@@ -1102,11 +1097,156 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                 </div>
                                             </div>
 
+                                            {/* File Queue List */}
+                                            {files.length > 0 && (
+                                                <div>
+                                                    <div style={{
+                                                        fontSize: '11px',
+                                                        color: 'var(--text-secondary)',
+                                                        marginBottom: '6px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between'
+                                                    }}>
+                                                        <span>待处理队列 ({files.length})</span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setFiles([]);
+                                                                setIsBatchMode(false);
+                                                                setBatchResults(new Map());
+                                                            }}
+                                                            style={{
+                                                                fontSize: '10px',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid var(--glass-border)',
+                                                                background: 'var(--input-bg)',
+                                                                color: 'var(--text-secondary)',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                                e.currentTarget.style.borderColor = '#ef4444';
+                                                                e.currentTarget.style.color = '#ef4444';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'var(--input-bg)';
+                                                                e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                                            }}
+                                                        >
+                                                            清空全部
+                                                        </button>
+                                                    </div>
+                                                    <div style={{
+                                                        maxHeight: '200px',
+                                                        overflowY: 'auto',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '8px',
+                                                        padding: '2px'
+                                                    }} className="custom-scrollbar">
+                                                        {files.map((f, i) => {
+                                                            const isProcessing = processingIndex === i || (loading && !isBatchMode && file?.name === f.name);
+                                                            return (
+                                                                <div
+                                                                    key={`queue-${f.name}-${i}`}
+                                                                    style={{
+                                                                        padding: '10px 12px',
+                                                                        borderRadius: '10px',
+                                                                        background: isProcessing ? 'rgba(59, 130, 246, 0.05)' : 'var(--input-bg)',
+                                                                        border: isProcessing ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '10px',
+                                                                        transition: 'all 0.3s ease',
+                                                                        animation: 'slideUp 0.3s ease'
+                                                                    }}
+                                                                    className="file-queue-item"
+                                                                >
+                                                                    {/* Status Icon */}
+                                                                    <div style={{
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        minWidth: '32px',
+                                                                        borderRadius: '8px',
+                                                                        background: isProcessing ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        border: `1px solid ${isProcessing ? 'var(--primary-color)' : 'var(--glass-border)'}`
+                                                                    }}>
+                                                                        {isProcessing ? (
+                                                                            <RefreshCw size={14} className="animate-spin" color="var(--primary-color)" />
+                                                                        ) : (
+                                                                            <FileText size={14} color="var(--text-secondary)" />
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* File Info */}
+                                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                                        <div style={{
+                                                                            fontSize: '12px',
+                                                                            fontWeight: '500',
+                                                                            color: 'var(--text-primary)',
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            whiteSpace: 'nowrap'
+                                                                        }}>
+                                                                            {f.name}
+                                                                        </div>
+                                                                        <div style={{
+                                                                            fontSize: '10px',
+                                                                            color: isProcessing ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                                            marginTop: '2px'
+                                                                        }}>
+                                                                            {isProcessing ? '处理中...' : '待处理'}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Delete Button */}
+                                                                    {!isProcessing && (
+                                                                        <button
+                                                                            onClick={(e) => handleDeleteQueueItem(i, e)}
+                                                                            style={{
+                                                                                background: 'none',
+                                                                                border: 'none',
+                                                                                padding: '4px',
+                                                                                cursor: 'pointer',
+                                                                                color: 'var(--text-secondary)',
+                                                                                opacity: 0.6,
+                                                                                transition: 'all 0.2s ease',
+                                                                                borderRadius: '6px'
+                                                                            }}
+                                                                            onMouseEnter={(e) => {
+                                                                                e.currentTarget.style.opacity = '1';
+                                                                                e.currentTarget.style.color = '#ef4444';
+                                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                                            }}
+                                                                            onMouseLeave={(e) => {
+                                                                                e.currentTarget.style.opacity = '0.6';
+                                                                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                                                                e.currentTarget.style.background = 'none';
+                                                                            }}
+                                                                            title="移除"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <button
                                                 className="btn-primary"
                                                 onClick={isBatchMode ? handleBatchExecute : handleExecute}
                                                 disabled={(!file && files.length === 0) || loading}
-                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1, marginTop: 'auto' }}
+                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
                                             >
                                                 {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
                                                 {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
