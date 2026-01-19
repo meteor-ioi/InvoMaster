@@ -144,32 +144,9 @@ const RightSidebar = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Edit3 size={16} color="var(--accent-color)" />
-                                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {tableRefining ? (
-                                    <>
-                                        <button onClick={(e) => { e.stopPropagation(); tableUndo(); }} disabled={tableHistoryIndex <= 0} title="撤回表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex > 0 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex > 0 ? 1 : 0.5 }}>
-                                            <RotateCcw size={12} />
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); tableRedo(); }} disabled={tableHistoryIndex >= tableHistoryLength - 1} title="重做表格操作" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex < tableHistoryLength - 1 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex < tableHistoryLength - 1 ? 1 : 0.5 }}>
-                                            <RotateCw size={12} />
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={(e) => { e.stopPropagation(); undo(); }} disabled={historyIndex <= 0} title="撤回" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}>
-                                            <RotateCcw size={12} />
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); redo(); }} disabled={historyIndex >= historyLength - 1} title="重做" style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex < historyLength - 1 ? 'pointer' : 'not-allowed', opacity: historyIndex < historyLength - 1 ? 1 : 0.5 }}>
-                                            <RotateCw size={12} />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Edit3 size={16} color="var(--accent-color)" />
+                            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
 
                         <div style={{ width: '100%', height: '1px', background: 'var(--glass-border)', marginBottom: '5px' }} />
@@ -209,13 +186,28 @@ const RightSidebar = ({
 
                                     <div>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差：</p>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                            <button
+                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.max(1, (prev.snap_tolerance || 3) - 1) }))}
+                                                className="glass-stepper-btn"
+                                                title="减少吸附容差"
+                                            >
+                                                <Minus size={12} />
+                                            </button>
                                             <input
                                                 type="range" min="1" max="10" step="1"
                                                 value={tableSettings.snap_tolerance || 3}
                                                 onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
-                                                style={{ flex: 1, accentColor: 'var(--primary-color)', cursor: 'pointer' }}
+                                                className="glass-slider"
+                                                style={{ flex: 1, cursor: 'pointer' }}
                                             />
+                                            <button
+                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.min(10, (prev.snap_tolerance || 3) + 1) }))}
+                                                className="glass-stepper-btn"
+                                                title="增加吸附容差"
+                                            >
+                                                <Plus size={12} />
+                                            </button>
                                             <span style={{ fontSize: '11px', minWidth: '20px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 'bold' }}>
                                                 {tableSettings.snap_tolerance || 3}
                                             </span>
@@ -424,8 +416,9 @@ const RightSidebar = ({
                         </div>
                     )}
                 </>
-            )}
-        </aside>
+            )
+            }
+        </aside >
     );
 };
 

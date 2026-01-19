@@ -19,7 +19,6 @@ const LeftPanel = ({
     const [activeTab, setActiveTab] = useState('auto');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState([]);
-    const [showSearch, setShowSearch] = useState(false);
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
     const toggleExpand = (id, e) => {
@@ -220,51 +219,9 @@ const LeftPanel = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px' }}>
-                            {showSearch ? (
-                                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px' }}>
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        placeholder="搜索模板或标签..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '4px 12px',
-                                            borderRadius: '20px',
-                                            border: '1px solid var(--primary-color)',
-                                            background: 'var(--input-bg)',
-                                            color: 'var(--text-primary)',
-                                            fontSize: '11px',
-                                            outline: 'none',
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                                        }}
-                                    />
-                                    <X
-                                        size={14}
-                                        color="var(--text-secondary)"
-                                        style={{ cursor: 'pointer', flexShrink: 0 }}
-                                        onClick={() => {
-                                            setShowSearch(false);
-                                            setSearchQuery('');
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Package size={16} color="var(--accent-color)" />
-                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
-                                    </div>
-                                    <Search
-                                        size={14}
-                                        color="var(--text-secondary)"
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() => setShowSearch(true)}
-                                    />
-                                </>
-                            )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '24px' }}>
+                            <Package size={16} color="var(--accent-color)" />
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
                         </div>
 
                         {/* Mode Tabs */}
@@ -293,6 +250,42 @@ const LeftPanel = ({
                             </button>
                         </div>
 
+                        {/* 常驻搜索框 */}
+                        <div style={{ position: 'relative' }}>
+                            <Search
+                                size={14}
+                                color="var(--text-secondary)"
+                                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="搜索模板名称或ID..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px 8px 32px',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'var(--input-bg)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '12px',
+                                    outline: 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                                onFocus={(e) => e.target.style.border = '1px solid var(--primary-color)'}
+                                onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
+                            />
+                            {searchQuery && (
+                                <X
+                                    size={14}
+                                    color="var(--text-secondary)"
+                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0.6 }}
+                                    onClick={() => setSearchQuery('')}
+                                />
+                            )}
+                        </div>
+
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '2px' }} className="custom-scrollbar">
                             {(() => {
                                 // Filter logic
@@ -300,6 +293,7 @@ const LeftPanel = ({
                                     const matchMode = t.mode === activeTab;
                                     const matchSearch = !searchQuery ||
                                         t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                        t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                         (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
                                     return matchMode && matchSearch;
                                 });

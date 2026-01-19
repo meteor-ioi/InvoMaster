@@ -195,21 +195,30 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     }, [showSplitPreview, selectedId, selectedIds, tableRefining]);
 
     // --- 自动联动：进入/退出表格微调时自动收起数据预览及侧边栏 ---
-    useEffect(() => {
-        setShowSplitPreview(false);
+    // --- 自动联动：进入/退出表格微调时自动收起数据预览及侧边栏 ---
+    const isRefining = !!tableRefining;
+    const wasRefiningRef = useRef(isRefining);
 
-        if (tableRefining) {
+    useEffect(() => {
+        const wasRefining = wasRefiningRef.current;
+
+        // 仅在状态变更（进入或退出）时触发联动，微调过程中的数据更新不触发
+        if (isRefining && !wasRefining) {
             // 进入微调模式：记录当前状态并强制收起
+            setShowSplitPreview(false);
             setLeftPanelHistoryState(leftPanelCollapsed);
             setLeftPanelCollapsed(true);
-        } else {
+        } else if (!isRefining && wasRefining) {
             // 退出微调模式：恢复之前的状态
+            setShowSplitPreview(false);
             if (leftPanelHistoryState !== null) {
                 setLeftPanelCollapsed(leftPanelHistoryState);
                 setLeftPanelHistoryState(null);
             }
         }
-    }, [tableRefining]);
+
+        wasRefiningRef.current = isRefining;
+    }, [isRefining, setShowSplitPreview, setLeftPanelHistoryState, setLeftPanelCollapsed]); // 依赖项调整为通过 isRefining 派生
 
     const lastShowPreview = useRef(showSplitPreview);
     // --- 数据预览自动缩放控制 ---
@@ -711,6 +720,15 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                     setSelectedIds={setSelectedIds}
                                     deviceUsed={lastDeviceUsed}
                                     inferenceTime={inferenceTime}
+                                    // Undo/Redo Props
+                                    undo={undo}
+                                    redo={redo}
+                                    historyIndex={historyIndex}
+                                    historyLength={history.length}
+                                    tableUndo={tableUndo}
+                                    tableRedo={tableRedo}
+                                    tableHistoryIndex={tableHistoryIndex}
+                                    tableHistoryLength={tableHistory.length}
                                 />
 
                                 <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
@@ -920,7 +938,15 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     )}
 
                     {step === 'complete' && (
-                        <div className="glass-card" style={{ padding: '80px', textAlign: 'center' }}>
+                        <div className="glass-card" style={{
+                            padding: '80px',
+                            textAlign: 'center',
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
                             <div style={{ width: '80px', height: '80px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 30px', color: 'var(--success-color)' }}>
                                 <CheckCircle size={40} />
                             </div>

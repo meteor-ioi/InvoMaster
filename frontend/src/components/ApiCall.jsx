@@ -7,6 +7,7 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const [templates, setTemplates] = useState([]);
     const [copied, setCopied] = useState(null);
     const [selectedLanguage, setSelectedLanguage] = useState('python');
+    const [selectedTemplateId, setSelectedTemplateId] = useState('auto');
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +22,13 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
             }
         };
         fetchTemplates();
+
+        const handleToggleSidebars = (e) => {
+            setIsPanelCollapsed(e.detail.collapsed);
+        };
+
+        window.addEventListener('toggle-sidebars', handleToggleSidebars);
+        return () => window.removeEventListener('toggle-sidebars', handleToggleSidebars);
     }, []);
 
     const handleCopy = (text, type) => {
@@ -34,8 +42,8 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
 # 1. 准备参数
 url = "${API_BASE}/extract"
 params = {
-    "template_id": "auto", # 选择自动模式 auto 或输入模板id
-    "device": "auto"        # 可选类型：auto, cpu, gpu, mps
+    "template_id": "${selectedTemplateId}", # 选择自动模式 auto 或输入模板id
+    "device": "${device || 'auto'}"        # 可选类型：auto, cpu, cuda, mps
 }
 
 # 2. 上传文件进行提取
@@ -57,8 +65,8 @@ const formData = new FormData();
 formData.append('file', fileInput.files[0]); // 获取上传的文件对象
 
 const url = new URL("${API_BASE}/extract");
-url.searchParams.append('template_id', 'auto'); // 自动模式：auto 或输入模板id
-url.searchParams.append('device', 'auto');      // 可选类型：auto, cpu, gpu, mps
+url.searchParams.append('template_id', '${selectedTemplateId}'); // 自动模式：auto 或输入模板id
+url.searchParams.append('device', '${device || 'auto'}');      // 可选类型：auto, cpu, cuda, mps
 
 fetch(url, {
     method: 'POST',
@@ -76,7 +84,7 @@ fetch(url, {
     console.error("网络错误:", error);
 });`;
 
-    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=auto&device=auto" \\
+    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=${selectedTemplateId}&device=${device || 'auto'}" \\
   -F "file=@/path/to/document.pdf"`;
 
     const getCodeSnippet = (lang) => {
@@ -161,7 +169,22 @@ fetch(url, {
                                 <Server size={18} />
                             </div>
                             <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
-                            <div title="可用模板数" style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
+                            <div
+                                title={`可用模板数: ${templates.length}`}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    border: '1px solid var(--primary-color)',
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--primary-color)',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold'
+                                }}
+                            >
                                 {templates.length}
                             </div>
                         </div>
@@ -192,18 +215,24 @@ fetch(url, {
 
                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                 {/* Special "Auto" option */}
-                                <div style={{
-                                    padding: '12px',
-                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
-                                    borderRadius: '10px',
-                                    border: '1px solid var(--primary-color)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '6px',
-                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }} className="list-item-hover">
+                                <div
+                                    onClick={() => setSelectedTemplateId('auto')}
+                                    style={{
+                                        padding: '12px',
+                                        background: selectedTemplateId === 'auto'
+                                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))'
+                                            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05))',
+                                        borderRadius: '10px',
+                                        border: `1px solid ${selectedTemplateId === 'auto' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px',
+                                        boxShadow: selectedTemplateId === 'auto' ? '0 4px 12px rgba(59, 130, 246, 0.15)' : 'none',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }} className="list-item-hover">
                                     <div style={{ position: 'absolute', right: '-10px', top: '-10px', opacity: 0.1 }}>
                                         <Sparkles size={40} />
                                     </div>
@@ -214,7 +243,7 @@ fetch(url, {
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '4px' }}>
                                         <code style={{ fontSize: '10px', color: 'var(--primary-color)', fontWeight: 'bold' }}>auto</code>
                                         <button
-                                            onClick={() => handleCopy('auto', 'auto')}
+                                            onClick={(e) => { e.stopPropagation(); handleCopy('auto', 'auto'); }}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === 'auto' ? 'var(--success-color)' : 'var(--primary-color)' }}
                                             title="复制 auto ID"
                                         >
@@ -231,20 +260,24 @@ fetch(url, {
                                     </div>
                                 ) : (
                                     filteredTemplates.map(t => (
-                                        <div key={t.id} style={{
-                                            padding: '10px',
-                                            background: 'var(--input-bg)',
-                                            borderRadius: '10px',
-                                            border: '1px solid var(--glass-border)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '6px'
-                                        }} className="list-item-hover">
+                                        <div key={t.id}
+                                            onClick={() => setSelectedTemplateId(t.id)}
+                                            style={{
+                                                padding: '10px',
+                                                background: selectedTemplateId === t.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                borderRadius: '10px',
+                                                border: `1px solid ${selectedTemplateId === t.id ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '6px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }} className="list-item-hover">
                                             <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{t.name}</div>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.05)', padding: '4px 6px', borderRadius: '4px' }}>
                                                 <code style={{ fontSize: '10px', color: 'var(--primary-color)', fontFamily: 'monospace' }}>{t.id.substring(0, 18)}...</code>
                                                 <button
-                                                    onClick={() => handleCopy(t.id, t.id)}
+                                                    onClick={(e) => { e.stopPropagation(); handleCopy(t.id, t.id); }}
                                                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === t.id ? 'var(--success-color)' : 'var(--text-secondary)' }}
                                                     title="复制完整ID"
                                                 >

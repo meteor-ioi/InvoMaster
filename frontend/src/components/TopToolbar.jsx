@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -31,7 +32,16 @@ const TopToolbar = ({
     selectedIds,
     setSelectedIds,
     deviceUsed,
-    inferenceTime
+    inferenceTime,
+    // Undo/Redo Props
+    undo,
+    redo,
+    historyIndex,
+    historyLength,
+    tableUndo,
+    tableRedo,
+    tableHistoryIndex,
+    tableHistoryLength
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -92,12 +102,27 @@ const TopToolbar = ({
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingLeft: '20px', borderLeft: '1px solid var(--glass-border)', flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
                                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>置信度:</span>
+                                    <button
+                                        onClick={() => setConfidence(prev => Math.max(0.05, parseFloat((prev - 0.05).toFixed(2))))}
+                                        className="glass-stepper-btn"
+                                        title="减少置信度"
+                                    >
+                                        <Minus size={12} />
+                                    </button>
                                     <input
                                         type="range" min="0.05" max="0.6" step="0.05"
                                         value={confidence} onChange={(e) => setConfidence(parseFloat(e.target.value))}
-                                        style={{ flex: 1, minWidth: '80px', maxWidth: '300px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
+                                        className="glass-slider"
+                                        style={{ flex: 1, minWidth: '80px', maxWidth: '300px', cursor: 'pointer' }}
                                     />
-                                    <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{confidence.toFixed(2)}</span>
+                                    <button
+                                        onClick={() => setConfidence(prev => Math.min(0.6, parseFloat((prev + 0.05).toFixed(2))))}
+                                        className="glass-stepper-btn"
+                                        title="增加置信度"
+                                    >
+                                        <Plus size={12} />
+                                    </button>
+                                    <span style={{ fontSize: '11px', minWidth: '30px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', fontWeight: 'bold' }}>{confidence.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -106,7 +131,7 @@ const TopToolbar = ({
                             onClick={() => analyze(file, { refresh: true })}
                             disabled={loading}
                             className="btn-primary"
-                            style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-color)', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ padding: '8px 20px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
                             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析
                         </button>
@@ -123,7 +148,7 @@ const TopToolbar = ({
                 borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '220px' }}>
                     {/* 高精度表格微调入口 - 移至最左侧 */}
                     {!tableRefining && (
                         <>
@@ -271,7 +296,7 @@ const TopToolbar = ({
                         </>
                     )}
 
-                    {tableRefining ? (
+                    {tableRefining && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <button
                                 onClick={() => setShowSplitPreview(!showSplitPreview)}
@@ -307,102 +332,133 @@ const TopToolbar = ({
                                     {(tableRefining.cols?.length || 1) - 1} 列
                                 </span>
                             </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', background: 'rgba(59, 130, 246, 0.05)', padding: '2px 10px', borderRadius: '20px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                                <Info size={12} color="var(--primary-color)" />
-                                <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
-                                    提示: 拖拽线段移动，边缘悬停可新增
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
-                            {/* Central Editing Tools */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}>
-                                <button
-                                    onClick={() => toggleRegionLock(selectedRegion?.id)}
-                                    disabled={!selectedRegion}
-                                    title={selectedRegion?.locked ? "解锁当前区块" : "锁定当前区块"}
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: selectedRegion?.locked ? 'var(--accent-color)' : 'transparent',
-                                        color: selectedRegion?.locked ? '#fff' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: selectedRegion ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.2s',
-                                        opacity: selectedRegion ? 1 : 0.5
-                                    }}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        {selectedRegion?.locked ? (
-                                            <>
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                            </>
-                                        ) : (
-                                            <>
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                                            </>
-                                        )}
-                                    </svg>
-                                </button>
-                                <button
-                                    onClick={() => setEditorMode(editorMode === 'add' ? 'view' : 'add')}
-                                    title="新增区块"
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: editorMode === 'add' ? 'var(--primary-color)' : 'transparent',
-                                        color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <PlusSquare size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setEditorMode(editorMode === 'select' ? 'view' : 'select')}
-                                    title="选择区域 (批量操作)"
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: editorMode === 'select' ? 'var(--primary-color)' : 'transparent',
-                                        color: editorMode === 'select' ? '#fff' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <BoxSelect size={16} />
-                                </button>
-                                <button
-                                    disabled={!selectedRegion && selectedIds?.length === 0}
-                                    onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
-                                    title={selectedIds?.length > 1 ? `删除选中的 ${selectedIds.length} 个区块` : "删除区块"}
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                        background: 'transparent',
-                                        color: (selectedRegion || selectedIds?.length > 0) ? '#ef4444' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: (selectedRegion || selectedIds?.length > 0) ? 'pointer' : 'not-allowed',
-                                        opacity: (selectedRegion || selectedIds?.length > 0) ? 1 : 0.5,
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-
-                            </div>
                         </div>
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+                    {/* Central Editing Tools */}
+                    {tableRefining ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                                onClick={() => tableUndo()}
+                                disabled={!tableUndo || tableHistoryIndex <= 0}
+                                title="撤回表格操作"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex > 0 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex > 0 ? 1 : 0.5 }}
+                            >
+                                <RotateCcw size={14} />
+                            </button>
+                            <button
+                                onClick={() => tableRedo()}
+                                disabled={!tableRedo || tableHistoryIndex >= tableHistoryLength - 1}
+                                title="重做表格操作"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tableHistoryIndex < tableHistoryLength - 1 ? 'pointer' : 'not-allowed', opacity: tableHistoryIndex < tableHistoryLength - 1 ? 1 : 0.5 }}
+                            >
+                                <RotateCw size={14} />
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            <button
+                                onClick={() => undo && undo()}
+                                disabled={!undo || historyIndex <= 0}
+                                title="撤回"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex > 0 ? 'pointer' : 'not-allowed', opacity: historyIndex > 0 ? 1 : 0.5 }}
+                            >
+                                <RotateCcw size={16} />
+                            </button>
+                            <button
+                                onClick={() => redo && redo()}
+                                disabled={!redo || historyIndex >= historyLength - 1}
+                                title="重做"
+                                style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: historyIndex < historyLength - 1 ? 'pointer' : 'not-allowed', opacity: historyIndex < historyLength - 1 ? 1 : 0.5 }}
+                            >
+                                <RotateCw size={16} />
+                            </button>
+                            <div style={{ width: '1px', height: '16px', background: 'var(--glass-border)', margin: '0 4px' }} />
 
+                            <button
+                                onClick={() => toggleRegionLock(selectedRegion?.id)}
+                                disabled={!selectedRegion}
+                                title={selectedRegion?.locked ? "解锁当前区块" : "锁定当前区块"}
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: selectedRegion?.locked ? 'var(--accent-color)' : 'transparent',
+                                    color: selectedRegion?.locked ? '#fff' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: selectedRegion ? 'pointer' : 'not-allowed',
+                                    transition: 'all 0.2s',
+                                    opacity: selectedRegion ? 1 : 0.5
+                                }}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    {selectedRegion?.locked ? (
+                                        <>
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                        </>
+                                    )}
+                                </svg>
+                            </button>
+                            <button
+                                onClick={() => setEditorMode(editorMode === 'add' ? 'view' : 'add')}
+                                title="新增区块"
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: editorMode === 'add' ? 'var(--primary-color)' : 'transparent',
+                                    color: editorMode === 'add' ? '#fff' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <PlusSquare size={16} />
+                            </button>
+                            <button
+                                onClick={() => setEditorMode(editorMode === 'select' ? 'view' : 'select')}
+                                title="选择区域 (批量操作)"
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: editorMode === 'select' ? 'var(--primary-color)' : 'transparent',
+                                    color: editorMode === 'select' ? '#fff' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <BoxSelect size={16} />
+                            </button>
+                            <button
+                                disabled={!selectedRegion && selectedIds?.length === 0}
+                                onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
+                                title={selectedIds?.length > 1 ? `删除选中的 ${selectedIds.length} 个区块` : "删除区块"}
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: 'transparent',
+                                    color: (selectedRegion || selectedIds?.length > 0) ? '#ef4444' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: (selectedRegion || selectedIds?.length > 0) ? 'pointer' : 'not-allowed',
+                                    opacity: (selectedRegion || selectedIds?.length > 0) ? 1 : 0.5,
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '220px', justifyContent: 'flex-end' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
                         <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
@@ -424,7 +480,7 @@ const TopToolbar = ({
                             }}
                         >
                             {showRegions ? <Eye size={12} /> : <EyeOff size={12} />}
-                            {showRegions ? '隐藏预览' : '显示预览'}
+                            {showRegions ? '隐藏区块' : '显示区块'}
                         </button>
                     </div>
                 </div>
