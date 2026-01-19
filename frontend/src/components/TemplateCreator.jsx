@@ -193,6 +193,11 @@ export default function TemplateCreator({ theme, setTheme, device }) {
         }
     }, [showSplitPreview, selectedId, selectedIds, tableRefining]);
 
+    // --- 自动联动：进入/退出表格微调时自动收起数据预览 ---
+    useEffect(() => {
+        setShowSplitPreview(false);
+    }, [tableRefining]);
+
     const handleExtractRegionsData = async () => {
         if (!analysis || !showSplitPreview) return;
 
