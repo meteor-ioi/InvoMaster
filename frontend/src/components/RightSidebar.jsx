@@ -38,7 +38,8 @@ const RightSidebar = ({
     typeConfig,
     theme,
     templateMode,
-    setTemplateMode
+    setTemplateMode,
+    headerCollapsed = false
 }) => {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
@@ -53,7 +54,7 @@ const RightSidebar = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '15px',
-                height: 'calc(100vh - 100px)',
+                height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
                 overflow: 'visible'
             }}
         >

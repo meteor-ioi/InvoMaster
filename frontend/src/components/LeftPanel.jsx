@@ -11,7 +11,8 @@ const LeftPanel = ({
     onSelectTemplate,
     onDeleteTemplate,
     setToast,
-    typeConfig = TYPE_CONFIG
+    typeConfig = TYPE_CONFIG,
+    headerCollapsed = false
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
     const [dragActive, setDragActive] = useState(false);
@@ -74,7 +75,7 @@ const LeftPanel = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '15px',
-                height: 'calc(100vh - 100px)',
+                height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
             }}
         >
             {/* 悬浮切换按钮 (右边缘居中) */}

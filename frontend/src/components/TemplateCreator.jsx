@@ -640,6 +640,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             }}>
                 {/* Left Panel - Templates */}
                 <LeftPanel
+                    headerCollapsed={headerCollapsed}
                     collapsed={leftPanelCollapsed}
                     setCollapsed={setLeftPanelCollapsed}
                     templates={templates}
@@ -919,6 +920,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
                 {/* Right Panel - Editor */}
                 <RightSidebar
+                    headerCollapsed={headerCollapsed}
                     collapsed={rightPanelCollapsed}
                     setCollapsed={setRightPanelCollapsed}
                     tableRefining={tableRefining}
