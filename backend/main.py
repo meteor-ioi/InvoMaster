@@ -17,7 +17,7 @@ from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
-
+from task_worker import TaskWorker
 
 app = FastAPI(title="HITL Document Extraction API")
 
@@ -70,6 +70,8 @@ class HistoryItem(BaseModel):
 class BatchDeleteRequest(BaseModel):
     indices: List[int]
 
+class TaskBatchDeleteRequest(BaseModel):
+    task_ids: List[str]
 
 class Template(BaseModel):
     id: str
@@ -82,7 +84,9 @@ class Template(BaseModel):
     filename: Optional[str] = None
 
 HISTORY_FILE = "data/history.jsonl"
+API_TASKS_FILE = "data/api_call_tasks.jsonl"
 
+# ========== History Management Functions ==========
 def append_history(item: dict):
     with open(HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(item, ensure_ascii=False) + "\n")
@@ -126,6 +130,123 @@ def delete_history_batch(indices: List[int]):
         f.writelines(new_lines)
     
     return len(actual_to_delete)
+
+def get_history_item(index: int):
+    """Get a single history item by index"""
+    history = read_history()
+    if 0 <= index < len(history):
+        return history[index]
+    return None
+
+# ========== API Task Management Functions ==========
+def create_task(filename: str, template_id: str, template_name: str) -> str:
+    """创建新任务，返回任务 ID"""
+    import uuid
+    import datetime
+    
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
+    task = {
+        "id": task_id,
+        "filename": filename,
+        "template_id": template_id,
+        "template_name": template_name,
+        "status": "pending",
+        "created_at": datetime.datetime.now().isoformat(),
+        "started_at": None,
+        "completed_at": None,
+        "result": None,
+        "error": None
+    }
+    append_task(task)
+    return task_id
+
+def append_task(task: dict):
+    """追加任务到文件"""
+    with open(API_TASKS_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(task, ensure_ascii=False) + "\n")
+
+def read_all_tasks(limit: int = 100) -> List[dict]:
+    """读取所有任务（最近 N 条，倒序）"""
+    if not os.path.exists(API_TASKS_FILE):
+        return []
+    with open(API_TASKS_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    tasks = [json.loads(line.strip()) for line in reversed(lines[-limit:]) if line.strip()]
+    # 添加索引方便前端使用
+    for idx, task in enumerate(tasks):
+        task['index'] = idx
+    return tasks
+
+def read_all_tasks_raw() -> List[dict]:
+    """原始顺序读取所有任务（用于更新操作）"""
+    if not os.path.exists(API_TASKS_FILE):
+        return []
+    with open(API_TASKS_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    return [json.loads(line.strip()) for line in lines if line.strip()]
+
+def update_task_status(task_id: str, status: str, **kwargs) -> bool:
+    """更新任务状态和其他字段"""
+    import datetime
+    
+    tasks = read_all_tasks_raw()
+    updated = False
+    
+    for task in tasks:
+        if task['id'] == task_id:
+            task['status'] = status
+            if status == 'processing' and not task.get('started_at'):
+                task['started_at'] = datetime.datetime.now().isoformat()
+            elif status in ['completed', 'failed'] and not task.get('completed_at'):
+                task['completed_at'] = datetime.datetime.now().isoformat()
+            
+            # 更新额外字段（如 result, error）
+            task.update(kwargs)
+            updated = True
+            break
+    
+    if updated:
+        with open(API_TASKS_FILE, "w", encoding="utf-8") as f:
+            for task in tasks:
+                f.write(json.dumps(task, ensure_ascii=False) + "\n")
+    
+    return updated
+
+def get_task_by_id(task_id: str) -> Optional[dict]:
+    """根据 ID 获取任务"""
+    tasks = read_all_tasks_raw()
+    for task in tasks:
+        if task['id'] == task_id:
+            return task
+    return None
+
+def delete_task_by_id(task_id: str) -> bool:
+    """删除指定任务"""
+    tasks = read_all_tasks_raw()
+    original_count = len(tasks)
+    tasks = [t for t in tasks if t['id'] != task_id]
+    
+    if len(tasks) < original_count:
+        with open(API_TASKS_FILE, "w", encoding="utf-8") as f:
+            for task in tasks:
+                f.write(json.dumps(task, ensure_ascii=False) + "\n")
+        return True
+    return False
+
+def delete_tasks_batch(task_ids: List[str]) -> int:
+    """批量删除任务"""
+    tasks = read_all_tasks_raw()
+    original_count = len(tasks)
+    task_ids_set = set(task_ids)
+    tasks = [t for t in tasks if t['id'] not in task_ids_set]
+    
+    deleted_count = original_count - len(tasks)
+    if deleted_count > 0:
+        with open(API_TASKS_FILE, "w", encoding="utf-8") as f:
+            for task in tasks:
+                f.write(json.dumps(task, ensure_ascii=False) + "\n")
+    
+    return deleted_count
 
 def get_history_item(index: int):
     """Get a single history item by index"""
@@ -906,6 +1027,86 @@ async def batch_delete_history(req: BatchDeleteRequest):
     deleted_count = delete_history_batch(req.indices)
     return {"status": "success", "deleted": deleted_count}
 
+# ========== API Task Management Endpoints ==========
+
+@app.post("/api/tasks")
+async def create_extraction_task(
+    file: UploadFile = File(...),
+    template_id: str = Form("auto")
+):
+    """创建新的提取任务，返回任务 ID"""
+    # 保存上传的文件
+    filename = file.filename
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    # 获取模板名称
+    if template_id.lower() == 'auto':
+        template_name = "自动识别"
+    else:
+        t_record = db.get_template(template_id)
+        template_name = t_record['name'] if t_record else "Unknown"
+    
+    # 创建任务
+    task_id = create_task(
+        filename=filename,
+        template_id=template_id,
+        template_name=template_name
+    )
+    
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "message": "Task created successfully"
+    }
+
+@app.get("/api/tasks")
+async def list_all_tasks(limit: int = 100):
+    """获取所有任务列表"""
+    tasks = read_all_tasks(limit=limit)
+    return tasks
+
+@app.get("/api/tasks/{task_id}")
+async def get_task_detail(task_id: str):
+    """查询单个任务的详细信息"""
+    task = get_task_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@app.delete("/api/tasks/{task_id}")
+async def delete_single_task(task_id: str):
+    """删除单个任务"""
+    success = delete_task_by_id(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"status": "success", "message": f"Task {task_id} deleted"}
+
+@app.post("/api/tasks/batch-delete")
+async def batch_delete_tasks(req: TaskBatchDeleteRequest):
+    """批量删除任务"""
+    deleted_count = delete_tasks_batch(req.task_ids)
+    return {"status": "success", "deleted": deleted_count}
+
+# ========== Application Lifecycle ==========
+import sys
+
+# 初始化任务处理器
+task_worker = TaskWorker(sys.modules[__name__])
+
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时执行"""
+    print("=== Starting Application ===")
+    task_worker.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时执行"""
+    print("=== Shutting Down Application ===")
+    task_worker.stop()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

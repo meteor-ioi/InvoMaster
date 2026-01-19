@@ -386,12 +386,12 @@ function App() {
                 <div
                     style={{
                         position: 'absolute',
-                        bottom: '-12px',
+                        bottom: '-20px',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 100,
                         cursor: 'pointer',
-                        opacity: isHoveringHeaderToggle ? 1 : 0.2,
+                        opacity: isHoveringHeaderToggle ? 0.5 : 0.1,
                         transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={() => setIsHoveringHeaderToggle(true)}
@@ -400,7 +400,7 @@ function App() {
                 >
                     <div style={{
                         width: '48px',
-                        height: '24px',
+                        height: '20px',
                         background: 'var(--glass-bg)',
                         backdropFilter: 'blur(10px)',
                         border: '1px solid var(--glass-border)',

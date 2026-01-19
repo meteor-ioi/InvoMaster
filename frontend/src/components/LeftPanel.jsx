@@ -66,8 +66,8 @@ const LeftPanel = ({
     return (
         <aside
             style={{
-                width: collapsed ? '64px' : '260px',
-                minWidth: collapsed ? '64px' : '260px',
+                width: collapsed ? '64px' : '300px',
+                minWidth: collapsed ? '64px' : '300px',
                 position: 'sticky',
                 top: '20px',
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -82,12 +82,12 @@ const LeftPanel = ({
             <div
                 style={{
                     position: 'absolute',
-                    right: '-12px',
+                    right: '-20px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 100,
                     cursor: 'pointer',
-                    opacity: isHoveringToggle ? 1 : 0.2,
+                    opacity: isHoveringToggle ? 0.5 : 0.1,
                     transition: 'all 0.3s ease'
                 }}
                 onMouseEnter={() => setIsHoveringToggle(true)}
@@ -95,7 +95,7 @@ const LeftPanel = ({
                 onClick={() => setCollapsed(!collapsed)}
             >
                 <div style={{
-                    width: '24px',
+                    width: '20px',
                     height: '48px',
                     background: 'var(--glass-bg)',
                     backdropFilter: 'blur(10px)',
@@ -219,35 +219,39 @@ const LeftPanel = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '24px' }}>
-                            <Package size={16} color="var(--accent-color)" />
-                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
-                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Package size={16} color="var(--accent-color)" />
+                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
+                            </div>
 
-                        {/* Mode Tabs */}
-                        <div style={{ display: 'flex', borderRadius: '10px', background: 'var(--input-bg)', padding: '4px', border: '1px solid var(--glass-border)' }}>
-                            <button
-                                onClick={() => setActiveTab('auto')}
-                                style={{
-                                    flex: 1, padding: '8px 0', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: activeTab === 'auto' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
-                                    background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                }}
-                            >
-                                <Sparkles size={12} /> 标准模式
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('custom')}
-                                style={{
-                                    flex: 1, padding: '8px 0', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: activeTab === 'custom' ? 'bold' : 'normal', cursor: 'pointer', transition: 'all 0.3s',
-                                    background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                    color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                }}
-                            >
-                                <User size={12} /> 自定义模式
-                            </button>
+                            {/* Compact Mode Tabs */}
+                            <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveTab('auto'); }}
+                                    title="标准模式"
+                                    style={{
+                                        padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s',
+                                        background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                        color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                    }}
+                                >
+                                    <Sparkles size={10} /> 标准模式
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveTab('custom'); }}
+                                    title="自定义模式"
+                                    style={{
+                                        padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s',
+                                        background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                        color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                    }}
+                                >
+                                    <User size={10} /> 自定义模式
+                                </button>
+                            </div>
                         </div>
 
                         {/* 常驻搜索框 */}

@@ -73,8 +73,8 @@ const TopToolbar = ({
                     overflow: 'hidden',
                     background: isIntegrated ? 'rgba(255,255,255,0.03)' : ''
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                             {/* Smart Dedup Toggle */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                                 <Zap size={16} color="var(--primary-color)" />
@@ -99,7 +99,7 @@ const TopToolbar = ({
                             </div>
 
                             {/* Confidence Slider */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingLeft: '20px', borderLeft: '1px solid var(--glass-border)', flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '12px', borderLeft: '1px solid var(--glass-border)', flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
                                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>置信度:</span>
                                     <button
@@ -148,7 +148,7 @@ const TopToolbar = ({
                 borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
                     {/* 高精度表格微调入口 - 移至最左侧 */}
                     {!tableRefining && (
                         <>
@@ -336,7 +336,7 @@ const TopToolbar = ({
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'center' }}>
                     {/* Central Editing Tools */}
                     {tableRefining ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -361,7 +361,7 @@ const TopToolbar = ({
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '2px'
                         }}>
                             <button
                                 onClick={() => undo && undo()}
@@ -379,7 +379,6 @@ const TopToolbar = ({
                             >
                                 <RotateCw size={16} />
                             </button>
-                            <div style={{ width: '1px', height: '16px', background: 'var(--glass-border)', margin: '0 4px' }} />
 
                             <button
                                 onClick={() => toggleRegionLock(selectedRegion?.id)}
@@ -458,8 +457,8 @@ const TopToolbar = ({
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '220px', justifyContent: 'flex-end' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
                         <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(5.0, z + 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
@@ -470,7 +469,7 @@ const TopToolbar = ({
                         }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <button
                             onClick={() => setShowRegions(!showRegions)}
                             style={{

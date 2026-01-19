@@ -280,7 +280,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     // 响应式布局：窗口缩小时自动折叠面板
     useEffect(() => {
         const CENTER_MIN_WIDTH = 740;
-        const LEFT_EXPANDED = 260;
+        const LEFT_EXPANDED = 300;
         const LEFT_COLLAPSED = 64;
         const RIGHT_EXPANDED = 300;
         const RIGHT_COLLAPSED = 64;
@@ -657,7 +657,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '260px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px',
@@ -766,7 +766,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                 justifyContent: 'center',
                                                 aspectRatio: '1/1',
                                                 height: '400px',
-                                                border: emptyDragActive ? '3px dashed var(--primary-color)' : '2px dashed var(--glass-border)',
+                                                border: emptyDragActive ? '3px dashed var(--primary-color)' : 'none',
                                                 borderRadius: '24px',
                                                 textAlign: 'center',
                                                 background: emptyDragActive ? 'rgba(59, 130, 246, 0.05)' : 'transparent',

@@ -63,12 +63,12 @@ const RightSidebar = ({
             <div
                 style={{
                     position: 'absolute',
-                    left: '-12px',
+                    left: '-20px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 100,
                     cursor: 'pointer',
-                    opacity: isHoveringToggle ? 1 : 0.2,
+                    opacity: isHoveringToggle ? 0.5 : 0.1,
                     transition: 'all 0.3s ease'
                 }}
                 onMouseEnter={() => setIsHoveringToggle(true)}
@@ -76,7 +76,7 @@ const RightSidebar = ({
                 onClick={() => setCollapsed(!collapsed)}
             >
                 <div style={{
-                    width: '24px',
+                    width: '20px',
                     height: '48px',
                     background: 'var(--glass-bg)',
                     backdropFilter: 'blur(10px)',
@@ -144,12 +144,10 @@ const RightSidebar = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
                             <Edit3 size={16} color="var(--accent-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
-
-                        <div style={{ width: '100%', height: '1px', background: 'var(--glass-border)', marginBottom: '5px' }} />
 
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
                             {tableRefining ? (
@@ -349,47 +347,51 @@ const RightSidebar = ({
                                 overflowY: 'auto'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                <Package size={16} color="var(--accent-color)" />
-                                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <button
-                                    onClick={() => setTemplateMode('auto')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        fontSize: '11px',
-                                        cursor: 'pointer',
-                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                        color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
-                                        transition: 'all 0.3s ease',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                    }}
-                                >
-                                    <Sparkles size={12} /> 标准模式
-                                </button>
-                                <button
-                                    onClick={() => setTemplateMode('custom')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '6px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        fontSize: '11px',
-                                        cursor: 'pointer',
-                                        background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                        color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
-                                        transition: 'all 0.3s ease',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                    }}
-                                >
-                                    <User size={12} /> 自定义模式
-                                </button>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '5px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Package size={16} color="var(--accent-color)" />
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
+                                </div>
+
+                                {/* Compact Mode Tabs */}
+                                <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                    <button
+                                        onClick={() => setTemplateMode('auto')}
+                                        title="标准模式"
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                            background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                            color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                            fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                        }}
+                                    >
+                                        <Sparkles size={10} /> 标准模式
+                                    </button>
+                                    <button
+                                        onClick={() => setTemplateMode('custom')}
+                                        title="自定义模式"
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '10px',
+                                            cursor: 'pointer',
+                                            background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                            color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                            fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                        }}
+                                    >
+                                        <User size={10} /> 自定义模式
+                                    </button>
+                                </div>
                             </div>
 
                             <input
@@ -408,7 +410,9 @@ const RightSidebar = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '10px'
+                                    gap: '10px',
+                                    background: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)',
+                                    borderColor: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)'
                                 }}
                             >
                                 <Save size={16} /> 保存并入库

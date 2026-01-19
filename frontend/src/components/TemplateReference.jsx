@@ -614,12 +614,12 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                     <div
                         style={{
                             position: 'absolute',
-                            right: '-12px',
+                            right: '-20px',
                             top: '50%',
                             transform: 'translateY(-50%)',
                             zIndex: 100,
                             cursor: 'pointer',
-                            opacity: isHoveringToggle ? 1 : 0.2,
+                            opacity: isHoveringToggle ? 0.5 : 0.1,
                             transition: 'all 0.3s ease'
                         }}
                         onMouseEnter={() => setIsHoveringToggle(true)}
@@ -627,7 +627,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
                     >
                         <div style={{
-                            width: '24px',
+                            width: '20px',
                             height: '48px',
                             background: 'var(--glass-bg)',
                             backdropFilter: 'blur(10px)',
@@ -702,7 +702,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         transition: 'all 0.3s ease'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                                         <Settings size={16} color="var(--accent-color)" />
                                         <span style={{ fontSize: '13px', fontWeight: 'bold' }}>识别配置</span>
                                         {isConfigCollapsed && (file || files.length > 0) && (
@@ -711,14 +711,43 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                             </span>
                                         )}
                                     </div>
-                                    <div
-                                        className="fold-icon"
-                                        style={{
-                                            transition: 'transform 0.3s ease',
-                                            transform: isConfigCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
-                                        }}
-                                    >
-                                        <ChevronUp size={16} color="var(--text-secondary)" />
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {/* Compact Mode Tabs */}
+                                        <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}
+                                        >
+                                            <button
+                                                onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
+                                                title="标准模式"
+                                                style={{
+                                                    padding: '4px 8px', borderRadius: '4px', border: 'none',
+                                                    fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                                    background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                                    color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                                    fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                                }}
+                                            >
+                                                <Sparkles size={10} /> 标准模式
+                                            </button>
+                                            <button
+                                                onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
+                                                title="自定义模式"
+                                                style={{
+                                                    padding: '4px 8px', borderRadius: '4px', border: 'none',
+                                                    fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s ease',
+                                                    background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                                    color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                                    fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                                }}
+                                            >
+                                                <User size={10} /> 自定义模式
+                                            </button>
+                                        </div>
+
                                     </div>
                                 </div>
 
@@ -732,35 +761,6 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                     flexDirection: 'column',
                                     gap: '15px'
                                 }}>
-                                    {/* Mode Selector */}
-                                    <div style={{ display: 'flex', gap: '8px', background: 'var(--input-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-                                        <button
-                                            onClick={() => { setSelectionMode('auto'); setSelectedTemplate('auto'); }}
-                                            style={{
-                                                flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                                                fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
-                                                background: selectionMode === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                                color: selectionMode === 'auto' ? '#fff' : 'var(--text-secondary)',
-                                                fontWeight: selectionMode === 'auto' ? 'bold' : 'normal',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                            }}
-                                        >
-                                            <Sparkles size={12} /> 标准模式
-                                        </button>
-                                        <button
-                                            onClick={() => { setSelectionMode('custom'); setSelectedTemplate(''); }}
-                                            style={{
-                                                flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                                                fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s ease',
-                                                background: selectionMode === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                                color: selectionMode === 'custom' ? '#fff' : 'var(--text-secondary)',
-                                                fontWeight: selectionMode === 'custom' ? 'bold' : 'normal',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                                            }}
-                                        >
-                                            <User size={12} /> 自定义模式
-                                        </button>
-                                    </div>
 
                                     {/* 模板选择器 */}
                                     <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -921,9 +921,28 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div style={{ color: 'var(--text-secondary)' }}>
-                                                    <Upload size={24} style={{ marginBottom: '4px', opacity: 0.5 }} />
-                                                    <p style={{ fontSize: '10px' }}>点击或拖拽 PDF（支持多选）</p>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{
+                                                        width: '40px',
+                                                        height: '40px',
+                                                        borderRadius: '50%',
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        marginBottom: '4px',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)'
+                                                    }}>
+                                                        <Upload size={20} color="var(--primary-color)" />
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                                            添加 PDF 文件（支持多选）
+                                                        </span>
+                                                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                                            支持拖拽或点击选择
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             )}
                                             <input id="ref-upload-side" type="file" multiple className="hidden" accept="application/pdf" onChange={handleFileUpload} />
@@ -939,6 +958,37 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
                                         {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
                                     </button>
+                                </div>
+
+                                {/* Card Footer Fold Toggle */}
+                                <div
+                                    onClick={() => setIsConfigCollapsed(!isConfigCollapsed)}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        paddingTop: isConfigCollapsed ? '10px' : '5px',
+                                        paddingBottom: '0',
+                                        marginTop: isConfigCollapsed ? '0' : '0',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-secondary)',
+                                        opacity: 0.6,
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                                >
+                                    <div
+                                        className="fold-icon"
+                                        style={{
+                                            transition: 'transform 0.3s ease',
+                                            transform: isConfigCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <ChevronUp size={18} />
+                                    </div>
                                 </div>
                             </div>
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Code, Copy, Terminal, ChevronDown, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles } from 'lucide-react';
+import { Code, Copy, Terminal, ChevronDown, ChevronUp, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles, Clock, Trash2, CheckCircle, XCircle, RefreshCw, FileJson, Download, Eye, Upload, Package, User } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function ApiCall({ theme, device, headerCollapsed = false }) {
@@ -12,6 +12,57 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // 新增：可用模板 ID 卡片折叠状态
+    const [isTemplatesCollapsed, setIsTemplatesCollapsed] = useState(false);
+
+    // 新增：API 调用记录相关状态
+    const [apiCallRecords, setApiCallRecords] = useState([]);
+    const [selectedRecords, setSelectedRecords] = useState(new Set());
+    const [selectedRecordId, setSelectedRecordId] = useState(null);
+    const [rightPanelMode, setRightPanelMode] = useState('code'); // 'code' | 'preview'
+    const [activeTab, setActiveTab] = useState('auto'); // 'auto' | 'custom'
+    const fileInputRef = useRef(null);
+
+    // 测试 API 上传
+    const handleTestUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('template_id', selectedTemplateId);
+
+        try {
+            await axios.post(`${API_BASE}/api/tasks`, formData);
+            fetchTasks(); // Refresh immediately
+            // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (err) {
+            console.error("Upload failed", err);
+            alert("上传失败");
+        }
+    };
+
+    const fetchTasks = async () => {
+        try {
+            const res = await axios.get(`${API_BASE}/api/tasks`);
+            // Map backend fields to frontend expectation
+            const mappedRecords = res.data.map(t => ({
+                id: t.id,
+                filename: t.filename,
+                templateId: t.template_id,
+                templateName: t.template_name,
+                status: t.status,
+                timestamp: t.created_at,
+                result: t.result,
+                error: t.error
+            }));
+            setApiCallRecords(mappedRecords);
+        } catch (err) {
+            console.error("Failed to fetch tasks", err);
+        }
+    };
+
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
@@ -22,19 +73,131 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
             }
         };
         fetchTemplates();
+        fetchTasks();
+
+        // 轮询任务状态 (每 3 秒)
+        const intervalId = setInterval(fetchTasks, 3000);
 
         const handleToggleSidebars = (e) => {
             setIsPanelCollapsed(e.detail.collapsed);
         };
 
         window.addEventListener('toggle-sidebars', handleToggleSidebars);
-        return () => window.removeEventListener('toggle-sidebars', handleToggleSidebars);
+
+        return () => {
+            window.removeEventListener('toggle-sidebars', handleToggleSidebars);
+            clearInterval(intervalId);
+        };
     }, []);
 
     const handleCopy = (text, type) => {
         navigator.clipboard.writeText(text);
         setCopied(type);
         setTimeout(() => setCopied(null), 2000);
+    };
+
+    // 切换记录选择状态
+    const toggleRecordSelection = (recordId, e) => {
+        e.stopPropagation();
+        const newSelected = new Set(selectedRecords);
+        if (newSelected.has(recordId)) {
+            newSelected.delete(recordId);
+        } else {
+            newSelected.add(recordId);
+        }
+        setSelectedRecords(newSelected);
+    };
+
+    // 全选/取消全选
+    const toggleSelectAllRecords = () => {
+        if (selectedRecords.size === apiCallRecords.length && apiCallRecords.length > 0) {
+            setSelectedRecords(new Set());
+        } else {
+            setSelectedRecords(new Set(apiCallRecords.map(r => r.id)));
+        }
+    };
+
+    // 批量删除记录
+    const handleBatchDeleteRecords = async () => {
+        if (selectedRecords.size === 0) return;
+        if (!confirm(`确定要删除这 ${selectedRecords.size} 条调用记录吗?`)) return;
+
+        try {
+            await axios.post(`${API_BASE}/api/tasks/batch-delete`, {
+                task_ids: Array.from(selectedRecords)
+            });
+
+            setApiCallRecords(prev => prev.filter(r => !selectedRecords.has(r.id)));
+            if (selectedRecords.has(selectedRecordId)) {
+                setSelectedRecordId(null);
+                setRightPanelMode('code');
+            }
+            setSelectedRecords(new Set());
+            fetchTasks(); // Refresh to be sure
+        } catch (err) {
+            console.error("Batch delete failed", err);
+            alert("删除失败");
+        }
+    };
+
+    // 删除单条记录
+    const handleDeleteRecord = async (recordId, e) => {
+        e.stopPropagation();
+
+        try {
+            await axios.delete(`${API_BASE}/api/tasks/${recordId}`);
+
+            setApiCallRecords(prev => prev.filter(r => r.id !== recordId));
+            if (selectedRecordId === recordId) {
+                setSelectedRecordId(null);
+                setRightPanelMode('code');
+            }
+            const newSelected = new Set(selectedRecords);
+            newSelected.delete(recordId);
+            setSelectedRecords(newSelected);
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert("删除失败");
+        }
+    };
+
+    // 查看记录详情
+    const handleViewRecord = (record) => {
+        if (record.status !== 'completed') return; // 只有已完成的记录可以预览
+        setSelectedRecordId(record.id);
+        setRightPanelMode('preview');
+    };
+
+    // 获取当前选中的记录
+    const getSelectedRecord = () => {
+        return apiCallRecords.find(r => r.id === selectedRecordId);
+    };
+
+    // 获取状态图标
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'pending':
+                return <Clock size={12} color="var(--text-secondary)" style={{ opacity: 0.5 }} />;
+            case 'processing':
+                return <RefreshCw size={12} className="animate-spin" color="var(--primary-color)" />;
+            case 'completed':
+                return <CheckCircle size={12} color="var(--success-color)" />;
+            case 'failed':
+                return <XCircle size={12} color="#ef4444" />;
+            default:
+                return <Clock size={12} color="var(--text-secondary)" />;
+        }
+    };
+
+    // 获取状态文本
+    const getStatusText = (status) => {
+        switch (status) {
+            case 'pending': return '待处理';
+            case 'processing': return '处理中...';
+            case 'completed': return '已完成';
+            case 'failed': return '失败';
+            default: return '未知';
+        }
     };
 
     const pythonCode = `import requests
@@ -96,7 +259,125 @@ fetch(url, {
         }
     };
 
-    const filteredTemplates = templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredTemplates = templates.filter(t => {
+        const matchMode = t.mode === activeTab;
+        const matchSearch = !searchQuery ||
+            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.id.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchMode && matchSearch;
+    });
+
+    // 渲染数据预览面板
+    const renderPreviewPanel = () => {
+        const record = getSelectedRecord();
+        if (!record || !record.result) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
+                    <Eye size={48} />
+                    <span style={{ fontSize: '14px' }}>选择一条已完成的记录查看数据</span>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ padding: '20px', height: '100%', overflowY: 'auto' }} className="custom-scrollbar">
+                <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>{record.filename}</h3>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            {record.templateName} · {new Date(record.timestamp).toLocaleString('zh-CN')}
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => handleCopy(JSON.stringify(record.result.data, null, 2), 'preview-json')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'var(--input-bg)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            color: 'var(--text-primary)'
+                        }}
+                    >
+                        {copied === 'preview-json' ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制 JSON</>}
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {Object.entries(record.result.data).map(([key, item]) => (
+                        <div
+                            key={key}
+                            style={{
+                                background: 'var(--input-bg)',
+                                borderRadius: '10px',
+                                border: '1px solid var(--glass-border)',
+                                padding: '12px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <span style={{
+                                    fontSize: '10px',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: item.type === 'table' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                    color: item.type === 'table' ? 'var(--accent-color)' : 'var(--primary-color)',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {item.type}
+                                </span>
+                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                    {item.label || key}
+                                </span>
+                            </div>
+                            <div style={{
+                                fontSize: '13px',
+                                color: 'var(--text-primary)',
+                                background: 'rgba(255,255,255,0.03)',
+                                padding: '10px',
+                                borderRadius: '6px',
+                                lineHeight: '1.5'
+                            }}>
+                                {item.type === 'table' && Array.isArray(item.content) ? (
+                                    <div style={{ overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                                            <tbody>
+                                                {item.content.map((row, rowIndex) => (
+                                                    <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 1 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                                        {Array.isArray(row) ? row.map((cell, cellIndex) => (
+                                                            <td key={cellIndex} style={{
+                                                                padding: '8px 12px',
+                                                                borderRight: cellIndex === row.length - 1 ? 'none' : '1px solid var(--glass-border)',
+                                                                color: 'var(--text-secondary)',
+                                                                whiteSpace: 'pre-wrap',
+                                                                minWidth: '50px'
+                                                            }}>
+                                                                {typeof cell === 'object' && cell !== null ? JSON.stringify(cell) : cell}
+                                                            </td>
+                                                        )) : <td style={{ padding: '8px' }}>{JSON.stringify(row)}</td>}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : Array.isArray(item.content) ? (
+                                    <pre style={{ margin: 0, fontSize: '11px', overflow: 'auto', fontFamily: 'monospace' }}>
+                                        {JSON.stringify(item.content, null, 2)}
+                                    </pre>
+                                ) : (
+                                    <span style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{item.content}</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 40px' }}>
@@ -108,7 +389,7 @@ fetch(url, {
                 transition: 'grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 position: 'relative'
             }}>
-                {/* Left Sidebar - Template List */}
+                {/* Left Sidebar - Template List & API Call Records */}
                 <aside style={{
                     position: 'sticky',
                     top: '20px',
@@ -124,12 +405,12 @@ fetch(url, {
                     <div
                         style={{
                             position: 'absolute',
-                            right: '-12px',
+                            right: '-20px',
                             top: '50%',
                             transform: 'translateY(-50%)',
                             zIndex: 100,
                             cursor: 'pointer',
-                            opacity: isHoveringToggle ? 1 : 0.2,
+                            opacity: isHoveringToggle ? 0.5 : 0.1,
                             transition: 'all 0.3s ease'
                         }}
                         onMouseEnter={() => setIsHoveringToggle(true)}
@@ -137,7 +418,7 @@ fetch(url, {
                         onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
                     >
                         <div style={{
-                            width: '24px',
+                            width: '20px',
                             height: '48px',
                             background: 'var(--glass-bg)',
                             backdropFilter: 'blur(10px)',
@@ -187,112 +468,377 @@ fetch(url, {
                             >
                                 {templates.length}
                             </div>
+                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
+                            <div
+                                title={`调用记录: ${apiCallRecords.length}`}
+                                onClick={() => setIsPanelCollapsed(false)}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    border: '1px solid var(--accent-color)',
+                                    background: 'rgba(139, 92, 246, 0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent-color)',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {apiCallRecords.length}
+                            </div>
                         </div>
                     ) : (
-                        <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px', flex: 1, overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                <Layout size={16} color="var(--accent-color)" />
-                                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>可用模板 ID ({templates.length})</span>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                <Search size={12} color="var(--text-secondary)" />
-                                <input
-                                    type="text"
-                                    placeholder="搜索模板名称或ID..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{
-                                        border: 'none',
-                                        background: 'transparent',
-                                        outline: 'none',
-                                        fontSize: '12px',
-                                        color: 'var(--text-primary)',
-                                        width: '100%'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
-                                {/* Special "Auto" option */}
+                        <>
+                            {/* Card 1: 可用模板 ID (可折叠) */}
+                            <div className="glass-card" style={{ padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: isTemplatesCollapsed ? '0' : '15px', transition: 'all 0.3s ease' }}>
                                 <div
-                                    onClick={() => setSelectedTemplateId('auto')}
+                                    onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
                                     style={{
-                                        padding: '12px',
-                                        background: selectedTemplateId === 'auto'
-                                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))'
-                                            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05))',
-                                        borderRadius: '10px',
-                                        border: `1px solid ${selectedTemplateId === 'auto' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
                                         display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '6px',
-                                        boxShadow: selectedTemplateId === 'auto' ? '0 4px 12px rgba(59, 130, 246, 0.15)' : 'none',
-                                        position: 'relative',
-                                        overflow: 'hidden',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
                                         cursor: 'pointer',
-                                        transition: 'all 0.2s ease'
-                                    }} className="list-item-hover">
-                                    <div style={{ position: 'absolute', right: '-10px', top: '-10px', opacity: 0.1 }}>
-                                        <Sparkles size={40} />
+                                        paddingBottom: isTemplatesCollapsed ? '0' : '5px',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Package size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>可用模板 ID</span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Sparkles size={14} color="var(--primary-color)" />
-                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--primary-color)' }}>自动识别匹配 (推荐)</div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '4px' }}>
-                                        <code style={{ fontSize: '10px', color: 'var(--primary-color)', fontWeight: 'bold' }}>auto</code>
+
+                                    {/* Compact Mode Tabs */}
+                                    <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); handleCopy('auto', 'auto'); }}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === 'auto' ? 'var(--success-color)' : 'var(--primary-color)' }}
-                                            title="复制 auto ID"
+                                            onClick={(e) => { e.stopPropagation(); setActiveTab('auto'); }}
+                                            title="标准模式"
+                                            style={{
+                                                padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s',
+                                                background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                                color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                            }}
                                         >
-                                            {copied === 'auto' ? <Check size={12} /> : <Copy size={12} />}
+                                            <Sparkles size={10} /> 标准模式
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setActiveTab('custom'); }}
+                                            title="自定义模式"
+                                            style={{
+                                                padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', transition: 'all 0.3s',
+                                                background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                                color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                            }}
+                                        >
+                                            <User size={10} /> 自定义模式
                                         </button>
                                     </div>
                                 </div>
 
-                                <div style={{ height: '1px', background: 'var(--glass-border)', margin: '4px 0' }} />
-
-                                {filteredTemplates.length === 0 ? (
-                                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontSize: '12px' }}>
-                                        未找到匹配模板
+                                {/* 可折叠内容 */}
+                                <div style={{
+                                    overflow: 'hidden',
+                                    maxHeight: isTemplatesCollapsed ? '0' : '500px',
+                                    opacity: isTemplatesCollapsed ? 0 : 1,
+                                    transition: 'all 0.3s ease',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '15px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                        <Search size={12} color="var(--text-secondary)" />
+                                        <input
+                                            type="text"
+                                            placeholder="搜索模板名称或ID..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            style={{
+                                                border: 'none',
+                                                background: 'transparent',
+                                                outline: 'none',
+                                                fontSize: '12px',
+                                                color: 'var(--text-primary)',
+                                                width: '100%'
+                                            }}
+                                        />
                                     </div>
-                                ) : (
-                                    filteredTemplates.map(t => (
-                                        <div key={t.id}
-                                            onClick={() => setSelectedTemplateId(t.id)}
+
+                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px' }} className="custom-scrollbar">
+                                        {/* Special "Auto" option */}
+                                        <div
+                                            onClick={() => setSelectedTemplateId('auto')}
                                             style={{
                                                 padding: '10px',
-                                                background: selectedTemplateId === t.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                height: '66px',
+                                                background: selectedTemplateId === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
                                                 borderRadius: '10px',
-                                                border: `1px solid ${selectedTemplateId === t.id ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                border: `1px solid ${selectedTemplateId === 'auto' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                gap: '6px',
+                                                justifyContent: 'center',
+                                                gap: '4px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s ease'
                                             }} className="list-item-hover">
-                                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{t.name}</div>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.05)', padding: '4px 6px', borderRadius: '4px' }}>
-                                                <code style={{ fontSize: '10px', color: 'var(--primary-color)', fontFamily: 'monospace' }}>{t.id.substring(0, 18)}...</code>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                                    <Sparkles size={14} color="var(--primary-color)" />
+                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>自动识别匹配 (推荐)</div>
+                                                </div>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleCopy(t.id, t.id); }}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === t.id ? 'var(--success-color)' : 'var(--text-secondary)' }}
-                                                    title="复制完整ID"
+                                                    onClick={(e) => { e.stopPropagation(); handleCopy('auto', 'auto'); }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === 'auto' ? 'var(--success-color)' : 'var(--text-secondary)' }}
+                                                    title="复制 auto ID"
                                                 >
-                                                    {copied === t.id ? <Check size={12} /> : <Copy size={12} />}
+                                                    {copied === 'auto' ? <Check size={12} /> : <Copy size={13} />}
                                                 </button>
                                             </div>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7, fontFamily: 'monospace' }}>
+                                                auto
+                                            </div>
                                         </div>
-                                    ))
-                                )}
+
+                                        {filteredTemplates.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontSize: '12px' }}>
+                                                未找到匹配模板
+                                            </div>
+                                        ) : (
+                                            filteredTemplates.map(t => (
+                                                <div key={t.id}
+                                                    onClick={() => setSelectedTemplateId(t.id)}
+                                                    style={{
+                                                        padding: '10px',
+                                                        height: '66px',
+                                                        background: selectedTemplateId === t.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                        borderRadius: '10px',
+                                                        border: `1px solid ${selectedTemplateId === t.id ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        justifyContent: 'center',
+                                                        gap: '4px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }} className="list-item-hover">
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleCopy(t.id, t.id); }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', color: copied === t.id ? 'var(--success-color)' : 'var(--text-secondary)' }}
+                                                            title="复制完整ID"
+                                                        >
+                                                            {copied === t.id ? <Check size={12} /> : <Copy size={13} />}
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7, fontFamily: 'monospace' }}>
+                                                        {t.id.substring(0, 24)}...
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Card Footer Fold Toggle */}
+                                <div
+                                    onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        paddingTop: isTemplatesCollapsed ? '10px' : '5px',
+                                        paddingBottom: '0',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-secondary)',
+                                        opacity: 0.6,
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                                >
+                                    <div
+                                        className="fold-icon"
+                                        style={{
+                                            transition: 'transform 0.3s ease',
+                                            transform: isTemplatesCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <ChevronUp size={18} />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+
+                            {/* Card 2: API 调用记录 */}
+                            <div className="glass-card" style={{ flex: 1, padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Clock size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>API 调用记录</span>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleTestUpload}
+                                            style={{ display: 'none' }}
+                                            accept=".pdf,.jpg,.jpeg,.png"
+                                        />
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            style={{
+                                                background: 'var(--primary-color)',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '2px 6px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                marginLeft: '8px',
+                                                opacity: 0.8
+                                            }}
+                                            title="测试 API: 上传文件创建一个新任务"
+                                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                        >
+                                            <Upload size={10} color="white" />
+                                            <span style={{ fontSize: '10px', color: 'white' }}>Test API</span>
+                                        </button>
+                                    </div>
+                                    {apiCallRecords.length > 0 && selectedRecords.size > 0 && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                onClick={handleBatchDeleteRecords}
+                                                style={{
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    color: '#ef4444',
+                                                    fontSize: '10px',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <Trash2 size={10} /> 删除({selectedRecords.size})
+                                            </button>
+                                            <div
+                                                onClick={toggleSelectAllRecords}
+                                                style={{
+                                                    width: '14px',
+                                                    height: '14px',
+                                                    borderRadius: '3px',
+                                                    border: '1px solid var(--glass-border)',
+                                                    background: selectedRecords.size === apiCallRecords.length && apiCallRecords.length > 0 ? 'var(--primary-color)' : 'transparent',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="全选/取消全选"
+                                            >
+                                                {selectedRecords.size === apiCallRecords.length && apiCallRecords.length > 0 && <Check size={10} color="white" />}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
+                                    {apiCallRecords.length === 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
+                                            <Clock size={24} />
+                                            <span style={{ fontSize: '11px' }}>暂无调用记录</span>
+                                        </div>
+                                    ) : (
+                                        apiCallRecords.map((record) => (
+                                            <div
+                                                key={record.id}
+                                                onClick={() => handleViewRecord(record)}
+                                                style={{
+                                                    padding: '10px',
+                                                    borderRadius: '10px',
+                                                    background: selectedRecordId === record.id ? 'rgba(59, 130, 246, 0.1)' : (record.status === 'processing' ? 'rgba(59, 130, 246, 0.05)' : 'var(--input-bg)'),
+                                                    border: selectedRecords.has(record.id) ? '1px solid var(--primary-color)' : (record.status === 'processing' ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)'),
+                                                    cursor: record.status === 'completed' ? 'pointer' : 'default',
+                                                    opacity: record.status === 'completed' || record.status === 'failed' ? 1 : 0.8,
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex',
+                                                    gap: '8px',
+                                                    alignItems: 'flex-start'
+                                                }}
+                                                className={record.status === 'completed' ? 'list-item-hover' : ''}
+                                            >
+                                                <div
+                                                    onClick={(e) => toggleRecordSelection(record.id, e)}
+                                                    style={{
+                                                        marginTop: '2px',
+                                                        width: '14px',
+                                                        minWidth: '14px',
+                                                        height: '14px',
+                                                        borderRadius: '3px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        background: selectedRecords.has(record.id) ? 'var(--primary-color)' : 'transparent',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {selectedRecords.has(record.id) && <Check size={10} color="white" />}
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                            {record.filename}
+                                                        </span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            {getStatusIcon(record.status)}
+                                                            <button
+                                                                onClick={(e) => handleDeleteRecord(record.id, e)}
+                                                                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444' }}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                                                            {record.templateName}
+                                                        </span>
+                                                        {record.status === 'completed' ? (
+                                                            <span style={{ fontSize: '9px', opacity: 0.5 }}>
+                                                                {new Date(record.timestamp).toLocaleString('zh-CN', {
+                                                                    year: 'numeric', month: '2-digit', day: '2-digit',
+                                                                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                                    hour12: false
+                                                                }).replace(/\//g, '-')}
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ fontSize: '9px', color: record.status === 'failed' ? '#ef4444' : 'var(--text-secondary)' }}>
+                                                                {getStatusText(record.status)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {record.status === 'failed' && record.error && (
+                                                        <div style={{ fontSize: '9px', color: '#ef4444', marginTop: '4px', opacity: 0.8 }}>
+                                                            {record.error.substring(0, 50)}...
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
                     )}
                 </aside>
 
-                {/* Right Panel - Code Preview */}
+                {/* Right Panel - Code Preview or Data Preview */}
                 <div className="glass-card" style={{
                     padding: '0',
                     overflow: 'hidden',
@@ -312,69 +858,104 @@ fetch(url, {
                         alignItems: 'center'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--primary-color)'
-                            }}>
-                                <Terminal size={18} />
-                            </div>
-                            <span style={{ fontSize: '15px', fontWeight: 'bold' }}>API 调用示例</span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-
-                            <div style={{ position: 'relative' }}>
-                                <select
-                                    value={selectedLanguage}
-                                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                            {/* Panel Mode Tabs */}
+                            <div style={{ display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px' }}>
+                                <button
+                                    onClick={() => { setRightPanelMode('code'); setSelectedRecordId(null); }}
                                     style={{
-                                        appearance: 'none',
-                                        padding: '6px 30px 6px 15px',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--glass-border)',
-                                        background: 'var(--input-bg)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        fontSize: '11px',
                                         cursor: 'pointer',
-                                        minWidth: '100px',
-                                        outline: 'none'
+                                        background: rightPanelMode === 'code' ? 'var(--primary-color)' : 'transparent',
+                                        color: rightPanelMode === 'code' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: rightPanelMode === 'code' ? 'bold' : 'normal',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
                                     }}
                                 >
-                                    <option value="python">Python</option>
-                                    <option value="javascript">JavaScript</option>
-                                    <option value="curl">cURL</option>
-                                </select>
-                                <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
+                                    <Terminal size={12} /> 代码示例
+                                </button>
+                                <button
+                                    onClick={() => setRightPanelMode('preview')}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        background: rightPanelMode === 'preview' ? 'var(--accent-color)' : 'transparent',
+                                        color: rightPanelMode === 'preview' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: rightPanelMode === 'preview' ? 'bold' : 'normal',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <FileJson size={12} /> 数据预览
+                                </button>
                             </div>
-                            <button
-                                onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px' }}
-                            >
-                                {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
-                            </button>
                         </div>
+
+                        {rightPanelMode === 'code' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <select
+                                        value={selectedLanguage}
+                                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                                        style={{
+                                            appearance: 'none',
+                                            padding: '6px 30px 6px 15px',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'var(--input-bg)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '12px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            minWidth: '100px',
+                                            outline: 'none'
+                                        }}
+                                    >
+                                        <option value="python">Python</option>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="curl">cURL</option>
+                                    </select>
+                                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
+                                </div>
+                                <button
+                                    onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px' }}
+                                >
+                                    {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    <div style={{ flex: 1, padding: '0', background: 'rgba(15, 23, 42, 0.8)', overflow: 'auto' }} className="custom-scrollbar">
-                        <div style={{ padding: '25px' }}>
-                            <pre style={{
-                                margin: 0,
-                                fontSize: '14px',
-                                lineHeight: '1.7',
-                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                                color: '#e2e8f0'
-                            }}>
-                                {getCodeSnippet(selectedLanguage)}
-                            </pre>
+                    {rightPanelMode === 'code' ? (
+                        <div style={{ flex: 1, padding: '0', background: 'rgba(15, 23, 42, 0.8)', overflow: 'auto' }} className="custom-scrollbar">
+                            <div style={{ padding: '25px' }}>
+                                <pre style={{
+                                    margin: 0,
+                                    fontSize: '14px',
+                                    lineHeight: '1.7',
+                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                                    color: '#e2e8f0'
+                                }}>
+                                    {getCodeSnippet(selectedLanguage)}
+                                </pre>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div style={{ flex: 1, overflow: 'hidden', background: 'var(--card-bg)' }}>
+                            {renderPreviewPanel()}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
