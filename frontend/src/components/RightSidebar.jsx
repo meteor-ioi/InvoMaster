@@ -246,7 +246,7 @@ const RightSidebar = ({
                                         退出微调模式
                                     </button>
                                 </div>
-                            ) : selectedRegion ? (
+                            ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
@@ -256,21 +256,22 @@ const RightSidebar = ({
                                                 const config = typeConfig[type];
                                                 if (!config) return null;
                                                 const Icon = type === 'custom' ? null : config.icon;
+                                                const isDisabled = !selectedRegion;
                                                 return (
                                                     <button
                                                         key={type}
-                                                        onClick={() => !selectedRegion.locked && updateRegionType(selectedId, type)}
-                                                        disabled={selectedRegion.locked}
+                                                        onClick={() => selectedRegion && !selectedRegion.locked && updateRegionType(selectedId, type)}
+                                                        disabled={isDisabled || selectedRegion?.locked}
                                                         style={{
                                                             padding: '6px 8px',
                                                             borderRadius: '6px',
                                                             fontSize: '10px',
-                                                            border: `2px solid ${selectedRegion.type === type ? config.color : 'transparent'}`,
-                                                            background: selectedRegion.type === type ? `${config.color}33` : 'var(--input-bg)',
-                                                            color: selectedRegion.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
-                                                            fontWeight: selectedRegion.type === type ? 'bold' : 'normal',
-                                                            cursor: selectedRegion.locked ? 'not-allowed' : 'pointer',
-                                                            opacity: selectedRegion.locked && selectedRegion.type !== type ? 0.5 : 1,
+                                                            border: `2px solid ${selectedRegion?.type === type ? config.color : 'transparent'}`,
+                                                            background: selectedRegion?.type === type ? `${config.color}33` : 'var(--input-bg)',
+                                                            color: selectedRegion?.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
+                                                            fontWeight: selectedRegion?.type === type ? 'bold' : 'normal',
+                                                            cursor: isDisabled || selectedRegion?.locked ? 'not-allowed' : 'pointer',
+                                                            opacity: isDisabled ? 0.4 : (selectedRegion?.locked && selectedRegion?.type !== type ? 0.5 : 1),
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
@@ -284,8 +285,8 @@ const RightSidebar = ({
                                             })}
 
                                             <button
-                                                onClick={() => selectedRegion.type === 'table' && handleEnterTableRefine(selectedRegion)}
-                                                disabled={selectedRegion.type !== 'table' || selectedRegion.locked}
+                                                onClick={() => selectedRegion?.type === 'table' && handleEnterTableRefine(selectedRegion)}
+                                                disabled={!selectedRegion || selectedRegion.type !== 'table' || selectedRegion.locked}
                                                 style={{
                                                     gridColumn: 'span 3',
                                                     marginTop: '4px',
@@ -297,11 +298,11 @@ const RightSidebar = ({
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     gap: '8px',
-                                                    cursor: selectedRegion.type === 'table' && !selectedRegion.locked ? 'pointer' : 'not-allowed',
-                                                    background: selectedRegion.type === 'table' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
-                                                    border: selectedRegion.type === 'table' ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
-                                                    color: selectedRegion.type === 'table' ? 'var(--success-color)' : 'var(--text-secondary)',
-                                                    opacity: selectedRegion.type === 'table' ? 1 : 0.5,
+                                                    cursor: selectedRegion?.type === 'table' && !selectedRegion.locked ? 'pointer' : 'not-allowed',
+                                                    background: selectedRegion?.type === 'table' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
+                                                    border: selectedRegion?.type === 'table' ? '1px solid var(--success-color)' : '1px solid var(--glass-border)',
+                                                    color: selectedRegion?.type === 'table' ? 'var(--success-color)' : 'var(--text-secondary)',
+                                                    opacity: !selectedRegion ? 0.4 : (selectedRegion.type === 'table' ? 1 : 0.5),
                                                     transition: 'all 0.3s'
                                                 }}
                                             >
@@ -314,10 +315,10 @@ const RightSidebar = ({
                                     <div>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注</p>
                                         <textarea
-                                            value={selectedRegion.remarks || ''}
-                                            onChange={(e) => updateRegionRemarks(selectedId, e.target.value)}
-                                            placeholder="额外描述信息..."
-                                            disabled={selectedRegion.locked}
+                                            value={selectedRegion?.remarks || ''}
+                                            onChange={(e) => selectedRegion && updateRegionRemarks(selectedId, e.target.value)}
+                                            placeholder={!selectedRegion ? "请先选择要素..." : "额外描述信息..."}
+                                            disabled={!selectedRegion || selectedRegion.locked}
                                             style={{
                                                 width: '100%',
                                                 background: 'var(--input-bg)',
@@ -328,15 +329,12 @@ const RightSidebar = ({
                                                 fontSize: '12px',
                                                 minHeight: '60px',
                                                 resize: 'vertical',
-                                                opacity: selectedRegion.locked ? 0.7 : 1
+                                                opacity: !selectedRegion ? 0.4 : (selectedRegion.locked ? 0.7 : 1),
+                                                cursor: !selectedRegion ? 'not-allowed' : 'text'
                                             }}
                                         />
                                     </div>
                                 </div>
-                            ) : (
-                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', fontStyle: 'italic', padding: '10px' }}>
-                                    {editorMode === 'add' ? '正在新增模式：在左侧图中拖拽即可创建' : '在图中点击选框以开始编辑'}
-                                </p>
                             )}
                         </div>
                     </div>
