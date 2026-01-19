@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Sparkles } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3 } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
@@ -635,22 +635,20 @@ const DocumentEditor = ({
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             padding: `2px 8px`,
-                                            background: isRefinedTable ? 'linear-gradient(135deg, #10b981, #3b82f6)' : config.color,
+                                            background: config.color,
                                             color: '#fff',
                                             fontSize: `11px`,
                                             fontWeight: 'bold',
                                             borderRadius: '3px 3px 3px 0',
                                             whiteSpace: 'nowrap',
-                                            boxShadow: isRefinedTable ? '0 2px 10px rgba(16, 185, 129, 0.4)' : '0 2px 4px rgba(0,0,0,0.3)',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                                             opacity: 0.9,
                                             transformOrigin: 'top left',
                                             gap: `6px`,
                                             cursor: 'default',
-                                            pointerEvents: 'auto',
-                                            border: isRefinedTable ? '1px solid rgba(255,255,255,0.3)' : 'none'
+                                            pointerEvents: 'auto'
                                         }}
                                     >
-                                        {isRefinedTable && <Sparkles size={11} style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.8))' }} />}
                                         <div
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -681,6 +679,7 @@ const DocumentEditor = ({
                                                 </svg>
                                             )}
                                         </div>
+                                        {isRefinedTable && <Edit3 size={11} />}
                                         <span style={{ pointerEvents: 'none' }}>
                                             {(() => {
                                                 const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
