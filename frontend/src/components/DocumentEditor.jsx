@@ -679,13 +679,13 @@ const DocumentEditor = ({
                                                 </svg>
                                             )}
                                         </div>
-                                        {isRefinedTable && <Edit3 size={11} />}
                                         <span style={{ pointerEvents: 'none' }}>
                                             {(() => {
                                                 const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
                                                 return isGenericLabel ? config.label : reg.label;
                                             })()}
                                         </span>
+                                        {isRefinedTable && <Edit3 size={11} />}
                                     </div>
                                 </foreignObject>
 
