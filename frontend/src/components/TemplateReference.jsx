@@ -13,6 +13,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
     const [outputFormat, setOutputFormat] = useState('markdown'); // 'markdown', 'json', 'xml', 'csv'
     const [copied, setCopied] = useState(false);
     const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(null);
+    const [selectedHistory, setSelectedHistory] = useState(new Set()); // Set of history indices
 
     // --- Search & Mode States ---
     const [selectionMode, setSelectionMode] = useState('auto'); // 'auto' (Standard) or 'custom' (Custom)
@@ -99,20 +100,70 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
     };
 
     const handleDeleteHistory = async (index, e) => {
-        e.stopPropagation(); // Prevent triggering the click event
+        if (e) e.stopPropagation();
+        // This is now only used internally or if we still wanted single delete via some menu
         if (!confirm('确定要删除这条历史记录吗?')) return;
 
         try {
             await axios.delete(`${API_BASE}/history/${index}`);
-            // If the deleted item was selected, clear the result
             if (selectedHistoryIndex === index) {
                 setResult(null);
                 setSelectedHistoryIndex(null);
             }
-            fetchHistory(); // Refresh the list
+            // Clear from selection if present
+            const newSelected = new Set(selectedHistory);
+            newSelected.delete(index);
+            setSelectedHistory(newSelected);
+
+            fetchHistory();
         } catch (err) {
             console.error("Failed to delete history", err);
             alert("删除失败: " + (err.response?.data?.detail || err.message));
+        }
+    };
+
+    const handleBatchDeleteHistory = async () => {
+        if (selectedHistory.size === 0) return;
+        if (!confirm(`确定要批量删除这 ${selectedHistory.size} 条历史记录吗?`)) return;
+
+        try {
+            setLoading(true);
+            await axios.post(`${API_BASE}/history/batch-delete`, {
+                indices: Array.from(selectedHistory)
+            });
+
+            // If currently viewed item is deleted, clear it
+            if (selectedHistory.has(selectedHistoryIndex)) {
+                setResult(null);
+                setSelectedHistoryIndex(null);
+            }
+
+            setSelectedHistory(new Set());
+            fetchHistory();
+        } catch (err) {
+            console.error("Failed to batch delete history", err);
+            alert("批量删除失败: " + (err.response?.data?.detail || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleHistorySelection = (index, e) => {
+        e.stopPropagation();
+        const newSelected = new Set(selectedHistory);
+        if (newSelected.has(index)) {
+            newSelected.delete(index);
+        } else {
+            newSelected.add(index);
+        }
+        setSelectedHistory(newSelected);
+    };
+
+    const toggleSelectAllHistory = () => {
+        if (selectedHistory.size === history.length && history.length > 0) {
+            setSelectedHistory(new Set());
+        } else {
+            setSelectedHistory(new Set(history.map(h => h.index)));
         }
     };
 
@@ -890,9 +941,49 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
                             {/* Card 2: Extraction History */}
                             <div className="glass-card" style={{ flex: 1, padding: '15px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '5px' }}>
-                                    <Clock size={16} color="var(--accent-color)" />
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>提取记录</span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Clock size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>提取记录</span>
+                                    </div>
+                                    {history.length > 0 && selectedHistory.size > 0 && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                onClick={handleBatchDeleteHistory}
+                                                style={{
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    color: '#ef4444',
+                                                    fontSize: '10px',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <Trash2 size={10} /> 删除({selectedHistory.size})
+                                            </button>
+                                            <div
+                                                onClick={toggleSelectAllHistory}
+                                                style={{
+                                                    width: '14px',
+                                                    height: '14px',
+                                                    borderRadius: '3px',
+                                                    border: '1px solid var(--glass-border)',
+                                                    background: selectedHistory.size === history.length && history.length > 0 ? 'var(--primary-color)' : 'transparent',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="全选/取消全选"
+                                            >
+                                                {selectedHistory.size === history.length && history.length > 0 && <Check size={10} color="white" />}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                     {/* 统一的提取记录列表 (Pending + Processing + History) */}
@@ -961,33 +1052,49 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                         padding: '10px',
                                                         borderRadius: '10px',
                                                         background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                                        border: '1px solid var(--glass-border)',
+                                                        border: selectedHistory.has(h.index) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
                                                         cursor: 'pointer',
-                                                        transition: 'all 0.2s'
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        gap: '8px',
+                                                        alignItems: 'flex-start'
                                                     }}
                                                     className="list-item-hover"
                                                 >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <CheckCircle size={12} color="var(--success-color)" />
-                                                            <button
-                                                                onClick={(e) => handleDeleteHistory(h.index, e)}
-                                                                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#ef4444' }}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
+                                                    <div
+                                                        onClick={(e) => toggleHistorySelection(h.index, e)}
+                                                        style={{
+                                                            marginTop: '2px',
+                                                            width: '14px',
+                                                            minWidth: '14px',
+                                                            height: '14px',
+                                                            borderRadius: '3px',
+                                                            border: '1px solid var(--glass-border)',
+                                                            background: selectedHistory.has(h.index) ? 'var(--primary-color)' : 'transparent',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        {selectedHistory.has(h.index) && <Check size={10} color="white" />}
                                                     </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
-                                                        <span style={{ fontSize: '9px', opacity: 0.5 }}>
-                                                            {new Date(h.timestamp).toLocaleString('zh-CN', {
-                                                                year: 'numeric', month: '2-digit', day: '2-digit',
-                                                                hour: '2-digit', minute: '2-digit', second: '2-digit',
-                                                                hour12: false
-                                                            }).replace(/\//g, '-')}
-                                                        </span>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <CheckCircle size={12} color="var(--success-color)" />
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
+                                                            <span style={{ fontSize: '9px', opacity: 0.5 }}>
+                                                                {new Date(h.timestamp).toLocaleString('zh-CN', {
+                                                                    year: 'numeric', month: '2-digit', day: '2-digit',
+                                                                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                                    hour12: false
+                                                                }).replace(/\//g, '-')}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}

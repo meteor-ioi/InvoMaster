@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload, Hash, Zap } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './DocumentEditor';
@@ -210,6 +210,21 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             }
         }
     }, [tableRefining]);
+
+    const lastShowPreview = useRef(showSplitPreview);
+    // --- 数据预览自动缩放控制 ---
+    useEffect(() => {
+        if (showSplitPreview === lastShowPreview.current) return;
+
+        if (showSplitPreview) {
+            // 开启预览时，放大 2 倍以补偿缩小的编辑区
+            setZoom(prev => prev * 2);
+        } else {
+            // 关闭预览时，缩小一半恢复原状
+            setZoom(prev => prev / 2);
+        }
+        lastShowPreview.current = showSplitPreview;
+    }, [showSplitPreview]);
 
     const handleExtractRegionsData = async () => {
         if (!analysis || !showSplitPreview) return;
@@ -636,7 +651,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                 gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '260px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
-                marginTop: '20px'
+                marginTop: '20px',
+                transition: 'grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
                 {/* Left Panel - Templates */}
                 <LeftPanel

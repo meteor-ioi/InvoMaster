@@ -67,6 +67,9 @@ class HistoryItem(BaseModel):
     template_name: str
     result_summary: dict
 
+class BatchDeleteRequest(BaseModel):
+    indices: List[int]
+
 
 class Template(BaseModel):
     id: str
@@ -99,26 +102,30 @@ def read_history(limit: int = 50):
 
 def delete_history_item(index: int):
     """Delete a history item by its index (0-based from most recent)"""
+    return delete_history_batch([index]) > 0
+
+def delete_history_batch(indices: List[int]):
+    """Batch delete history items by their display indices"""
     if not os.path.exists(HISTORY_FILE):
-        return False
+        return 0
     
     with open(HISTORY_FILE, "r", encoding="utf-8") as f:
         lines = f.readlines()
     
-    # Calculate actual line index (reversed)
     total = len(lines)
-    if index < 0 or index >= total:
-        return False
+    # Convert display indices (0 is most recent) to actual file indices
+    # actual_index = total - 1 - display_index
+    actual_to_delete = {total - 1 - i for i in indices if 0 <= i < total}
     
-    # Remove the item (index is from reversed list)
-    actual_index = total - 1 - index
-    lines.pop(actual_index)
+    if not actual_to_delete:
+        return 0
+        
+    new_lines = [line for idx, line in enumerate(lines) if idx not in actual_to_delete]
     
-    # Write back
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.writelines(lines)
+        f.writelines(new_lines)
     
-    return True
+    return len(actual_to_delete)
 
 def get_history_item(index: int):
     """Get a single history item by index"""
@@ -892,6 +899,12 @@ async def delete_history(index: int):
     if not success:
         raise HTTPException(status_code=404, detail="History item not found")
     return {"status": "success", "message": f"History item {index} deleted"}
+
+@app.post("/history/batch-delete")
+async def batch_delete_history(req: BatchDeleteRequest):
+    """Batch delete history items by their display indices"""
+    deleted_count = delete_history_batch(req.indices)
+    return {"status": "success", "deleted": deleted_count}
 
 
 if __name__ == "__main__":

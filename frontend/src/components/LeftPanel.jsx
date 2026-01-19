@@ -76,6 +76,7 @@ const LeftPanel = ({
                 flexDirection: 'column',
                 gap: '15px',
                 height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
+                alignItems: 'flex-start'
             }}
         >
             {/* 悬浮切换按钮 (右边缘居中) */}
@@ -112,7 +113,7 @@ const LeftPanel = ({
             </div>
 
             {collapsed ? (
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
+                <div className="glass-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                     <div style={{
                         width: '40px',
                         height: '40px',
@@ -160,6 +161,7 @@ const LeftPanel = ({
                         onDrop={handleDrop}
                         onClick={() => document.getElementById('panel-file-upload').click()}
                         style={{
+                            width: '100%',
                             padding: '20px 15px',
                             border: dragActive ? '2px solid var(--primary-color)' : '1px solid var(--glass-border)',
                             background: dragActive ? 'rgba(59, 130, 246, 0.1)' : 'var(--glass-bg)',
@@ -208,6 +210,7 @@ const LeftPanel = ({
                     <div
                         className="glass-card"
                         style={{
+                            width: '100%',
                             flex: 1,
                             padding: '15px 12px',
                             display: 'flex',
