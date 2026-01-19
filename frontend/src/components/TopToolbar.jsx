@@ -166,21 +166,16 @@ const TopToolbar = ({
                                         outline: 'none'
                                     }}
                                 >
-                                    <Filter size={14} color={activeFiltersCount === filterTypes.length ? "var(--text-secondary)" : "var(--primary-color)"} />
-                                    <span style={{ fontWeight: '500' }}>仅查看</span>
-                                    <div style={{
-                                        fontSize: '10px',
-                                        background: activeFiltersCount === filterTypes.length ? 'var(--glass-border)' : 'var(--primary-color)',
-                                        color: activeFiltersCount === filterTypes.length ? 'var(--text-secondary)' : '#fff',
-                                        padding: '1px 6px',
-                                        borderRadius: '10px',
-                                        marginLeft: '2px',
-                                        fontWeight: 'bold',
-                                        minWidth: '20px',
-                                        textAlign: 'center'
-                                    }}>
-                                        {activeFiltersCount === filterTypes.length ? '全部' : activeFiltersCount}
-                                    </div>
+                                    <Filter
+                                        size={14}
+                                        color={activeFiltersCount === filterTypes.length ? "var(--text-secondary)" : "var(--primary-color)"}
+                                        fill={activeFiltersCount === filterTypes.length ? "none" : "var(--primary-color)"}
+                                        opacity={activeFiltersCount === filterTypes.length ? 0.6 : 1}
+                                    />
+                                    <span style={{
+                                        fontWeight: '500',
+                                        color: activeFiltersCount === filterTypes.length ? 'var(--text-secondary)' : 'var(--primary-color)'
+                                    }}>仅查看</span>
                                     <ChevronDown size={12} style={{ transform: isFilterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
                                 </button>
 
