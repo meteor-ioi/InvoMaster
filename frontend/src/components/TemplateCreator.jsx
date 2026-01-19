@@ -185,6 +185,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
     const [previewLoading, setPreviewLoading] = useState(false);
     const [splitPercent, setSplitPercent] = useState(50);
     const [isResizingSplit, setIsResizingSplit] = useState(false);
+    const [leftPanelHistoryState, setLeftPanelHistoryState] = useState(null);
 
     // --- 在版面分析模式下触发数据提取 ---
     useEffect(() => {
@@ -193,9 +194,21 @@ export default function TemplateCreator({ theme, setTheme, device }) {
         }
     }, [showSplitPreview, selectedId, selectedIds, tableRefining]);
 
-    // --- 自动联动：进入/退出表格微调时自动收起数据预览 ---
+    // --- 自动联动：进入/退出表格微调时自动收起数据预览及侧边栏 ---
     useEffect(() => {
         setShowSplitPreview(false);
+
+        if (tableRefining) {
+            // 进入微调模式：记录当前状态并强制收起
+            setLeftPanelHistoryState(leftPanelCollapsed);
+            setLeftPanelCollapsed(true);
+        } else {
+            // 退出微调模式：恢复之前的状态
+            if (leftPanelHistoryState !== null) {
+                setLeftPanelCollapsed(leftPanelHistoryState);
+                setLeftPanelHistoryState(null);
+            }
+        }
     }, [tableRefining]);
 
     const handleExtractRegionsData = async () => {
