@@ -50,6 +50,8 @@ const TopToolbar = ({
 
     const filterTypes = ['table', 'title', 'figure', 'plain text', 'custom', 'abandon'];
     const activeFiltersCount = Object.values(viewFilters).filter(Boolean).length;
+    // 无筛选状态：空对象或全选
+    const isFiltering = activeFiltersCount > 0 && activeFiltersCount < filterTypes.length;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: isIntegrated ? '0' : '10px' }}>
@@ -168,13 +170,13 @@ const TopToolbar = ({
                                 >
                                     <Filter
                                         size={14}
-                                        color={activeFiltersCount === filterTypes.length ? "var(--text-secondary)" : "var(--primary-color)"}
-                                        fill={activeFiltersCount === filterTypes.length ? "none" : "var(--primary-color)"}
-                                        opacity={activeFiltersCount === filterTypes.length ? 0.6 : 1}
+                                        color={isFiltering ? "var(--primary-color)" : "var(--text-secondary)"}
+                                        fill={isFiltering ? "var(--primary-color)" : "none"}
+                                        opacity={isFiltering ? 1 : 0.6}
                                     />
                                     <span style={{
                                         fontWeight: '500',
-                                        color: activeFiltersCount === filterTypes.length ? 'var(--text-secondary)' : 'var(--primary-color)'
+                                        color: isFiltering ? 'var(--primary-color)' : 'var(--text-secondary)'
                                     }}>仅查看</span>
                                     <ChevronDown size={12} style={{ transform: isFilterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
                                 </button>
