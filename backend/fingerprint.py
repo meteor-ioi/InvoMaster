@@ -43,37 +43,52 @@ class FingerprintEngine:
             
             # 2. 视觉布局提取 (复用 singleton 引擎)
             engine_instance = get_layout_engine()
-            model = engine_instance.model
             
             # 将 PDF 第一页转为图像进行推理
-            doc = fitz.open(file_path)
-            if len(doc) > 0:
-                page = doc[0]
-                # 渲染页面的缩放比例（200 dpi 左右足够识别布局）
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            from utils import pdf_to_images
+            import tempfile
+            
+            # 使用临时目录生成图像
+            with tempfile.TemporaryDirectory() as temp_dir:
+                image_paths = pdf_to_images(file_path, temp_dir, dpi=200)
                 
-                # 执行推理
-                results = model.predict(img)
-                
-                if results and len(results) > 0:
-                    result = results[0]
-                    boxes = result.boxes
+                if image_paths and len(image_paths) > 0:
+                    # 只处理第一页
+                    first_page_img = image_paths[0]
+                    
+                    # 执行推理
+                    regions = engine_instance.predict(first_page_img, conf=0.25, imgsz=1024)
                     
                     layout_data = []
                     # 遍历识别出的区块
-                    for box in boxes:
-                        cls_id = int(box.cls[0].item())
-                        # 归一化 xywh 坐标 (0-1)
-                        xywh = box.xywhn[0].tolist()
+                    for region in regions:
+                        # 提取归一化坐标
+                        x_center = region['x'] + region['width'] / 2
+                        y_center = region['y'] + region['height'] / 2
+                        
+                        # 尝试从 label 反向查找 class_id
+                        label = region['label']
+                        cls_id = 0
+                        for cid, cname in [(0, 'title'), (1, 'plain text'), (2, 'abandon'), 
+                                          (3, 'figure'), (4, 'figure_caption'), (5, 'table'), 
+                                          (6, 'table_caption'), (7, 'table_footnote'), 
+                                          (8, 'isolate_formula'), (9, 'formula_caption')]:
+                            if cname.lower() == label.lower():
+                                cls_id = cid
+                                break
+                        
                         # [类别, x_center, y_center, width, height]
-                        layout_data.append([cls_id] + [round(v, 4) for v in xywh])
+                        layout_data.append([
+                            cls_id,
+                            round(x_center, 4),
+                            round(y_center, 4),
+                            round(region['width'], 4),
+                            round(region['height'], 4)
+                        ])
                     
                     # 按 Y 轴中心点排序，确保指纹序列的一致性
                     layout_data.sort(key=lambda x: x[2])
                     features["layout_boxes"] = layout_data
-                
-                doc.close()
                     
         except Exception as e:
             print(f"Error extracting visual features: {e}")

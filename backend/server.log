@@ -1,0 +1,126 @@
+INFO:     Will watch for changes in these directories: ['/Users/icychick/Projects/industry_PDF/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [81147] using StatReload
+Starting HITL Backend on http://0.0.0.0:8000
+INFO:     Started server process [81149]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:53644 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53646 - "GET /history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53711 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53713 - "GET /history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53711 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /history/0 HTTP/1.1" 200 OK
+Initializing LayoutEngine on device: mps
+
+0: 800x1024 5 abandons, 5 tables, 1 table_caption, 2 table_footnotes, 863.4ms
+Speed: 8.6ms preprocess, 863.4ms inference, 7.1ms postprocess per image at shape (1, 3, 800, 1024)
+Matched template f4bdcf8f9a16 with score 0.8635833333333334
+Running prediction on cpu (conf=0.25, imgsz=1024, iou=0.45, agnostic_nms=False)
+
+image 1/1 /Users/icychick/Projects/industry_PDF/backend/data/uploads/images_8e2f3845/page_1.png: 800x1024 5 abandons, 4 tables, 1 table_caption, 2 table_footnotes, 780.1ms
+Speed: 4.0ms preprocess, 780.1ms inference, 0.7ms postprocess per image at shape (1, 3, 800, 1024)
+Detected 12 regions in /Users/icychick/Projects/industry_PDF/backend/data/uploads/images_8e2f3845/page_1.png
+INFO:     127.0.0.1:53716 - "POST /analyze?device=cpu HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /templates HTTP/1.1" 200 OK
+Using cached content for template f4bdcf8f9a16
+INFO:     127.0.0.1:53716 - "GET /templates/f4bdcf8f9a16/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53731 - "GET /static/images_f4bdcf8f/page_1.png HTTP/1.1" 304 Not Modified
+WARNING:  StatReload detected changes in 'config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [81149]
+Process SpawnProcess-2:
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/_compat.py", line 30, in asyncio_run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/config.py", line 439, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/importer.py", line 22, in import_from_string
+    raise exc from None
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/icychick/Projects/industry_PDF/backend/main.py", line 20, in <module>
+    from format_utils import convert_to_format
+ModuleNotFoundError: No module named 'format_utils'
+WARNING:  StatReload detected changes in 'database.py'. Reloading...
+Process SpawnProcess-3:
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/_compat.py", line 30, in asyncio_run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/config.py", line 439, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/importer.py", line 22, in import_from_string
+    raise exc from None
+  File "/Users/icychick/Projects/industry_PDF/backend/.venv/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/icychick/Projects/industry_PDF/backend/main.py", line 20, in <module>
+    from format_utils import convert_to_format
+ModuleNotFoundError: No module named 'format_utils'
+INFO:     Stopping reloader process [81147]

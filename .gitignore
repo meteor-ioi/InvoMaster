@@ -15,6 +15,9 @@ backend/runs/
 # Build outputs
 frontend/dist/
 frontend/build/
+dist/
+build/
+*.spec
 
 # IDE
 .vscode/

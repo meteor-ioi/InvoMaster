@@ -17,16 +17,17 @@ from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
-from format_utils import convert_to_format
+
 
 app = FastAPI(title="HITL Document Extraction API")
 
-# Storage paths
-UPLOAD_DIR = "data/uploads"
-TEMPLATES_DIR = "data/templates" # Root dir
-TEMPLATES_AUTO_DIR = "data/templates/auto"
-TEMPLATES_CUSTOM_DIR = "data/templates/custom"
-TEMPLATES_SOURCE_DIR = "data/template_sources"
+# Storage paths configuration
+base_data_dir = os.environ.get("APP_DATA_DIR", "data")
+UPLOAD_DIR = os.path.join(base_data_dir, "uploads")
+TEMPLATES_DIR = os.path.join(base_data_dir, "templates") # Root dir
+TEMPLATES_AUTO_DIR = os.path.join(base_data_dir, "templates/auto")
+TEMPLATES_CUSTOM_DIR = os.path.join(base_data_dir, "templates/custom")
+TEMPLATES_SOURCE_DIR = os.path.join(base_data_dir, "template_sources")
 
 for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR]:
     os.makedirs(d, exist_ok=True)
@@ -214,7 +215,7 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
             
     return results
 
-@app.get("/")
+@app.get("/health")
 async def root():
     return {"message": "HITL Document Extraction API is running"}
 

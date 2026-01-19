@@ -168,12 +168,14 @@ def inject_ocr_chars_to_page(page, chars: List[Dict[str, Any]]):
         chars: List of char dictionaries from get_ocr_chars_for_page.
     """
     # Clear cached objects and inject new chars
+    # pdfplumber uses _objects internally to cache extracted objects
     if hasattr(page, '_objects'):
-        page._objects = {"char": chars}
-    
-    # Also update the chars property if it's cached as a list
-    # pdfplumber typically computes this lazily, but we force it
-    page.chars = chars
+        if page._objects is None:
+            page._objects = {}
+        page._objects['char'] = chars
+    else:
+        # Create _objects if it doesn't exist
+        page._objects = {'char': chars}
     
     print(f"Injected {len(chars)} OCR chars into pdfplumber page")
 

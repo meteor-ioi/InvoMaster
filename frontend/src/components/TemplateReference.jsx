@@ -616,7 +616,7 @@ export default function TemplateReference({ device }) {
                                 title="上传 PDF（支持多选）"
                             >
                                 <Upload size={18} />
-                                <input id="ref-upload-collapsed" type="file" multiple className="hidden" accept="application/pdf" onChange={handleFileUpload} />
+                                <input id="ref-upload-collapsed" type="file" multiple className="hidden" accept=".pdf,application/pdf" onChange={handleFileUpload} />
                             </button>
 
                             <button
@@ -780,7 +780,6 @@ export default function TemplateReference({ device }) {
                                                         style={{
                                                             padding: '8px 12px',
                                                             fontSize: '12px',
-                                                            color: 'var(--text-primary)',
                                                             cursor: 'pointer',
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -808,7 +807,6 @@ export default function TemplateReference({ device }) {
                                                                 style={{
                                                                     padding: '8px 12px',
                                                                     fontSize: '12px',
-                                                                    color: 'var(--text-primary)',
                                                                     cursor: 'pointer',
                                                                     display: 'flex',
                                                                     alignItems: 'center',

@@ -198,7 +198,7 @@ const LeftPanel = ({
                             id="panel-file-upload"
                             type="file"
                             className="hidden"
-                            accept="application/pdf"
+                            accept=".pdf,application/pdf"
                             onChange={handleFileSelect}
                         />
                     </div>

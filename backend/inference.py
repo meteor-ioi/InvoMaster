@@ -1,79 +1,179 @@
-import torch
+import onnxruntime as ort
+import numpy as np
+from PIL import Image
 import os
-# Try to import from doclayout_yolo first, which handles YOLOv10 architecture correctly
-try:
-    from doclayout_yolo import YOLOv10 as YOLO
-except ImportError:
-    from ultralytics import YOLO
+from typing import List, Dict, Union
 
-def get_device(force_mps=False):
+# DocLayout-YOLO 类别名称映射
+DOCLAYOUT_CLASSES = {
+    0: 'title',
+    1: 'plain text',
+    2: 'abandon',
+    3: 'figure',
+    4: 'figure_caption',
+    5: 'table',
+    6: 'table_caption',
+    7: 'table_footnote',
+    8: 'isolate_formula',
+    9: 'formula_caption'
+}
+
+def get_device_providers():
     """
-    Detects the best available device (MPS, CUDA, or CPU).
-    M4 Mac supports MPS.
+    获取可用的 ONNX Runtime 执行提供者
+    优先级: CUDA > CoreML (MPS) > CPU
     """
-    if force_mps and torch.backends.mps.is_available():
-        return "mps"
-    if torch.cuda.is_available():
-        return "cuda"
-    if torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
+    available = ort.get_available_providers()
+    
+    if 'CUDAExecutionProvider' in available:
+        return ['CUDAExecutionProvider', 'CPUExecutionProvider']
+    elif 'CoreMLExecutionProvider' in available:
+        return ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+    else:
+        return ['CPUExecutionProvider']
 
 class LayoutEngine:
-    def __init__(self, model_path="data/models/yolov10-doclayout.pt", device=None):
+    def __init__(self, model_path=None, device=None):
+        if model_path is None:
+            base_data = os.environ.get("APP_DATA_DIR", "data")
+            model_path = os.path.join(base_data, "models", "yolov10-doclayout.onnx")
+        
         if not os.path.exists(model_path):
-            # Fallback to standard yolov8n if doclayout is missing during first run
-            print(f"Warning: {model_path} not found. Using fallback model.")
-            model_path = "yolov8n.pt"
+            raise FileNotFoundError(f"ONNX model not found: {model_path}")
+        
+        # 确定执行提供者
+        if device == 'cuda':
+            providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+        elif device == 'mps':
+            providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+        else:
+            providers = get_device_providers()
+        
+        print(f"Initializing LayoutEngine with providers: {providers}")
+        
+        # 加载 ONNX 模型
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        self.session = ort.InferenceSession(
+            model_path,
+            sess_options=sess_options,
+            providers=providers
+        )
+        
+        # 获取模型输入输出信息
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_names = [output.name for output in self.session.get_outputs()]
+        
+        print(f"Model loaded successfully. Input: {self.input_name}")
+        print(f"Active providers: {self.session.get_providers()}")
+        
+        # 类别名称映射
+        self.names = DOCLAYOUT_CLASSES
+
+    def preprocess_image(self, image: Union[str, Image.Image], imgsz: int = 1024):
+        """
+        预处理图像为 ONNX 模型输入格式
+        """
+        # 加载图像
+        if isinstance(image, str):
+            img = Image.open(image).convert('RGB')
+        else:
+            img = image.convert('RGB')
+        
+        # 保存原始尺寸
+        orig_width, orig_height = img.size
+        
+        # Resize 到模型输入尺寸 (保持宽高比)
+        scale = min(imgsz / orig_width, imgsz / orig_height)
+        new_width = int(orig_width * scale)
+        new_height = int(orig_height * scale)
+        
+        img_resized = img.resize((new_width, new_height), Image.BILINEAR)
+        
+        # Pad 到正方形
+        img_padded = Image.new('RGB', (imgsz, imgsz), (114, 114, 114))
+        img_padded.paste(img_resized, (0, 0))
+        
+        # 转换为 numpy 数组并归一化
+        img_array = np.array(img_padded).astype(np.float32) / 255.0
+        
+        # 转换为 CHW 格式
+        img_array = img_array.transpose(2, 0, 1)
+        
+        # 添加 batch 维度
+        img_array = np.expand_dims(img_array, axis=0)
+        
+        return img_array, scale, (orig_width, orig_height)
+
+    def postprocess_outputs(self, outputs, scale, orig_size, conf=0.25, iou=0.45, imgsz=1024):
+        """
+        后处理 ONNX 模型输出
+        """
+        # YOLOv10 输出格式: [batch, num_boxes, 6] -> [x1, y1, x2, y2, confidence, class]
+        predictions = outputs[0][0]  # 取第一个 batch
+        
+        boxes = []
+        for pred in predictions:
+            x1, y1, x2, y2, confidence, cls_id = pred
             
-        self.device = device or get_device()
-        print(f"Initializing LayoutEngine on device: {self.device}")
-        try:
-            self.model = YOLO(model_path)
-        except Exception as e:
-            print(f"Failed to load model {model_path}: {e}")
-            # Final fallback to standard YOLO
-            from ultralytics import YOLO as StandardYOLO
-            self.model = StandardYOLO(model_path)
+            # 置信度过滤
+            if confidence < conf:
+                continue
+            
+            # 将坐标归一化（ONNX 输出的是绝对像素值，相对于 imgsz）
+            x1_norm = x1 / imgsz
+            y1_norm = y1 / imgsz
+            x2_norm = x2 / imgsz
+            y2_norm = y2 / imgsz
+            
+            boxes.append({
+                'x1': float(x1_norm),
+                'y1': float(y1_norm),
+                'x2': float(x2_norm),
+                'y2': float(y2_norm),
+                'confidence': float(confidence),
+                'class_id': int(cls_id)
+            })
+        
+        # NMS (简化版本，ONNX 模型通常已内置 NMS)
+        return boxes
 
     def predict(self, image_path, device=None, conf=0.25, imgsz=1024, iou=0.45, agnostic_nms=False):
         """
-        Predict layout regions for a single image with custom parameters.
+        预测布局区域
         """
-        target_device = device or self.device
-        print(f"Running prediction on {target_device} (conf={conf}, imgsz={imgsz}, iou={iou}, agnostic_nms={agnostic_nms})")
+        print(f"Running ONNX prediction (conf={conf}, imgsz={imgsz})")
         
-        results = self.model.predict(
-            image_path, 
-            device=target_device, 
-            conf=conf,
-            imgsz=imgsz,
-            iou=iou,
-            agnostic_nms=agnostic_nms
-        )
+        # 预处理
+        input_data, scale, orig_size = self.preprocess_image(image_path, imgsz)
+        
+        # 推理
+        outputs = self.session.run(None, {self.input_name: input_data})
+        
+        # 后处理
+        boxes = self.postprocess_outputs(outputs, scale, orig_size, conf, iou, imgsz)
+        
+        # 转换为项目格式
         regions = []
-        
-        # DocLayout-YOLO classes
-        for i, r in enumerate(results[0].boxes):
-            box = r.xyxyn[0].tolist() 
-            cls = int(r.cls[0])
-            label = self.model.names[cls]
+        for i, box in enumerate(boxes):
+            cls_id = box['class_id']
+            label = self.names.get(cls_id, f'class_{cls_id}')
             
-            x1, y1, x2, y2 = box
             regions.append({
                 "id": f"auto_{i}",
                 "type": label.lower(),
-                "x": x1,
-                "y": y1,
-                "width": x2 - x1,
-                "height": y2 - y1,
+                "x": float(box['x1']),
+                "y": float(box['y1']),
+                "width": float(box['x2'] - box['x1']),
+                "height": float(box['y2'] - box['y1']),
                 "label": label
             })
-            
+        
         print(f"Detected {len(regions)} regions in {image_path}")
         return regions
 
-# Global instance for shared use
+# 全局单例
 _engine = None
 
 def get_layout_engine():

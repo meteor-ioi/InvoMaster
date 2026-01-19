@@ -4,7 +4,8 @@ import os
 import datetime
 from typing import List, Optional, Dict
 
-DB_PATH = "data/metadata.db"
+base_data = os.environ.get("APP_DATA_DIR", "data")
+DB_PATH = os.path.join(base_data, "metadata.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)

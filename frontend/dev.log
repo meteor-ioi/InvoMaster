@@ -1,0 +1,40 @@
+
+> hitl-document-extraction-frontend@0.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 122 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+00:03:48 [vite] warning: Duplicate key "color" in object literal
+806|                            gap: '8px',
+807|                            background: selectedTemplate === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+808|                            color: selectedTemplate === 'auto' ? 'var(--primary-color)' : 'var(--text-primary)',
+   |                            ^
+809|                            borderBottom: '1px solid var(--glass-border)'
+810|                          }}>
+
+  Plugin: vite:esbuild
+  File: /Users/icychick/Projects/industry_PDF/frontend/src/components/TemplateReference.jsx
+00:03:48 [vite] warning: Duplicate key "color" in object literal
+834|                            gap: '8px',
+835|                            background: selectedTemplate === t.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+836|                            color: selectedTemplate === t.id ? 'var(--primary-color)' : 'var(--text-primary)'
+   |                            ^
+837|                          }}>
+838|  
+
+  Plugin: vite:esbuild
+  File: /Users/icychick/Projects/industry_PDF/frontend/src/components/TemplateReference.jsx
+00:03:48 [vite] warning: Duplicate key "minHeight" in object literal
+665|                          minHeight: 0,
+666|                          height: '100%',
+667|                          minHeight: 0,
+   |                          ^
+668|                          maxHeight: 'none',
+669|                          overflow: 'auto',
+
+  Plugin: vite:esbuild
+  File: /Users/icychick/Projects/industry_PDF/frontend/src/components/TemplateCreator.jsx
