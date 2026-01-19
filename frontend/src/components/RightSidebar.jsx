@@ -55,7 +55,8 @@ const RightSidebar = ({
                 flexDirection: 'column',
                 gap: '15px',
                 height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
-                overflow: 'visible'
+                overflow: 'visible',
+                alignItems: 'flex-end'
             }}
         >
             {/* 悬浮切换按钮 (左边缘居中) */}
@@ -92,7 +93,7 @@ const RightSidebar = ({
             </div>
 
             {collapsed ? (
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
+                <div className="glass-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                     <div style={{
                         width: '40px',
                         height: '40px',
@@ -133,6 +134,7 @@ const RightSidebar = ({
                     <div
                         className="glass-card"
                         style={{
+                            width: '100%',
                             flex: 1,
                             padding: '15px',
                             display: 'flex',
@@ -177,7 +179,7 @@ const RightSidebar = ({
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            垂直策略 (列) <HelpCircle size={10} />
+                                            垂直策略 (列)：
                                         </p>
                                         <StrategySelect
                                             value={tableSettings.vertical_strategy}
@@ -192,7 +194,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)：</p>
                                         <StrategySelect
                                             value={tableSettings.horizontal_strategy}
                                             onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
@@ -206,7 +208,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差 (Snap)</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差：</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <input
                                                 type="range" min="1" max="10" step="1"
@@ -267,7 +269,7 @@ const RightSidebar = ({
                                                             padding: '6px 8px',
                                                             borderRadius: '6px',
                                                             fontSize: '10px',
-                                                            border: `2px solid ${selectedRegion?.type === type ? config.color : 'transparent'}`,
+                                                            border: `1px solid ${selectedRegion?.type === type ? config.color : 'var(--glass-border)'}`,
                                                             background: selectedRegion?.type === type ? `${config.color}33` : 'var(--input-bg)',
                                                             color: selectedRegion?.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
                                                             fontWeight: selectedRegion?.type === type ? 'bold' : 'normal',
@@ -345,6 +347,7 @@ const RightSidebar = ({
                         <div
                             className="glass-card"
                             style={{
+                                width: '100%',
                                 padding: '15px',
                                 flexDirection: 'column',
                                 gap: '15px',
