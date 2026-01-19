@@ -24,26 +24,79 @@ export default function TemplateCreator({ theme, setTheme, device }) {
 
     // --- 版面识别增强状态 ---
     const [layoutSettings, setLayoutSettings] = useState({
-        strategy: 'balanced',
-        imgsz: 1024,
+        dedup: 'off', // 'off', 'moderate', 'aggressive'
+        imgsz: 1024, // Fixed for ONNX model
         iou: 0.45,
         agnostic_nms: false
     });
     const [viewFilters, setViewFilters] = useState({});
 
-    const applyStrategy = (strategy) => {
-        let settings = { strategy };
-        if (strategy === 'fast') {
-            settings = { ...settings, imgsz: 640, iou: 0.5, agnostic_nms: false };
-            setConfidence(0.35);
-        } else if (strategy === 'balanced') {
-            settings = { ...settings, imgsz: 1024, iou: 0.45, agnostic_nms: false };
-            setConfidence(0.25);
-        } else if (strategy === 'precise') {
-            settings = { ...settings, imgsz: 1600, iou: 0.35, agnostic_nms: true };
-            setConfidence(0.15);
+    // --- 智能去重：合并重叠区块 ---
+    const mergeOverlappingRegions = (regionsToMerge, mode) => {
+        if (mode === 'off' || !regionsToMerge || regionsToMerge.length === 0) {
+            return regionsToMerge;
         }
-        setLayoutSettings(prev => ({ ...prev, ...settings }));
+
+        // IoU 阈值：适中=0.5, 激进=0.3
+        const iouThreshold = mode === 'aggressive' ? 0.3 : 0.5;
+
+        const calculateIoU = (a, b) => {
+            const x1 = Math.max(a.x, b.x);
+            const y1 = Math.max(a.y, b.y);
+            const x2 = Math.min(a.x + a.width, b.x + b.width);
+            const y2 = Math.min(a.y + a.height, b.y + b.height);
+
+            if (x2 <= x1 || y2 <= y1) return 0;
+
+            const intersection = (x2 - x1) * (y2 - y1);
+            const areaA = a.width * a.height;
+            const areaB = b.width * b.height;
+            const union = areaA + areaB - intersection;
+
+            return intersection / union;
+        };
+
+        const merged = [];
+        const used = new Set();
+
+        for (let i = 0; i < regionsToMerge.length; i++) {
+            if (used.has(i)) continue;
+
+            let current = { ...regionsToMerge[i] };
+            used.add(i);
+
+            // 查找所有与当前区块重叠的同类型区块
+            for (let j = i + 1; j < regionsToMerge.length; j++) {
+                if (used.has(j)) continue;
+                const other = regionsToMerge[j];
+
+                // 只合并同类型区块
+                if (current.type !== other.type) continue;
+
+                const iou = calculateIoU(current, other);
+                if (iou >= iouThreshold) {
+                    // 合并：取更大的边界框
+                    const newX = Math.min(current.x, other.x);
+                    const newY = Math.min(current.y, other.y);
+                    const newX2 = Math.max(current.x + current.width, other.x + other.width);
+                    const newY2 = Math.max(current.y + current.height, other.y + other.height);
+
+                    current = {
+                        ...current,
+                        x: newX,
+                        y: newY,
+                        width: newX2 - newX,
+                        height: newY2 - newY
+                    };
+                    used.add(j);
+                }
+            }
+
+            merged.push(current);
+        }
+
+        console.log(`智能去重: ${regionsToMerge.length} -> ${merged.length} 区块 (${mode})`);
+        return merged;
     };
 
     // --- 表格深度编辑状态 ---
@@ -241,7 +294,9 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                 ...r,
                 label: TYPE_CONFIG[r.type.toLowerCase()]?.label || r.label
             }));
-            setRegions(mappedRegions);
+            // 应用智能去重
+            const finalRegions = mergeOverlappingRegions(mappedRegions, layoutSettings.dedup);
+            setRegions(finalRegions);
             setTemplateName(res.data.template_found ? (res.data.matched_template?.name || `识别_${res.data.filename}`) : `模型_${res.data.filename}`);
             // If template found, use its mode, otherwise default to auto
             setTemplateMode(res.data.matched_template?.mode || 'auto');
@@ -536,7 +591,6 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                                     selectedRegion={selectedRegion}
                                     handleEnterTableRefine={handleEnterTableRefine}
                                     layoutSettings={layoutSettings}
-                                    applyStrategy={applyStrategy}
                                     setLayoutSettings={setLayoutSettings}
                                     confidence={confidence}
                                     setConfidence={setConfidence}

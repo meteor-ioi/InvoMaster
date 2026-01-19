@@ -6,7 +6,6 @@ const TopToolbar = ({
     selectedRegion,
     handleEnterTableRefine,
     layoutSettings,
-    applyStrategy,
     setLayoutSettings,
     confidence,
     setConfidence,
@@ -64,41 +63,31 @@ const TopToolbar = ({
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, minWidth: 0 }}>
-                            {/* Strategy Toggle */}
+                            {/* Smart Dedup Toggle */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                                 <Zap size={16} color="var(--primary-color)" />
-                                <span style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>识别策略:</span>
+                                <span style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>智能去重:</span>
                                 <div className="strategy-toggle" style={{ display: 'flex', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                    {['fast', 'balanced', 'precise'].map(s => (
+                                    {['off', 'moderate', 'aggressive'].map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => applyStrategy(s)}
+                                            onClick={() => setLayoutSettings({ ...layoutSettings, dedup: s })}
                                             style={{
                                                 padding: '4px 12px', borderRadius: '6px', fontSize: '11px', border: 'none', cursor: 'pointer',
-                                                background: layoutSettings.strategy === s ? 'var(--primary-color)' : 'transparent',
-                                                color: layoutSettings.strategy === s ? '#fff' : 'var(--text-secondary)',
-                                                fontWeight: layoutSettings.strategy === s ? 'bold' : 'normal',
+                                                background: layoutSettings.dedup === s ? 'var(--primary-color)' : 'transparent',
+                                                color: layoutSettings.dedup === s ? '#fff' : 'var(--text-secondary)',
+                                                fontWeight: layoutSettings.dedup === s ? 'bold' : 'normal',
                                                 transition: 'all 0.2s', whiteSpace: 'nowrap'
                                             }}
                                         >
-                                            {s === 'fast' ? '极速' : s === 'balanced' ? '平衡' : '精细'}
+                                            {s === 'off' ? '关闭' : s === 'moderate' ? '适中' : '激进'}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Parameters Area */}
+                            {/* Confidence Slider */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingLeft: '20px', borderLeft: '1px solid var(--glass-border)', flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>分辨率:</span>
-                                    <select
-                                        value={layoutSettings.imgsz}
-                                        onChange={(e) => setLayoutSettings({ ...layoutSettings, imgsz: parseInt(e.target.value), strategy: 'custom' })}
-                                        style={{ background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '11px', outline: 'none' }}
-                                    >
-                                        {[640, 800, 1024, 1280, 1600, 2048].map(size => <option key={size} value={size}>{size}</option>)}
-                                    </select>
-                                </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
                                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>置信度:</span>
                                     <input
