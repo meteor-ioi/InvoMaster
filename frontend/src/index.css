@@ -12,6 +12,16 @@
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+.fold-icon {
+  opacity: 0.2;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.fold-icon:hover {
+  opacity: 1;
+}
+
 [data-theme='dark'] {
   color-scheme: dark;
   --bg-color: #0f172a;

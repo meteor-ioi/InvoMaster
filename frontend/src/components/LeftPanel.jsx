@@ -87,7 +87,7 @@ const LeftPanel = ({
                     transform: 'translateY(-50%)',
                     zIndex: 100,
                     cursor: 'pointer',
-                    opacity: isHoveringToggle ? 1 : 0.6,
+                    opacity: isHoveringToggle ? 1 : 0.2,
                     transition: 'all 0.3s ease'
                 }}
                 onMouseEnter={() => setIsHoveringToggle(true)}
@@ -334,6 +334,7 @@ const LeftPanel = ({
                                                     >
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                                             <div
+                                                                className="fold-icon"
                                                                 style={{ padding: '2px', color: 'var(--text-secondary)' }}
                                                                 onClick={(e) => { e.stopPropagation(); toggleExpand(t.id, e); }}
                                                             >

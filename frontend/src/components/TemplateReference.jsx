@@ -619,7 +619,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                             transform: 'translateY(-50%)',
                             zIndex: 100,
                             cursor: 'pointer',
-                            opacity: isHoveringToggle ? 1 : 0.6,
+                            opacity: isHoveringToggle ? 1 : 0.2,
                             transition: 'all 0.3s ease'
                         }}
                         onMouseEnter={() => setIsHoveringToggle(true)}
@@ -711,10 +711,13 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                             </span>
                                         )}
                                     </div>
-                                    <div style={{
-                                        transition: 'transform 0.3s ease',
-                                        transform: isConfigCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
-                                    }}>
+                                    <div
+                                        className="fold-icon"
+                                        style={{
+                                            transition: 'transform 0.3s ease',
+                                            transform: isConfigCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
+                                        }}
+                                    >
                                         <ChevronUp size={16} color="var(--text-secondary)" />
                                     </div>
                                 </div>

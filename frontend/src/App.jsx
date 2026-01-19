@@ -5,12 +5,21 @@ import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
 import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft, Cpu, Zap, Box, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
 
+// 获取系统主题偏好
+const getSystemTheme = () => {
+    if (typeof window === 'undefined') return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
 function App() {
     const [view, setView] = useState('reference'); // 'creator', 'reference', 'apicall'
     // 主题模式: 'system' | 'light' | 'dark'
-    const [themeMode, setThemeMode] = useState(localStorage.getItem('babeldoc-theme-mode') || 'system');
+    const [themeMode, setThemeMode] = useState(() => localStorage.getItem('babeldoc-theme-mode') || 'system');
     // 实际应用的主题: 'light' | 'dark'
-    const [appliedTheme, setAppliedTheme] = useState('dark');
+    const [appliedTheme, setAppliedTheme] = useState(() => {
+        const mode = localStorage.getItem('babeldoc-theme-mode') || 'system';
+        return mode === 'system' ? getSystemTheme() : mode;
+    });
     const [device, setDevice] = useState(localStorage.getItem('babeldoc-device') || 'cpu');
     const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('babeldoc-header-collapsed') === 'true');
@@ -22,10 +31,6 @@ function App() {
         window.dispatchEvent(new CustomEvent('toggle-sidebars', { detail: { collapsed: newState } }));
     };
 
-    // 获取系统主题偏好
-    const getSystemTheme = () => {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    };
 
     // 根据主题模式计算实际应用的主题
     useEffect(() => {
@@ -386,7 +391,7 @@ function App() {
                         transform: 'translateX(-50%)',
                         zIndex: 100,
                         cursor: 'pointer',
-                        opacity: isHoveringHeaderToggle ? 1 : 0.6,
+                        opacity: isHoveringHeaderToggle ? 1 : 0.2,
                         transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={() => setIsHoveringHeaderToggle(true)}

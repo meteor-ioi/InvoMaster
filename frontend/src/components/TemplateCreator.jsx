@@ -809,7 +809,6 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                     style={{
                                                         position: 'relative',
                                                         minWidth: 0,
-                                                        minHeight: 0,
                                                         height: '100%',
                                                         minHeight: 0,
                                                         maxHeight: 'none',

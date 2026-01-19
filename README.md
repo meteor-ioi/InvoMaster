@@ -77,7 +77,7 @@ cd backend
 pip install -r ../requirements.txt
 python run_server.py
 ```
-后端服务将运行在 `http://localhost:8000`。
+后端服务将运行在 `http://localhost:8291`。
 
 ### 3. 前端部署
 ```bash

@@ -100,7 +100,7 @@ def main():
     # Strategy: 
     # 1. We can serve the 'dist' folder via FastAPI as StaticFiles at root "/"
     # 2. Or we can point webview to a file:// URL if it's purely static (but we utilize API)
-    # The React app does API calls to / or localhost:8000.
+    # The React app does API calls to / or localhost:8291.
     # If React is served via FastAPI, relative calls "/api/..." work perfectly.
     
     # We need to Mount frontend static files in FastAPI in main.py? 

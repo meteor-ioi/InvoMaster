@@ -68,7 +68,7 @@ const RightSidebar = ({
                     transform: 'translateY(-50%)',
                     zIndex: 100,
                     cursor: 'pointer',
-                    opacity: isHoveringToggle ? 1 : 0.6,
+                    opacity: isHoveringToggle ? 1 : 0.2,
                     transition: 'all 0.3s ease'
                 }}
                 onMouseEnter={() => setIsHoveringToggle(true)}
