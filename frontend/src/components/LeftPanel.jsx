@@ -216,7 +216,7 @@ const LeftPanel = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '24px', width: '100%' }}>
                             {showSearch ? (
                                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px' }}>
                                     <input
@@ -264,7 +264,15 @@ const LeftPanel = ({
                         </div>
 
                         {/* Mode Tabs */}
-                        <div style={{ display: 'flex', borderRadius: '10px', background: 'var(--input-bg)', padding: '4px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{
+                            display: 'flex',
+                            width: '100%',
+                            flexShrink: 0,
+                            borderRadius: '10px',
+                            background: 'var(--input-bg)',
+                            padding: '4px',
+                            border: '1px solid var(--glass-border)'
+                        }}>
                             <button
                                 onClick={() => setActiveTab('auto')}
                                 style={{
@@ -289,7 +297,7 @@ const LeftPanel = ({
                             </button>
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                        <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
                             {(() => {
                                 // Filter logic
                                 const filtered = templates.filter(t => {
@@ -310,7 +318,7 @@ const LeftPanel = ({
                                 }
 
                                 return (
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', paddingRight: '4px' }}>
                                         {filtered.map(t => {
                                             const matchedId = analysis?.matched_template?.id;
                                             const IsMatched = analysis && (t.id === matchedId);
