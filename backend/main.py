@@ -444,26 +444,36 @@ async def analyze_document(
     engine = get_layout_engine()
     device_used = device or engine.device
     start_time = time.time()
-    try:
-        # Override with layout inference even if template exists if we want to "re-identify"
-        ai_regions = engine.predict(
-            image_paths[0], 
-            device=device, 
-            conf=conf,
-            imgsz=imgsz,
-            iou=iou,
-            agnostic_nms=agnostic_nms
-        )
-        inference_time = time.time() - start_time
-        # If refreshing or no template found, use AI results
-        if refresh or not template_found:
-            matching_regions = ai_regions
+    
+    # MODIFIED: Skip AI inference if no template matched in auto mode (unless refreshing)
+    if refresh or template_found:
+        try:
+            # Override with layout inference even if template exists if we want to "re-identify"
+            ai_regions = engine.predict(
+                image_paths[0], 
+                device=device, 
+                conf=conf,
+                imgsz=imgsz,
+                iou=iou,
+                agnostic_nms=agnostic_nms
+            )
+            inference_time = time.time() - start_time
+            # If refreshing (forcing AI), use AI results
             if refresh:
+                matching_regions = ai_regions
                 template_found = False # Reset flag for UI feedback
-    except Exception as e:
-        print(f"Inference error: {e}")
-        if not template_found:
-            matching_regions = []
+        except Exception as e:
+            print(f"Inference error: {e}")
+            if not template_found:
+                matching_regions = []
+            ai_regions = []
+    else:
+        # Auto mode failed to match, and we are not forcing refresh/AI
+        print("Skipping AI inference because no template matched in strict auto mode.")
+        ai_regions = []
+        matching_regions = []
+        inference_time = 0
+
     
     # 5. 构建结果数据 (始终需要用于响应)
     # Sort matching_regions spatially before building the map
@@ -495,6 +505,7 @@ async def analyze_document(
 
     base_response = {
         "status": "success",
+        "message": "success" if template_found else "未匹配到模板",  # ADDED: Explicit feedback message
         "id": fingerprint[:12],
         "fingerprint": fingerprint,
         "filename": actual_filename,
@@ -950,12 +961,19 @@ async def extract_with_custom_template(
         if template_id.lower() == "auto":
             result = await analyze_document(file=file, device=device)
             
+            # Determine template name for record
+            if result.get("template_found") and result.get("matched_template"):
+                template_name_str = result["matched_template"]["name"]
+            else:
+                template_name_str = "未匹配到模板"
+
             # Update Task
             task_result_data = {
                 "filename": result.get("filename"),
-                "template_name": result.get("template_name", "AI识别"),
+                "template_name": template_name_str,
                 "mode": result.get("mode", "auto"),
-                "data": result.get("data", {})
+                "data": result.get("data", {}),
+                "message": result.get("message")
             }
             update_task_status(task_id, 'completed', result=task_result_data)
             return result

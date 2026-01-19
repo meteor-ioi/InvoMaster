@@ -279,9 +279,16 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                 });
 
                 const dataMap = buildDataMap(res.data);
-                const templateName = res.data.template_found && res.data.matched_template
-                    ? res.data.matched_template.name
-                    : (res.data.template_found ? '自动匹配' : '无匹配模板');
+
+                // MODIFIED: Prioritize backend message for no-match scenario
+                let templateName;
+                if (res.data.message === "未匹配到模板") {
+                    templateName = "未匹配到模板";
+                } else if (res.data.template_found && res.data.matched_template) {
+                    templateName = res.data.matched_template.name;
+                } else {
+                    templateName = res.data.template_found ? '自动匹配' : '未匹配到模板';
+                }
 
                 resultObj = {
                     status: 'success',
@@ -357,9 +364,16 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                     });
 
                     const dataMap = buildDataMap(res.data);
-                    const templateName = res.data.template_found && res.data.matched_template
-                        ? res.data.matched_template.name
-                        : (res.data.template_found ? '自动匹配' : '无匹配模板');
+
+                    // MODIFIED: Prioritize backend message for no-match scenario
+                    let templateName;
+                    if (res.data.message === "未匹配到模板") {
+                        templateName = "未匹配到模板";
+                    } else if (res.data.template_found && res.data.matched_template) {
+                        templateName = res.data.matched_template.name;
+                    } else {
+                        templateName = res.data.template_found ? '自动匹配' : '未匹配到模板';
+                    }
 
                     resultObj = {
                         status: 'success',
