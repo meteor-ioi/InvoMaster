@@ -228,6 +228,48 @@ export default function TemplateCreator({ theme, setTheme, device }) {
         return () => window.removeEventListener('toggle-sidebars', handleToggleSidebars);
     }, []);
 
+    // 响应式布局：窗口缩小时自动折叠面板
+    useEffect(() => {
+        const CENTER_MIN_WIDTH = 740;
+        const LEFT_EXPANDED = 260;
+        const LEFT_COLLAPSED = 64;
+        const RIGHT_EXPANDED = 300;
+        const RIGHT_COLLAPSED = 64;
+        const GAP = 20 * 2; // grid gap
+        const PADDING = 20 * 2; // container padding
+
+        const handleResize = () => {
+            const viewportWidth = window.innerWidth;
+            const availableWidth = viewportWidth - PADDING - GAP;
+
+            // 计算各种布局所需的最小宽度
+            const fullExpanded = LEFT_EXPANDED + CENTER_MIN_WIDTH + RIGHT_EXPANDED;
+            const leftCollapsed = LEFT_COLLAPSED + CENTER_MIN_WIDTH + RIGHT_EXPANDED;
+            const bothCollapsed = LEFT_COLLAPSED + CENTER_MIN_WIDTH + RIGHT_COLLAPSED;
+
+            if (availableWidth >= fullExpanded) {
+                // 空间充足，全部展开
+                setLeftPanelCollapsed(false);
+                setRightPanelCollapsed(false);
+            } else if (availableWidth >= leftCollapsed) {
+                // 空间不足，先折叠左侧
+                setLeftPanelCollapsed(true);
+                setRightPanelCollapsed(false);
+            } else if (availableWidth >= bothCollapsed) {
+                // 空间更小，两侧都折叠
+                setLeftPanelCollapsed(true);
+                setRightPanelCollapsed(true);
+            }
+            // 如果空间进一步不足，保持两侧折叠，CSS min-width 会触发滚动条
+        };
+
+        // 初始检查
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const fetchTemplates = async () => {
         try {
             const res = await axios.get(`${API_BASE}/templates`);
@@ -556,7 +598,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '260px'} minmax(0, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '260px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px'
