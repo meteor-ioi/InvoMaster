@@ -8,7 +8,7 @@ import RightSidebar from './RightSidebar';
 import DataPreview from './DataPreview';
 import { API_BASE } from '../config';
 
-export default function TemplateCreator({ theme, setTheme, device }) {
+export default function TemplateCreator({ theme, setTheme, device, headerCollapsed = false }) {
     const [file, setFile] = useState(null);
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -658,7 +658,7 @@ export default function TemplateCreator({ theme, setTheme, device }) {
                     minWidth: 0,
                     position: 'sticky',
                     top: '20px',
-                    height: 'calc(100vh - 100px)'
+                    height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)'
                 }}>
                     {step === 'review' && (
                         <>

@@ -417,9 +417,9 @@ function App() {
                 position: 'relative',
                 overflow: 'auto'
             }}>
-                {view === 'creator' && <TemplateCreator theme={appliedTheme} setTheme={setThemeMode} device={device} />}
-                {view === 'reference' && <TemplateReference theme={appliedTheme} device={device} />}
-                {view === 'apicall' && <ApiCall theme={appliedTheme} device={device} />}
+                {view === 'creator' && <TemplateCreator theme={appliedTheme} setTheme={setThemeMode} device={device} headerCollapsed={isHeaderCollapsed} />}
+                {view === 'reference' && <TemplateReference theme={appliedTheme} device={device} headerCollapsed={isHeaderCollapsed} />}
+                {view === 'apicall' && <ApiCall theme={appliedTheme} device={device} headerCollapsed={isHeaderCollapsed} />}
             </main>
         </div>
     );

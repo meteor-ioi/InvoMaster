@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Upload, FileText, Play, Clock, CheckCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
 import { API_BASE } from '../config';
 
-export default function TemplateReference({ device }) {
+export default function TemplateReference({ device, headerCollapsed = false }) {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('auto');
     const [file, setFile] = useState(null);
@@ -556,7 +556,7 @@ export default function TemplateReference({ device }) {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '15px',
-                    height: 'calc(100vh - 100px)',
+                    height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
                     overflow: 'visible'
                 }}>
                     {/* 悬浮切换按钮 */}
@@ -1002,7 +1002,7 @@ export default function TemplateReference({ device }) {
                 <div className="glass-card" style={{
                     padding: '0',
                     overflow: 'hidden',
-                    height: 'calc(100vh - 100px)',
+                    height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: '16px',

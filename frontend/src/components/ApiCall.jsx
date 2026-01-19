@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Code, Copy, Terminal, ChevronDown, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles } from 'lucide-react';
 import { API_BASE } from '../config';
 
-export default function ApiCall({ theme, device }) {
+export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const [templates, setTemplates] = useState([]);
     const [copied, setCopied] = useState(null);
     const [selectedLanguage, setSelectedLanguage] = useState('python');
@@ -109,7 +109,7 @@ fetch(url, {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '15px',
-                    height: 'calc(100vh - 100px)',
+                    height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
                     overflow: 'visible'
                 }}>
                     {/* Toggle Button */}
@@ -263,7 +263,7 @@ fetch(url, {
                 <div className="glass-card" style={{
                     padding: '0',
                     overflow: 'hidden',
-                    height: 'calc(100vh - 100px)',
+                    height: headerCollapsed ? 'calc(100vh - 76px)' : 'calc(100vh - 100px)',
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: '16px',
