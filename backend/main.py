@@ -323,20 +323,21 @@ async def analyze_document(
         if not template_found:
             matching_regions = []
     
-    # 5. Log History (Auto Mode) - 仅在非模板制作测试时记录
+    # 5. 构建结果数据 (始终需要用于响应)
+    result_map = {}
+    for r in matching_regions:
+        # Normalize region data (might be Region object or dict)
+        r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
+        rid = r_dict.get('id', 'unknown')
+        result_map[rid] = {
+            "type": r_dict.get('type'),
+            "label": r_dict.get('label') or rid,
+            "remarks": r_dict.get('remarks') or '',
+            "content": r_dict.get('content', r_dict.get('text', ''))
+        }
+    
+    # 6. Log History (Auto Mode) - 仅在非模板制作测试时记录
     if not skip_history:
-        result_map = {}
-        for r in matching_regions:
-            # Normalize region data (might be Region object or dict)
-            r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
-            rid = r_dict.get('id', 'unknown')
-            result_map[rid] = {
-                "type": r_dict.get('type'),
-                "label": r_dict.get('label') or rid,
-                "remarks": r_dict.get('remarks') or '',
-                "content": r_dict.get('content', r_dict.get('text', ''))
-            }
-        
         template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "AI识别")
         
         import datetime
