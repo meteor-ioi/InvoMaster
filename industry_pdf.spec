@@ -13,10 +13,16 @@ project_root = os.path.abspath(os.curdir)
 datas = [
     (os.path.join(project_root, 'frontend', 'dist'), 'frontend/dist'),
     (os.path.join(project_root, 'assets'), 'assets'),
+    (os.path.join(project_root, 'backend', 'data', 'models'), 'models'),
 ]
 
 # Add any package metadata if needed (e.g. module versions)
-datas += copy_metadata('rapidocr_onnxruntime')
+datas += copy_metadata('rapidocr-onnxruntime')
+
+# Explicitly add rapidocr-onnxruntime package data (config.yaml, etc.)
+import rapidocr_onnxruntime
+rapidocr_path = os.path.dirname(rapidocr_onnxruntime.__file__)
+datas.append((rapidocr_path, 'rapidocr_onnxruntime'))
 
 # Icon selection based on platform
 icon_file = 'assets/icon.icns' if sys.platform == 'darwin' else 'assets/icon.ico'
@@ -36,6 +42,7 @@ a = Analysis(
         'cv2', 
         'numpy',
         'onnxruntime',
+        'rapidocr_onnxruntime',
     ],
     hookspath=[],
     hooksconfig={},

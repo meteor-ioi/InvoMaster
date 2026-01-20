@@ -18,6 +18,20 @@ from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
 from task_worker import TaskWorker
+import logging
+
+# Configure Logging to share the same file as run_desktop.py
+log_file = os.path.join(os.path.expanduser('~'), 'industry_pdf_debug.log')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("backend")
+logger.info("Backend starting...")
 
 app = FastAPI(title="HITL Document Extraction API")
 
@@ -83,8 +97,9 @@ class Template(BaseModel):
     tags: List[str] = [] # Added for metadata
     filename: Optional[str] = None
 
-HISTORY_FILE = "data/history.jsonl"
-API_TASKS_FILE = "data/api_call_tasks.jsonl"
+HISTORY_FILE = os.path.join(base_data_dir, "history.jsonl")
+API_TASKS_FILE = os.path.join(base_data_dir, "api_call_tasks.jsonl")
+ERROR_LOG_FILE = os.path.join(base_data_dir, "error.log")
 
 # ========== History Management Functions ==========
 def append_history(item: dict):
@@ -272,6 +287,7 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
     Supports high-precision table extraction if region type is 'table'.
     For scanned PDFs, automatically injects OCR results if no text is found.
     """
+    logger.info(f"Extracting text from regions in {pdf_path}")
     results = []
     with pdfplumber.open(pdf_path) as pdf:
         first_page = pdf.pages[0]
@@ -279,17 +295,18 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
         page_bbox = first_page.bbox # (x0, top, x1, bottom)
         
         # Check if page is scanned (no text objects)
-        if is_page_scanned(first_page):
-            print(f"Scanned PDF detected, attempting OCR injection...")
+        is_scanned = is_page_scanned(first_page)
+        if is_scanned:
+            logger.info(f"Scanned PDF detected, attempting OCR injection...")
             if image_path and os.path.exists(image_path):
                 try:
                     ocr_chars = get_ocr_chars_for_page(image_path, width, height, page_bbox)
                     inject_ocr_chars_to_page(first_page, ocr_chars)
-                    print(f"OCR injection successful: {len(ocr_chars)} chars")
+                    logger.info(f"OCR injection successful: {len(ocr_chars)} chars")
                 except Exception as e:
-                    print(f"OCR injection failed: {e}")
+                    logger.error(f"OCR injection failed: {e}")
             else:
-                print(f"No image path provided for OCR, extraction may fail")
+                logger.warning(f"No image path provided for OCR, extraction may fail for scanned PDF")
         
         for reg in regions:
             # Convert normalized to physical coordinates (x1, y1, x2, y2)
@@ -351,6 +368,38 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
                 text = cropped.extract_text()
                 content = text.strip() if text else ""
             
+            # --- Fallback: If content is still empty but we have an image, try a targeted OCR ---
+            if not content and image_path and os.path.exists(image_path):
+                logger.info(f"Region {reg.id} ({reg.type}) extraction is empty, falling back to direct OCR crop...")
+                try:
+                    from ocr_utils import run_ocr_on_image
+                    import cv2
+                    import numpy as np
+                    
+                    # 1. Load the page image
+                    page_img = cv2.imread(image_path)
+                    if page_img is not None:
+                        h_px, w_px = page_img.shape[:2]
+                        # 2. Map normalized coords to pixel coords
+                        px_x0 = int(reg.x * w_px)
+                        px_y0 = int(reg.y * h_px)
+                        px_w = int(reg.width * w_px)
+                        px_h = int(reg.height * h_px)
+                        # 3. Crop region from image
+                        crop_img = page_img[max(0, px_y0):min(h_px, px_y0+px_h), max(0, px_x0):min(w_px, px_x0+px_w)]
+                        if crop_img.size > 0:
+                            # 4. Save temp crop and run OCR or pass directly if supported
+                            temp_crop_path = os.path.join(UPLOAD_DIR, f"temp_ocr_{reg.id}.png")
+                            cv2.imwrite(temp_crop_path, crop_img)
+                            ocr_results = run_ocr_on_image(temp_crop_path)
+                            if ocr_results:
+                                content = " ".join([res[1] for res in ocr_results])
+                                logger.info(f"Fallback OCR success for {reg.id}: {content[:30]}...")
+                            if os.path.exists(temp_crop_path):
+                                os.remove(temp_crop_path)
+                except Exception as ex:
+                    logger.error(f"Fallback OCR failed for region {reg.id}: {ex}")
+
             reg_dict = reg.dict()
             reg_dict["content"] = content # Use 'content' consistently
             # Ensure remarks are included
@@ -642,7 +691,7 @@ async def analyze_table_structure(req: TableAnalysisRequest):
             
             # Check if page is scanned (no text objects) and inject OCR if needed
             if is_page_scanned(page):
-                print(f"Scanned PDF detected in /table/analyze, attempting OCR...")
+                logger.info(f"Scanned PDF detected in /table/analyze, attempting OCR...")
                 # Find corresponding image from fingerprint
                 fingerprint = get_file_fingerprint(file_path)
                 img_subdir = f"images_{fingerprint[:8]}"
@@ -651,11 +700,11 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                     try:
                         ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height, page.bbox)
                         inject_ocr_chars_to_page(page, ocr_chars)
-                        print(f"OCR injection successful for table analysis")
+                        logger.info(f"OCR injection successful for table analysis")
                     except Exception as e:
-                        print(f"OCR injection failed: {e}")
+                        logger.error(f"OCR injection failed in /table/analyze: {e}")
                 else:
-                    print(f"Image not found for OCR: {img_path}")
+                    logger.warning(f"Image not found for OCR in /table/analyze: {img_path}")
             
             # Use original requested bbox with page offset to ensure stability
             # page.bbox is (x0, top, x1, bottom)
@@ -758,7 +807,7 @@ async def analyze_table_structure(req: TableAnalysisRequest):
         import traceback
         error_msg = traceback.format_exc()
         print(error_msg)
-        with open("data/error.log", "a") as f:
+        with open(ERROR_LOG_FILE, "a") as f:
             f.write(f"--- Error in /table/analyze ---\n{error_msg}\n")
         raise HTTPException(status_code=500, detail=str(e))
 

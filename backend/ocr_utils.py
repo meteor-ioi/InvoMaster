@@ -10,6 +10,8 @@ This module provides functionality to:
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from PIL import Image
+import logging
+logger = logging.getLogger("backend.ocr")
 
 # Lazy load RapidOCR to avoid import overhead if not used
 _ocr_engine = None
@@ -19,11 +21,50 @@ def get_ocr_engine():
     global _ocr_engine
     if _ocr_engine is None:
         try:
+            import os
+            import sys
             from rapidocr_onnxruntime import RapidOCR
-            _ocr_engine = RapidOCR()
-            print("RapidOCR engine initialized successfully.")
+            
+            # Discovery logic for OCR models
+            base_data = os.environ.get("APP_DATA_DIR", "data")
+            
+            def find_model(filename):
+                candidates = [
+                    # 1. User Data Directory (Highest Priority)
+                    os.path.join(base_data, "models", filename),
+                    os.path.join(base_data, "models", "ocr", filename),
+                ]
+                # 2. Bundled Resources (App bundle)
+                if getattr(sys, 'frozen', False):
+                    candidates.append(os.path.join(sys._MEIPASS, "models", filename))
+                    candidates.append(os.path.join(sys._MEIPASS, "models", "ocr", filename))
+                
+                # 3. Development / CWD locations
+                candidates.extend([
+                    os.path.join("data", "models", filename),
+                    os.path.join("data", "models", "ocr", filename),
+                    os.path.join("models", filename),
+                    os.path.join("models", "ocr", filename),
+                ])
+                
+                for c in candidates:
+                    if os.path.exists(c):
+                        return c
+                return None
+
+            det_path = find_model("ch_PP-OCRv4_det_infer.onnx")
+            rec_path = find_model("ch_PP-OCRv4_rec_infer.onnx")
+            
+            ocr_kwargs = {}
+            if det_path:
+                ocr_kwargs['det_model_path'] = det_path
+            if rec_path:
+                ocr_kwargs['rec_model_path'] = rec_path
+                
+            _ocr_engine = RapidOCR(**ocr_kwargs)
+            logger.info(f"RapidOCR engine initialized. Models: {det_path}, {rec_path}")
         except ImportError as e:
-            print(f"Failed to import RapidOCR: {e}")
+            logger.error(f"Failed to import RapidOCR: {e}")
             raise
     return _ocr_engine
 
@@ -152,7 +193,7 @@ def get_ocr_chars_for_page(
         )
         all_chars.extend(char_objs)
     
-    print(f"OCR detected {len(all_chars)} characters from {image_path}")
+    logger.info(f"OCR detected {len(all_chars)} characters from {image_path}")
     return all_chars
 
 
@@ -177,7 +218,7 @@ def inject_ocr_chars_to_page(page, chars: List[Dict[str, Any]]):
         # Create _objects if it doesn't exist
         page._objects = {'char': chars}
     
-    print(f"Injected {len(chars)} OCR chars into pdfplumber page")
+    logger.info(f"Injected {len(chars)} OCR chars into pdfplumber page")
 
 
 def is_page_scanned(page, threshold: int = 5) -> bool:

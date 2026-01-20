@@ -2,6 +2,7 @@ import onnxruntime as ort
 import numpy as np
 from PIL import Image
 import os
+import sys
 from typing import List, Dict, Union
 
 # DocLayout-YOLO 类别名称映射
@@ -39,14 +40,19 @@ class LayoutEngine:
             
             # Candidates for model discovery
             candidates = [
+                # 1. User Data Directory (Highest Priority for overrides)
                 os.path.join(base_data, "models", "yolov10-doclayout.onnx"),
-                os.path.join("data", "models", "yolov10-doclayout.onnx"),
-                os.path.join("models", "yolov10-doclayout.onnx"),
             ]
             
-            # If running in a frozen app, check the bundle path
+            # 2. Bundled Resources (App bundle)
             if getattr(sys, 'frozen', False):
-                candidates.insert(0, os.path.join(sys._MEIPASS, "models", "yolov10-doclayout.onnx"))
+                candidates.append(os.path.join(sys._MEIPASS, "models", "yolov10-doclayout.onnx"))
+            
+            # 3. Development / CWD locations
+            candidates.extend([
+                os.path.join("data", "models", "yolov10-doclayout.onnx"),
+                os.path.join("models", "yolov10-doclayout.onnx"),
+            ])
             
             # Find the first existing path
             for path in candidates:
