@@ -11,6 +11,8 @@ __pycache__/
 data/
 backend/data/
 backend/runs/
+PDF/
+PDF测试汇总/
 
 # Build outputs
 frontend/dist/

@@ -71,6 +71,25 @@ class LayoutEngine:
         # 类别名称映射
         self.names = DOCLAYOUT_CLASSES
 
+    def enhance_image(self, img: Image.Image) -> Image.Image:
+        """
+        图像增强策略 B：提升对比度与锐度，使细微线条更清晰
+        """
+        from PIL import ImageOps, ImageEnhance
+        
+        # 1. 自动线性对比度拉伸 (忽略 1% 的极值，防止噪点干扰)
+        img = ImageOps.autocontrast(img, cutoff=1)
+        
+        # 2. 增强对比度 (系数 1.5)
+        contrast = ImageEnhance.Contrast(img)
+        img = contrast.enhance(1.5)
+        
+        # 3. 增强锐度 (系数 2.0，让表格边框更扎实)
+        sharpness = ImageEnhance.Sharpness(img)
+        img = sharpness.enhance(2.0)
+        
+        return img
+
     def preprocess_image(self, image: Union[str, Image.Image], imgsz: int = 1024):
         """
         预处理图像为 ONNX 模型输入格式
@@ -80,6 +99,9 @@ class LayoutEngine:
             img = Image.open(image).convert('RGB')
         else:
             img = image.convert('RGB')
+        
+        # 应用图像增强策略 B
+        img = self.enhance_image(img)
         
         # 保存原始尺寸
         orig_width, orig_height = img.size
@@ -106,7 +128,7 @@ class LayoutEngine:
         
         return img_array, scale, (orig_width, orig_height), (new_width, new_height)
 
-    def postprocess_outputs(self, outputs, scale, orig_size, resized_size, conf=0.25, iou=0.45, imgsz=1024):
+    def postprocess_outputs(self, outputs, scale, orig_size, resized_size, conf=0.25, iou=0.45, imgsz=1280):
         """
         后处理 ONNX 模型输出
         """
@@ -136,6 +158,20 @@ class LayoutEngine:
             x2_norm = max(0.0, min(1.0, x2_norm))
             y2_norm = max(0.0, min(1.0, y2_norm))
             
+            w_norm = x2_norm - x1_norm
+            h_norm = y2_norm - y1_norm
+            
+            # === Heuristic Correction for Manufacturing Documents ===
+            # 制造业单据优化：
+            # 1. 如果识别为"图片" (id=3) 且宽度较大 (>50% 页面宽度)，通常是通栏的表格或表单，强转为 Table
+            if int(cls_id) == 3 and w_norm > 0.5:
+                 print(f"Heuristic: Converting widespread Figure to Table (w={w_norm:.2f})")
+                 cls_id = 5 # Switch to Table
+            # 2. 如果识别为"图片" (id=3) 但看起来很有可能是表格，且置信度不高，倾向于认为是表格
+            elif int(cls_id) == 3 and confidence < 0.6:
+                 # 弱图片检测可能是表格
+                 cls_id = 5
+            
             boxes.append({
                 'x1': float(x1_norm),
                 'y1': float(y1_norm),
@@ -148,13 +184,13 @@ class LayoutEngine:
         # NMS (简化版本，ONNX 模型通常已内置 NMS)
         return boxes
 
-    def predict(self, image_path, device=None, conf=0.25, imgsz=1024, iou=0.45, agnostic_nms=False):
+    def predict(self, image_path, device=None, conf=0.25, imgsz=1280, iou=0.45, agnostic_nms=False):
         """
         预测布局区域
         """
         print(f"Running ONNX prediction (conf={conf}, imgsz={imgsz})")
         
-        # 预处理
+        # 预处理 (Use updated imgsz)
         input_data, scale, orig_size, resized_size = self.preprocess_image(image_path, imgsz)
         
         # 推理
