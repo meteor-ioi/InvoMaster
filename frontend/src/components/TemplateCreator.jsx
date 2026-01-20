@@ -784,7 +784,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                 <Upload size={64} style={{ opacity: emptyDragActive ? 1 : 0.3, marginBottom: '25px', transition: 'all 0.3s ease' }} />
                                                 <h2 style={{ marginBottom: '10px' }}>工作台就绪</h2>
                                                 <p style={{ fontSize: '15px' }}>
-                                                    {emptyDragActive ? '松开即刻识别' : '拖拽 PDF 到此处开始制作'}
+                                                    {emptyDragActive ? '松开即刻识别' : 'Inspired by babeldoc, vibe coded by icychick.'}
                                                 </p>
                                             </div>
                                         </div>
