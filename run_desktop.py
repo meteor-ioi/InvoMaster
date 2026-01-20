@@ -8,10 +8,28 @@ import socket
 
 import shutil
 
+import logging
+
+# Configure Logging
+log_file = os.path.join(os.path.expanduser('~'), 'industry_pdf_debug.log')
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logging.info("Starting application...")
+
 # Ensure backend modules can be imported
-backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend')
+if getattr(sys, 'frozen', False):
+    bundle_root = sys._MEIPASS
+    backend_dir = bundle_root # In frozen app, backend is usually at root or explicitly added
+else:
+    bundle_root = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.join(bundle_root, 'backend')
+
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
+logging.info(f"Sys Path updated with: {backend_dir}")
 
 def bootstrap_assets(dest_root):
     """
@@ -53,9 +71,12 @@ os.environ["APP_DATA_DIR"] = base_path
 print(f"Data Directory set to: {base_path}")
 
 try:
+    logging.info("Attempting to import backend 'main' module...")
     from main import app
-except ImportError as e:
-    print(f"Error importing backend: {e}")
+    logging.info("Backend 'main' module imported successfully.")
+except Exception as e:
+    logging.error(f"Error importing backend: {e}", exc_info=True)
+    # If we are in a windowed app, we might need to show an error dialog
     sys.exit(1)
 
 def get_free_port():
@@ -80,19 +101,35 @@ def start_server(port):
     # Log level critical to keep stdout clean
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="error")
 
-def main():
-    port = get_free_port()
-    
-    # Bootstrap Assets
-    bootstrap_assets(base_path)
+def wait_for_server(port, timeout=30):
+    """Wait for the server to start listening on the given port."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                logging.info(f"Server is up and listening on port {port}")
+                return True
+        except (socket.timeout, ConnectionRefusedError):
+            time.sleep(0.5)
+    logging.error(f"Server failed to start on port {port} within {timeout} seconds")
+    return False
 
-    # Start Backend in a separate thread
-    t = threading.Thread(target=start_server, args=(port,), daemon=True)
-    t.start()
-    
-    # Wait a bit for server to start
-    # In a production app, you might want to poll the health endpoint
-    time.sleep(1) 
+def main():
+    try:
+        port = get_free_port()
+        logging.info(f"Using port: {port}")
+        
+        # Bootstrap Assets
+        bootstrap_assets(base_path)
+
+        # Start Backend in a separate thread
+        t = threading.Thread(target=start_server, args=(port,), daemon=True)
+        t.start()
+        
+        # Wait for server to start
+        if not wait_for_server(port):
+            logging.error("Backend server did not start in time. Exiting.")
+            return
     
     # Determine the URL
     # If we want to serve the React app locally via a file or via the FastAPI server?
