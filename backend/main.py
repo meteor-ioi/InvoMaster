@@ -25,8 +25,8 @@ app = FastAPI(title="HITL Document Extraction API")
 base_data_dir = os.environ.get("APP_DATA_DIR", "data")
 UPLOAD_DIR = os.path.join(base_data_dir, "uploads")
 TEMPLATES_DIR = os.path.join(base_data_dir, "templates") # Root dir
-TEMPLATES_AUTO_DIR = os.path.join(base_data_dir, "templates/auto")
-TEMPLATES_CUSTOM_DIR = os.path.join(base_data_dir, "templates/custom")
+TEMPLATES_AUTO_DIR = os.path.join(base_data_dir, "templates", "auto")
+TEMPLATES_CUSTOM_DIR = os.path.join(base_data_dir, "templates", "custom")
 TEMPLATES_SOURCE_DIR = os.path.join(base_data_dir, "template_sources")
 
 for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR]:
