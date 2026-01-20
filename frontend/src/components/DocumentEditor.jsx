@@ -34,6 +34,8 @@ const DocumentEditor = ({
     const [interaction, setInteraction] = useState(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentRect, setCurrentRect] = useState(null);
+    const [shiftPressed, setShiftPressed] = useState(false);
+    const [altPressed, setAltPressed] = useState(false);
     const containerRef = useRef(null);
     const viewportRef = useRef(null);
 
@@ -69,14 +71,38 @@ const DocumentEditor = ({
 
         if (editorMode === 'select' && (e.target === containerRef.current || e.target.tagName === 'svg')) {
             setIsDrawing(true);
-            // Don't clear selection immediately if holding shift/ctrl? 
-            // For now, let's clear to start a new selection box
-            if (!e.shiftKey && setSelectedIds) setSelectedIds([]);
-            setSelectedId(null);
-            setCurrentRect({
-                x, y, width: 0, height: 0,
-                type: 'selection_box' // Special type for selection box
-            });
+
+            if (e.shiftKey) {
+                // Modified mode: ADD
+                const customCount = regions.filter(r => r.id && r.id.startsWith('custom_')).length;
+                const newId = `custom_${customCount}`;
+                setSelectedId(null);
+                if (setSelectedIds) setSelectedIds([]);
+                setCurrentRect({
+                    x, y, width: 0, height: 0,
+                    id: newId,
+                    type: 'custom',
+                    label: '',
+                    isModifiedMode: 'add'
+                });
+            } else if (e.altKey) {
+                // Modified mode: DELETE
+                setSelectedId(null);
+                if (setSelectedIds) setSelectedIds([]);
+                setCurrentRect({
+                    x, y, width: 0, height: 0,
+                    type: 'deletion_box',
+                    isModifiedMode: 'delete'
+                });
+            } else {
+                // Normal SELECT functionality
+                if (setSelectedIds) setSelectedIds([]);
+                setSelectedId(null);
+                setCurrentRect({
+                    x, y, width: 0, height: 0,
+                    type: 'selection_box'
+                });
+            }
             return;
         }
 
@@ -362,10 +388,33 @@ const DocumentEditor = ({
                 return !(r.x > boxRight || rRight < selBox.x || r.y > boxBottom || rBottom < selBox.y);
             }).map(r => r.id);
 
-            if (setSelectedIds) setSelectedIds(intersectingIds);
-            // Also set the first one as primary selectedId if exists
-            if (intersectingIds.length > 0) setSelectedId(intersectingIds[0]);
-            else setSelectedId(null);
+            if (currentRect.isModifiedMode === 'delete') {
+                if (intersectingIds.length > 0 && onDelete) {
+                    onDelete(intersectingIds);
+                }
+            } else if (currentRect.isModifiedMode === 'add') {
+                if (Math.abs(currentRect.width) > 0.005) {
+                    const normalized = {
+                        ...currentRect,
+                        x: currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x,
+                        y: currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y,
+                        width: Math.abs(currentRect.width),
+                        height: Math.abs(currentRect.height)
+                    };
+                    // Remove internal properties
+                    delete normalized.isModifiedMode;
+
+                    const newRegions = [...regions, normalized];
+                    setRegions(newRegions);
+                    setSelectedId(normalized.id);
+                    if (setSelectedIds) setSelectedIds([normalized.id]);
+                    if (onHistorySnapshot) onHistorySnapshot(newRegions);
+                }
+            } else {
+                if (setSelectedIds) setSelectedIds(intersectingIds);
+                if (intersectingIds.length > 0) setSelectedId(intersectingIds[0]);
+                else setSelectedId(null);
+            }
 
         } else if (isDrawing && currentRect && Math.abs(currentRect.width) > 0.005 && editorMode === 'add') {
             const normalized = {
@@ -387,6 +436,24 @@ const DocumentEditor = ({
         setCurrentRect(null);
         setInteraction(null);
     }, [isDrawing, currentRect, editorMode, regions, interaction, setRegions, setSelectedId, setSelectedIds, onHistorySnapshot]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Shift') setShiftPressed(true);
+            if (e.key === 'Alt' || e.key === 'Option') setAltPressed(true);
+        };
+        const handleKeyUp = (e) => {
+            if (e.key === 'Shift') setShiftPressed(false);
+            if (e.key === 'Alt' || e.key === 'Option') setAltPressed(false);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
 
     useEffect(() => {
         if (isDrawing || interaction) {
@@ -426,7 +493,9 @@ const DocumentEditor = ({
                     position: 'relative',
                     width: `${100 * zoom}%`,
                     margin: '0 auto',
-                    cursor: editorMode === 'add' ? 'crosshair' : (editorMode === 'select' ? 'cell' : 'default'),
+                    cursor: editorMode === 'add' || (editorMode === 'select' && shiftPressed) ? 'crosshair' :
+                        (editorMode === 'select' && altPressed) ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='white' stroke-width='3' stroke-linecap='square'/%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='black' stroke-width='1' stroke-linecap='square'/%3E%3C/svg%3E") 8 8, crosshair` :
+                            (editorMode === 'select' ? 'cell' : 'default'),
                     userSelect: 'none',
                     transition: 'width 0.2s ease-out'
                 }}
@@ -777,10 +846,14 @@ const DocumentEditor = ({
                             y={`${(currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y) * 100}%`}
                             width={`${Math.abs(currentRect.width) * 100}%`}
                             height={`${Math.abs(currentRect.height) * 100}%`}
-                            fill="rgba(59, 130, 246, 0.1)"
-                            stroke="var(--primary-color)"
+                            fill={currentRect.isModifiedMode === 'delete' ? "rgba(239, 68, 68, 0.15)" :
+                                currentRect.isModifiedMode === 'add' ? "rgba(16, 185, 129, 0.15)" :
+                                    "rgba(59, 130, 246, 0.1)"}
+                            stroke={currentRect.isModifiedMode === 'delete' ? "#ef4444" :
+                                currentRect.isModifiedMode === 'add' ? "#10b981" :
+                                    "var(--primary-color)"}
                             strokeWidth={2}
-                            strokeDasharray={`4 4`}
+                            strokeDasharray="4 4"
                         />
                     )}
 

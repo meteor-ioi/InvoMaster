@@ -39,7 +39,9 @@ const RightSidebar = ({
     theme,
     templateMode,
     setTemplateMode,
-    headerCollapsed = false
+    headerCollapsed = false,
+    selectedIds = [],
+    regions = []
 }) => {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
@@ -244,22 +246,33 @@ const RightSidebar = ({
                                                 const config = typeConfig[type];
                                                 if (!config) return null;
                                                 const Icon = type === 'custom' ? null : config.icon;
-                                                const isDisabled = !selectedRegion;
+
+                                                // Determine effective IDs for batch operations
+                                                const effectiveSelectedIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
+                                                const isDisabled = effectiveSelectedIds.length === 0;
+
+                                                // Get relevant regions and check their states
+                                                const targetedRegions = regions.filter(r => effectiveSelectedIds.includes(r.id));
+                                                const isAnyLocked = targetedRegions.some(r => r.locked);
+
+                                                // Active if all selected elements share this type
+                                                const isTypeActive = targetedRegions.length > 0 && targetedRegions.every(r => r.type === type);
+
                                                 return (
                                                     <button
                                                         key={type}
-                                                        onClick={() => selectedRegion && !selectedRegion.locked && updateRegionType(selectedId, type)}
-                                                        disabled={isDisabled || selectedRegion?.locked}
+                                                        onClick={() => !isAnyLocked && updateRegionType(effectiveSelectedIds, type)}
+                                                        disabled={isDisabled || isAnyLocked}
                                                         style={{
                                                             padding: '6px 8px',
                                                             borderRadius: '6px',
                                                             fontSize: '10px',
-                                                            border: `1px solid ${selectedRegion?.type === type ? config.color : 'var(--glass-border)'}`,
-                                                            background: selectedRegion?.type === type ? `${config.color}33` : 'var(--input-bg)',
-                                                            color: selectedRegion?.type === type ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
-                                                            fontWeight: selectedRegion?.type === type ? 'bold' : 'normal',
-                                                            cursor: isDisabled || selectedRegion?.locked ? 'not-allowed' : 'pointer',
-                                                            opacity: isDisabled ? 0.4 : (selectedRegion?.locked && selectedRegion?.type !== type ? 0.5 : 1),
+                                                            border: `1px solid ${isTypeActive ? config.color : 'var(--glass-border)'}`,
+                                                            background: isTypeActive ? `${config.color}33` : 'var(--input-bg)',
+                                                            color: isTypeActive ? (theme === 'dark' ? '#fff' : config.color) : 'var(--text-secondary)',
+                                                            fontWeight: isTypeActive ? 'bold' : 'normal',
+                                                            cursor: isDisabled || isAnyLocked ? 'not-allowed' : 'pointer',
+                                                            opacity: isDisabled ? 0.4 : (isAnyLocked ? 0.5 : 1),
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',

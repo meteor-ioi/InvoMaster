@@ -424,7 +424,7 @@ const TopToolbar = ({
                             </button>
                             <button
                                 onClick={() => setEditorMode(editorMode === 'select' ? 'view' : 'select')}
-                                title="选择区域 (批量操作)"
+                                title="选择区域 (Shift: 新增, Alt: 批量删除)"
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px', border: 'none',
                                     background: editorMode === 'select' ? 'var(--primary-color)' : 'transparent',

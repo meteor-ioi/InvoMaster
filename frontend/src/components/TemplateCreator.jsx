@@ -23,7 +23,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const [templates, setTemplates] = useState([]);
     const [templateName, setTemplateName] = useState('');
 
-    const [editorMode, setEditorMode] = useState('view');
+    const [editorMode, setEditorMode] = useState('select');
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [toast, setToast] = useState(null);
     const [emptyDragActive, setEmptyDragActive] = useState(false);
@@ -393,7 +393,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             // If template found, use its mode, otherwise default to auto
             setTemplateMode(res.data.matched_template?.mode || 'auto');
             setStep('review');
-            setEditorMode('view');
+            setEditorMode('select');
             setTableRefining(null);
         } catch (err) {
             console.error(err);
@@ -415,7 +415,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         setTemplateName(template.name);
         setAnalysis(null); // Clear previous analysis but keep regions for layout preview
         setStep('review');
-        setEditorMode('view');
+        setEditorMode('select');
 
         setLoading(true);
         try {
@@ -616,8 +616,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         recordHistory(newRegions);
     };
 
-    const updateRegionType = (id, type) => {
-        const newRegions = regions.map(r => r.id === id ? {
+    const updateRegionType = (ids, type) => {
+        const targetIds = Array.isArray(ids) ? ids : [ids];
+        const newRegions = regions.map(r => targetIds.includes(r.id) ? {
             ...r,
             type,
             label: TYPE_CONFIG[type]?.label || type
@@ -1004,6 +1005,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     loading={loading || !analysis} // Disable some buttons if no analysis
                     typeConfig={TYPE_CONFIG}
                     theme={theme}
+                    selectedIds={selectedIds}
+                    regions={regions}
                 />
             </main>
 
