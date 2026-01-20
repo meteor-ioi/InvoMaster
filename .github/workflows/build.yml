@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
@@ -57,6 +58,8 @@ jobs:
       
       - name: Download Model Files
         shell: bash
+        env:
+          HF_ENDPOINT: https://hf-mirror.com
         run: |
           mkdir -p backend/data/models/ocr
           python -c "
