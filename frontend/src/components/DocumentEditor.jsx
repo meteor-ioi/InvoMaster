@@ -40,8 +40,9 @@ const DocumentEditor = ({
     const getCoordinates = (e) => {
         if (!containerRef.current) return { x: 0, y: 0 };
         const rect = containerRef.current.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
+        // Clamp coordinates to [0, 1] to prevent going out of bounds
+        const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
         return { x, y };
     };
 
@@ -340,7 +341,7 @@ const DocumentEditor = ({
         if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = useCallback(() => {
         // Handle Box Selection Finalization
         if (isDrawing && currentRect && editorMode === 'select') {
             const selBox = {
@@ -361,11 +362,7 @@ const DocumentEditor = ({
                 return !(r.x > boxRight || rRight < selBox.x || r.y > boxBottom || rBottom < selBox.y);
             }).map(r => r.id);
 
-            if (setSelectedIds) setSelectedIds(prev => {
-                // If shift key held? (For now simple replacement or union)
-                // Let's do union if we want, but for now simple replacement as per most box selects
-                return intersectingIds;
-            });
+            if (setSelectedIds) setSelectedIds(intersectingIds);
             // Also set the first one as primary selectedId if exists
             if (intersectingIds.length > 0) setSelectedId(intersectingIds[0]);
             else setSelectedId(null);
@@ -389,7 +386,25 @@ const DocumentEditor = ({
         setIsDrawing(false);
         setCurrentRect(null);
         setInteraction(null);
-    };
+    }, [isDrawing, currentRect, editorMode, regions, interaction, setRegions, setSelectedId, setSelectedIds, onHistorySnapshot]);
+
+    useEffect(() => {
+        if (isDrawing || interaction) {
+            const onGlobalMouseMove = (e) => {
+                handleMouseMove(e);
+            };
+            const onGlobalMouseUp = () => {
+                handleMouseUp();
+            };
+
+            document.addEventListener('mousemove', onGlobalMouseMove);
+            document.addEventListener('mouseup', onGlobalMouseUp);
+            return () => {
+                document.removeEventListener('mousemove', onGlobalMouseMove);
+                document.removeEventListener('mouseup', onGlobalMouseUp);
+            };
+        }
+    }, [isDrawing, interaction, handleMouseMove, handleMouseUp]);
 
     return (
         <div
@@ -418,7 +433,6 @@ const DocumentEditor = ({
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
                 ref={containerRef}
             >
                 <img
