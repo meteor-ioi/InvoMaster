@@ -43,6 +43,8 @@ a = Analysis(
         'numpy',
         'onnxruntime',
         'rapidocr_onnxruntime',
+        'clr',      # pythonnet support for Windows WebView2
+        'webview',  # pywebview
     ],
     hookspath=[],
     hooksconfig={},

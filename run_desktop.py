@@ -8,6 +8,8 @@ import socket
 import shutil
 import logging
 
+import multiprocessing
+
 # Configure Logging
 log_file = os.path.join(os.path.expanduser('~'), 'industry_pdf_debug.log')
 logging.basicConfig(
@@ -40,12 +42,16 @@ def bootstrap_assets(dest_root):
 
     bundle_root = sys._MEIPASS
     
-    # 1. Assets
+    # 1. Assets (Force update to ensure new icons/resources are applied)
     src_assets = os.path.join(bundle_root, 'assets')
     dest_assets = os.path.join(dest_root, 'assets')
-    if os.path.exists(src_assets) and not os.path.exists(dest_assets):
-        logging.info(f"Bootstrapping assets to {dest_assets}...")
-        shutil.copytree(src_assets, dest_assets)
+    
+    if os.path.exists(src_assets):
+        logging.info(f"Bootstrapping assets to {dest_assets} (dirs_exist_ok=True)...")
+        try:
+            shutil.copytree(src_assets, dest_assets, dirs_exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to bootstrap assets: {e}")
     
     # 2. Uploads/Templates structure
     for d in ["uploads", "templates/auto", "templates/custom", "template_sources"]:
@@ -103,8 +109,23 @@ def wait_for_server(port, timeout=30):
     logging.error(f"Server failed to start on port {port} within {timeout} seconds")
     return False
 
+try:
+    if sys.platform == 'win32':
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except Exception as e:
+    logging.warning(f"Failed to set DPI awareness: {e}")
+
 def main():
     try:
+        # Check for pythonnet on Windows
+        if sys.platform == 'win32':
+            try:
+                import clr
+                logging.info("Python.NET (clr) is available.")
+            except ImportError:
+                logging.warning("Python.NET (clr) is NOT available. WebView2 might not work correctly.")
+
         port = get_free_port()
         logging.info(f"Using port: {port}")
         
@@ -152,7 +173,9 @@ def main():
 
         # 4. Start WebView
         logging.info("Starting webview window...")
-        webview.create_window(
+        
+        # Important: window must be created BEFORE start()
+        window = webview.create_window(
             '票据识别专家', 
             f'http://127.0.0.1:{port}',
             width=1420,
@@ -160,10 +183,24 @@ def main():
             resizable=True,
             background_color='#0f172a' # Prevent white flash, match dark theme
         )
-        webview.start()
+        
+        # On Windows, force edgechromium (WebView2)
+        gui_engine = 'edgechromium' if sys.platform == 'win32' else None
+        
+        logging.info(f"Calling webview.start(gui={gui_engine})...")
+        webview.start(gui=gui_engine, debug=True) # debug=True can provide more info in logs if supported
+        logging.info("Webview closed.")
         
     except Exception as e:
         logging.error(f"Application error: {e}", exc_info=True)
+        # On Windows, if we are in a non-console app, show a message box for fatal errors
+        if sys.platform == 'win32' and not sys.stdout:
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(0, f"Application Error: {str(e)}", "Fatal Error", 0x10)
+            except:
+                pass
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()
