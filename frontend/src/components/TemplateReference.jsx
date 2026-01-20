@@ -1816,7 +1816,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                         {!result ? (
                             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', opacity: 0.5 }}>
                                 <Files size={64} strokeWidth={1.5} style={{ marginBottom: '25px', opacity: 0.6 }} />
-                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>工作台就绪</div>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>工作台就绪</div>
+                                <div style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Inspired by babeldoc, vibe coded by icychick.</div>
                             </div>
                         ) : (
                             <div className="animate-fade-in">
