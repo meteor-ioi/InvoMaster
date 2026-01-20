@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw, Scan } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -133,7 +133,7 @@ const TopToolbar = ({
                             className="btn-primary"
                             style={{ padding: '8px 20px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
                         >
-                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析
+                            <Scan size={14} className={loading ? 'animate-pulse' : ''} /> 版面分析
                         </button>
                     </div>
                 </div>

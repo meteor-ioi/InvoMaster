@@ -547,7 +547,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                 table_settings: newSettings
             } : r));
         } catch (err) {
-            console.error('表格重新分析失败:', err);
+            console.error('表格分析失败:', err);
         }
     };
 
@@ -577,10 +577,16 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         }, 2000);
     };
 
-    const handleSaveTemplate = async () => {
+    const handleSaveTemplate = async (isAsNew = false) => {
         try {
+            let saveId = analysis.id;
+            if (isAsNew) {
+                saveId = `${analysis.id}_${Date.now().toString(36)}`;
+            } else if (templateMode === 'custom' && !saveId.includes('_')) {
+                saveId = `${saveId}_custom`;
+            }
             await axios.post(`${API_BASE}/templates`, {
-                id: analysis.id,
+                id: saveId,
                 fingerprint: analysis.fingerprint,
                 name: templateName,
                 regions: regions,
@@ -674,6 +680,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     onSelectTemplate={handleSelectTemplate}
                     onDeleteTemplate={handleDeleteTemplate}
                     setToast={setToast}
+                    templateMode={templateMode}
+                    setTemplateMode={setTemplateMode}
                 />
 
                 {/* Center Panel - Main Content */}

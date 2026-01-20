@@ -1,0 +1,176 @@
+
+==================== Analyzing Group: Group 2 ====================
+Initializing LayoutEngine with providers: ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+Model loaded successfully. Input: images
+Active providers: ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 19 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpyupfw45n/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 17 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpdukbich5/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 19 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpw1ho73p_/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 21 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp8e080kka/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=1.00)
+Detected 15 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpac0rz_lv/page_1.png
+Filename                       | Boxes | AR     | Signature
+--------------------------------------------------------------------------------
+2-1.pdf                        | 19    | 0.707  | TSTCTCT
+2-2.pdf                        | 17    | 0.707  | TSTCTCT
+2-3.pdf                        | 19    | 0.707  | TSCTCT
+2-4.pdf                        | 21    | 0.707  | TSCTCTCTC
+2-5.pdf                        | 15    | 0.707  | TSCTCTCS
+
+Similarity Matrix:
+                    2-1.pdf        2-2.pdf        2-3.pdf        2-4.pdf        2-5.pdf        
+2-1.pdf             1.0000         1.0000         0.9231         0.8750         0.8000         
+2-2.pdf             1.0000         1.0000         0.9231         0.8750         0.8000         
+2-3.pdf             0.9231         0.9231         1.0000         0.8500         0.8571         
+2-4.pdf             0.8750         0.8750         0.8500         1.0000         0.8235         
+2-5.pdf             0.8000         0.8000         0.8571         0.8235         1.0000         
+
+--- Mismatch Analysis (< 0.8) ---
+
+==================== Analyzing Group: Group 3 ====================
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.90)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Detected 18 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpyihh8qd5/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.87)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Detected 17 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmprougha8q/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.90)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Detected 24 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpg88358j0/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.89)
+Heuristic: Converting widespread Figure to Table (w=0.90)
+Detected 20 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpl6g4w1un/page_1.png
+Filename                       | Boxes | AR     | Signature
+--------------------------------------------------------------------------------
+3-1.PDF                        | 18    | 0.707  | TCTSTSTS
+3-2.PDF                        | 17    | 0.707  | TCTSTSTS
+3-5.pdf                        | 24    | 0.707  | TSTSTST
+3shipper电话+cnee电话+notify电话没有识别 | 20    | 0.707  | TSTSTSTSTS
+
+Similarity Matrix:
+                    3-1.PDF        3-2.PDF        3-5.pdf        3shipper电话..   
+3-1.PDF             1.0000         1.0000         0.8000         0.6667 (!)     
+3-2.PDF             1.0000         1.0000         0.8000         0.6667 (!)     
+3-5.pdf             0.8000         0.8000         1.0000         0.8500         
+3shipper电话+cnee..   0.6667 (!)     0.6667 (!)     0.8500         1.0000         
+
+--- Mismatch Analysis (< 0.8) ---
+Comparing 3-1.PDF <-> 3shipper电话+cnee电话+notify电话没有识别到.pdf (Score: 0.6667)
+  Sequence Similarity: 0.6667
+  Sig1: TCTSTSTS
+  Sig2: TSTSTSTSTS
+  Differences:
+    delete: TC -> 
+    insert:  -> TSTS
+
+==================== Analyzing Group: Group 4 ====================
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.87)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Heuristic: Converting widespread Figure to Table (w=0.54)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Detected 13 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpgyq99ocb/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Detected 14 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp6qow2f2e/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Detected 15 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp_mrwkppo/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.87)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Detected 15 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp6kof_bt3/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.59)
+Heuristic: Converting widespread Figure to Table (w=0.84)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Detected 19 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmphwaqkbvd/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.86)
+Heuristic: Converting widespread Figure to Table (w=0.84)
+Detected 12 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpyfgnp9i7/page_1.png
+Filename                       | Boxes | AR     | Signature
+--------------------------------------------------------------------------------
+8-1.pdf                        | 13    | 0.707  | TSTSTCSC
+8-2.pdf                        | 14    | 0.707  | TSTCTSC
+8-3.pdf                        | 15    | 0.707  | TSTCSCSC
+8-4.pdf                        | 15    | 0.707  | TSTSTCSTC
+8-5.pdf                        | 19    | 0.707  | TSTSTFTCSC
+8shipper格式问题分行.pdf             | 12    | 0.707  | TSTSCSC
+
+Similarity Matrix:
+                    8-1.pdf        8-2.pdf        8-3.pdf        8-4.pdf        8-5.pdf        8shipper格式..   
+8-1.pdf             1.0000         0.8000         0.7500 (!)     0.9412         0.8889         0.9333         
+8-2.pdf             0.8000         1.0000         0.8000         0.7500 (!)     0.7059 (!)     0.7143 (!)     
+8-3.pdf             0.7500 (!)     0.8000         1.0000         0.7059 (!)     0.6667 (!)     0.9333         
+8-4.pdf             0.9412         0.7500 (!)     0.7059 (!)     1.0000         0.8421         0.8750         
+8-5.pdf             0.8889         0.7059 (!)     0.6667 (!)     0.7368 (!)     1.0000         0.8500         
+8shipper格式问题分行...   0.9333         0.7143 (!)     0.9333         0.8750         0.8500         1.0000         
+
+--- Mismatch Analysis (< 0.8) ---
+Comparing 8-1.pdf <-> 8-3.pdf (Score: 0.7500)
+  Sequence Similarity: 0.7500
+  Sig1: TSTSTCSC
+  Sig2: TSTCSCSC
+  Differences:
+    delete: TS -> 
+    insert:  -> SC
+
+==================== Analyzing Group: Group 5 ====================
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 12 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpydbhjupb/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 17 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp97zds2j0/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.84)
+Detected 33 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmpkqvp_c9p/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Heuristic: Converting widespread Figure to Table (w=0.88)
+Detected 12 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmprl2ktj8l/page_1.png
+Running ONNX prediction (conf=0.1, imgsz=1024)
+Detected 13 regions in /var/folders/cn/wdh6h3s92577s399nkzj8gwr0000gn/T/tmp1a03euad/page_1.png
+Filename                       | Boxes | AR     | Signature
+--------------------------------------------------------------------------------
+12-1.pdf                       | 12    | 0.707  | CTC
+12-2.pdf                       | 17    | 0.707  | TCSTCST
+12-3.pdf                       | 33    | 0.707  | TCTSTFTFSTSTCT
+12-4.pdf                       | 12    | 0.707  | CTCSC
+12-5.pdf                       | 13    | 0.707  | CTC
+
+Similarity Matrix:
+                    12-1.pdf       12-2.pdf       12-3.pdf       12-4.pdf       12-5.pdf       
+12-1.pdf            1.0000         0.8500         0.6500 (!)     0.8500         1.0000         
+12-2.pdf            0.8500         1.0000         0.5714 (!)     0.6667 (!)     0.8500         
+12-3.pdf            0.6500 (!)     0.5714 (!)     1.0000         0.4211 (!)     0.6500 (!)     
+12-4.pdf            0.8500         0.6667 (!)     0.3158 (!)     1.0000         0.8500         
+12-5.pdf            1.0000         0.8500         0.6500 (!)     0.8500         1.0000         
+
+--- Mismatch Analysis (< 0.8) ---
+Comparing 12-1.pdf <-> 12-3.pdf (Score: 0.6500)
+  Sequence Similarity: 0.3529
+  Sig1: CTC
+  Sig2: TCTSTFTFSTSTCT
+  Differences:
+    insert:  -> T
+    insert:  -> STFTFSTST
+    insert:  -> T

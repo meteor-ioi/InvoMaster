@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -100,14 +100,14 @@ const RightSidebar = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--accent-color)'
+                        color: 'var(--primary-color)'
                     }}>
                         <Edit3 size={20} />
                     </div>
 
                     <button
                         onClick={() => setCollapsed(false)}
-                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
                         title="要素编辑"
                     >
                         <Layout size={22} />
@@ -115,9 +115,9 @@ const RightSidebar = ({
 
                     {!tableRefining && (
                         <button
-                            onClick={handleSaveTemplate}
-                            style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s' }}
-                            title="保存并入库"
+                            onClick={() => handleSaveTemplate(false)}
+                            style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                            title="保存模板"
                         >
                             <Save size={22} />
                         </button>
@@ -140,7 +140,7 @@ const RightSidebar = ({
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                            <Edit3 size={16} color="var(--accent-color)" />
+                            <Edit3 size={16} color="var(--primary-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
 
@@ -208,7 +208,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <button onClick={handleApplyTableSettings} disabled={loading} className="btn-primary" style={{ width: '100%', background: 'var(--accent-color)', fontSize: '12px', padding: '8px', marginTop: '10px' }}>
-                                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 重新分析结构
+                                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> 分析结构
                                     </button>
 
                                     <button
@@ -345,7 +345,7 @@ const RightSidebar = ({
                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px', paddingRight: '2px' }} className="custom-scrollbar">
                                 <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Package size={16} color="var(--accent-color)" />
+                                        <Package size={16} color="var(--primary-color)" />
                                         <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
                                     </div>
                                 </div>
@@ -405,23 +405,79 @@ const RightSidebar = ({
                             </div>
 
                             {/* 底部固定按钮区 */}
-                            <div style={{ paddingTop: '15px' }}>
-                                <button
-                                    onClick={handleSaveTemplate}
-                                    className="btn-primary"
-                                    style={{
-                                        width: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '10px',
-                                        margin: 0,
-                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)',
-                                        borderColor: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)'
-                                    }}
-                                >
-                                    <Save size={16} /> 保存并入库
-                                </button>
+                            <div style={{ paddingTop: '15px', borderTop: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={() => handleSaveTemplate(false)}
+                                        className="btn-primary"
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            margin: 0,
+                                            background: templateMode === 'auto'
+                                                ? 'linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%)'
+                                                : 'linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%)',
+                                            border: 'none',
+                                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                                            fontSize: '14px',
+                                            padding: '0 12px',
+                                            height: '42px',
+                                            borderRadius: '12px',
+                                            fontWeight: '600',
+                                            transition: 'transform 0.2s, box-shadow 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.35)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.25)';
+                                        }}
+                                    >
+                                        <Save size={16} />
+                                        保存模板
+                                    </button>
+
+                                    {templateMode === 'custom' && (
+                                        <button
+                                            onClick={() => handleSaveTemplate(true)}
+                                            style={{
+                                                flex: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '8px',
+                                                margin: 0,
+                                                background: 'rgba(124, 58, 237, 0.05)',
+                                                border: '1.5px solid rgba(124, 58, 237, 0.3)',
+                                                color: 'var(--accent-color)',
+                                                fontSize: '12px',
+                                                padding: '0 12px',
+                                                height: '42px',
+                                                borderRadius: '12px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)';
+                                                e.currentTarget.style.borderColor = 'var(--accent-color)';
+                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(124, 58, 237, 0.05)';
+                                                e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.3)';
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                            }}
+                                        >
+                                            <CopyPlus size={14} /> 另存为
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

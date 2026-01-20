@@ -696,8 +696,11 @@ fetch(url, {
                                                     </div>
 
                                                     {filteredTemplates.length === 0 ? (
-                                                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontSize: '12px' }}>
-                                                            未找到匹配模板
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
+                                                            <Package size={24} />
+                                                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                                                未找到匹配模板
+                                                            </p>
                                                         </div>
                                                     ) : (
                                                         filteredTemplates.map(t => (
@@ -794,9 +797,11 @@ fetch(url, {
                                             </div>
                                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                                 {apiCallRecords.length === 0 ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
                                                         <Clock size={24} />
-                                                        <span style={{ fontSize: '11px' }}>暂无调用记录</span>
+                                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                                            暂无调用记录
+                                                        </p>
                                                     </div>
                                                 ) : (
                                                     apiCallRecords.map((record) => (
@@ -983,7 +988,10 @@ fetch(url, {
                                     {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
                                 </button>
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
+                                    onClick={() => {
+                                        setActiveTab('history');
+                                        fileInputRef.current?.click();
+                                    }}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -1008,29 +1016,9 @@ fetch(url, {
                             </div>
                         )}
                         {rightPanelMode === 'preview' && (
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    background: 'var(--accent-color)',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#fff',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    padding: '0 12px',
-                                    height: '28px',
-                                    borderRadius: '6px',
-                                    transition: 'all 0.2s',
-                                    opacity: 0.9
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
-                            >
-                                <Upload size={14} /> Test API
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {/* 移除了 Test API 按钮 */}
+                            </div>
                         )}
                     </div>
 
@@ -1055,6 +1043,14 @@ fetch(url, {
                     )}
                 </div>
             </div>
+            {/* Hidden elements */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleTestUpload}
+            />
         </div>
     );
 }

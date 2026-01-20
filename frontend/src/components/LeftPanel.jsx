@@ -11,12 +11,13 @@ const LeftPanel = ({
     onSelectTemplate,
     onDeleteTemplate,
     setToast,
+    templateMode,
+    setTemplateMode,
     typeConfig = TYPE_CONFIG,
     headerCollapsed = false
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
     const [dragActive, setDragActive] = useState(false);
-    const [activeTab, setActiveTab] = useState('auto');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState([]);
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
@@ -134,7 +135,7 @@ const LeftPanel = ({
 
                     <button
                         onClick={() => setCollapsed(false)}
-                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
                         title="模板仓库"
                     >
                         <Package size={22} />
@@ -216,7 +217,7 @@ const LeftPanel = ({
                     >
                         <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Package size={16} color="var(--accent-color)" />
+                                <Package size={16} color="var(--primary-color)" />
                                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板仓库</span>
                             </div>
                         </div>
@@ -224,26 +225,26 @@ const LeftPanel = ({
                         {/* 模式切换栏 (移动至卡片内容中) */}
                         <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                             <button
-                                onClick={(e) => { e.stopPropagation(); setActiveTab('auto'); }}
+                                onClick={(e) => { e.stopPropagation(); setTemplateMode('auto'); }}
                                 title="标准模式"
                                 style={{
                                     flex: 1,
                                     padding: '6px 8px', border: 'none', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s',
-                                    background: activeTab === 'auto' ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === 'auto' ? '#fff' : 'var(--text-secondary)',
+                                    background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
+                                    color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
                                 <Sparkles size={12} /> 标准模式
                             </button>
                             <button
-                                onClick={(e) => { e.stopPropagation(); setActiveTab('custom'); }}
+                                onClick={(e) => { e.stopPropagation(); setTemplateMode('custom'); }}
                                 title="自定义模式"
                                 style={{
                                     flex: 1,
                                     padding: '6px 8px', border: 'none', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', transition: 'all 0.3s',
-                                    background: activeTab === 'custom' ? 'var(--accent-color)' : 'transparent',
-                                    color: activeTab === 'custom' ? '#fff' : 'var(--text-secondary)',
+                                    background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
+                                    color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                 }}
                             >
@@ -276,7 +277,7 @@ const LeftPanel = ({
                                         outline: 'none',
                                         transition: 'all 0.2s'
                                     }}
-                                    onFocus={(e) => e.target.style.border = '1px solid var(--primary-color)'}
+                                    onFocus={(e) => e.target.style.border = `1px solid var(--${templateMode === 'custom' ? 'accent' : 'primary'}-color)`}
                                     onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
                                 />
                                 {searchQuery && (
@@ -296,7 +297,7 @@ const LeftPanel = ({
                                 {(() => {
                                     // Filter logic
                                     const filtered = templates.filter(t => {
-                                        const matchMode = t.mode === activeTab;
+                                        const matchMode = t.mode === templateMode;
                                         const matchSearch = !searchQuery ||
                                             t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -328,8 +329,8 @@ const LeftPanel = ({
                                                         style={{
                                                             padding: '10px',
                                                             borderRadius: '10px',
-                                                            background: IsMatched ? 'rgba(16, 185, 129, 0.12)' : (IsSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--input-bg)'),
-                                                            border: IsMatched ? '2px solid var(--success-color)' : (IsSelected ? '2px solid var(--primary-color)' : '1px solid var(--glass-border)'),
+                                                            background: IsMatched ? 'rgba(16, 185, 129, 0.12)' : (IsSelected ? (templateMode === 'custom' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(59, 130, 246, 0.08)') : 'var(--input-bg)'),
+                                                            border: IsMatched ? '2px solid var(--success-color)' : (IsSelected ? (templateMode === 'custom' ? '2px solid var(--accent-color)' : '2px solid var(--primary-color)') : '1px solid var(--glass-border)'),
                                                             marginBottom: '10px',
                                                             cursor: 'pointer',
                                                             transition: 'all 0.3s ease'

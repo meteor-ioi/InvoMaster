@@ -302,8 +302,23 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
                 y0_off + (reg.y + reg.height) * height
             )
             
+            # Skip zero-area regions to avoid pdfplumber ValueError
+            if reg.width <= 0 or reg.height <= 0:
+                print(f"Warning: Skipping zero-area region {reg.id} ({reg.type})")
+                reg_dict = reg.dict()
+                reg_dict["content"] = ""
+                results.append(reg_dict)
+                continue
+
             # Crop region
-            cropped = first_page.within_bbox(bbox)
+            try:
+                cropped = first_page.within_bbox(bbox)
+            except Exception as e:
+                print(f"Error cropping region {reg.id}: {e}")
+                reg_dict = reg.dict()
+                reg_dict["content"] = ""
+                results.append(reg_dict)
+                continue
             content = ""
             
             if reg.type.lower() == 'table':
@@ -367,7 +382,7 @@ async def analyze_document(
     filename: Optional[str] = Form(None),
     device: Optional[str] = None, 
     conf: float = 0.25,
-    imgsz: int = 1024,
+    imgsz: int = 1280,
     iou: float = 0.45,
     agnostic_nms: bool = False,
     refresh: bool = False,

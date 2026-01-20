@@ -1106,29 +1106,18 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                 </div>
                                             </div>
 
-                                            {/* Execute Button - Moved here */}
-                                            <button
-                                                className="btn-primary"
-                                                onClick={isBatchMode ? handleBatchExecute : handleExecute}
-                                                disabled={(!file && files.length === 0) || loading}
-                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
-                                            >
-                                                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
-                                                {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
-                                            </button>
-
-                                            {/* File Queue List - Moved below button */}
-                                            {files.length > 0 && (
-                                                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                                    <div style={{
-                                                        fontSize: '11px',
-                                                        color: 'var(--text-secondary)',
-                                                        marginBottom: '6px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between'
-                                                    }}>
-                                                        <span>待处理队列 ({files.length})</span>
+                                            {/* File Queue List - Moved above button and set to flex: 1 */}
+                                            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                                <div style={{
+                                                    fontSize: '11px',
+                                                    color: 'var(--text-secondary)',
+                                                    marginBottom: '6px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between'
+                                                }}>
+                                                    <span>待处理队列 ({files.length})</span>
+                                                    {files.length > 0 && (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
@@ -1159,16 +1148,25 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                         >
                                                             清空全部
                                                         </button>
-                                                    </div>
-                                                    <div style={{
-                                                        flex: 1,
-                                                        overflowY: 'auto',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '8px',
-                                                        padding: '2px'
-                                                    }} className="custom-scrollbar">
-                                                        {files.map((f, i) => {
+                                                    )}
+                                                </div>
+                                                <div style={{
+                                                    flex: 1,
+                                                    overflowY: 'auto',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '8px',
+                                                    padding: '2px'
+                                                }} className="custom-scrollbar">
+                                                    {files.length === 0 ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
+                                                            <Package size={24} />
+                                                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                                                暂无任务
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        files.map((f, i) => {
                                                             const isProcessing = processingIndex === i || (loading && !isBatchMode && file?.name === f.name);
                                                             return (
                                                                 <div
@@ -1176,8 +1174,8 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                                     style={{
                                                                         padding: '10px 12px',
                                                                         borderRadius: '10px',
-                                                                        background: isProcessing ? 'rgba(59, 130, 246, 0.05)' : 'var(--input-bg)',
-                                                                        border: isProcessing ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                                        background: isProcessing ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.03)',
+                                                                        border: isProcessing ? '1px solid var(--primary-color)' : 'none',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
                                                                         gap: '10px',
@@ -1257,10 +1255,24 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                                     )}
                                                                 </div>
                                                             );
-                                                        })}
-                                                    </div>
+                                                        })
+                                                    )}
                                                 </div>
-                                            )}
+                                            </div>
+
+                                            {/* Execute Button - Now fixed at the bottom */}
+                                            <button
+                                                className="btn-primary"
+                                                onClick={isBatchMode ? handleBatchExecute : handleExecute}
+                                                disabled={(!file && files.length === 0) || loading}
+                                                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: ((!file && files.length === 0) || loading) ? 0.6 : 1 }}
+                                            >
+                                                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                                                {loading ? `处理中${isBatchMode ? ` (${batchResults.size}/${files.length})` : '...'}` : (isBatchMode ? `批量提取 (${files.length} 个文件)` : '开始提取数据')}
+                                            </button>
+
+
+
 
                                         </div>
                                     )}
