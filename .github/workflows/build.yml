@@ -63,19 +63,10 @@ jobs:
           from huggingface_hub import hf_hub_download
           import os
           repo = 'Kira-P/industry-pdf-models'
-          models = [
-              'yolov10-doclayout.onnx',
-              'ocr/ch_PP-OCRv4_det_infer.onnx',
-              'ocr/ch_PP-OCRv4_rec_infer.onnx'
-          ]
+          models = ['yolov10-doclayout.onnx', 'ocr/ch_PP-OCRv4_det_infer.onnx', 'ocr/ch_PP-OCRv4_rec_infer.onnx']
           for filename in models:
               print(f'Downloading {filename}...')
-              hf_hub_download(
-                  repo_id=repo, 
-                  filename=filename, 
-                  local_dir='backend/data/models',
-                  local_dir_use_symlinks=False
-              )
+              hf_hub_download(repo_id=repo, filename=filename, local_dir='backend/data/models', local_dir_use_symlinks=False)
           "
 
       - name: Build Desktop App
