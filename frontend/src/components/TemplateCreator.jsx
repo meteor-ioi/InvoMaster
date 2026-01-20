@@ -740,7 +740,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                     tableHistoryLength={tableHistory.length}
                                 />
 
-                                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
+                                <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
                                     {loading && (
                                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', borderRadius: '12px' }}>
                                             <div className="loading-spinner" />
@@ -792,7 +792,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                     ) : (
                                         <>
                                             {tableRefining && (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', padding: '15px 20px 0' }}>
                                                     <button onClick={() => setTableRefining(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px' }}>
                                                         <ChevronLeft size={16} /> 返回版面分析
                                                     </button>
@@ -822,9 +822,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                         minHeight: 0,
                                                         maxHeight: 'none',
                                                         overflow: 'auto',
-                                                        borderRadius: '16px',
-                                                        border: '1px solid var(--glass-border)',
-                                                        background: 'rgba(0,0,0,0.05)'
+                                                        borderRadius: '0',
+                                                        border: 'none',
+                                                        background: 'transparent'
                                                     }}
                                                 >
                                                     <DocumentEditor

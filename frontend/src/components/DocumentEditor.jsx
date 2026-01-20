@@ -482,7 +482,7 @@ const DocumentEditor = ({
                 minHeight: 0,
                 overflow: 'auto',
                 background: '#1a1a1a',
-                borderRadius: '16px',
+                borderRadius: '0',
                 border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
                 position: 'relative'
