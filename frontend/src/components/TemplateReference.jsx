@@ -778,45 +778,40 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                     {isPanelCollapsed ? (
                         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                             <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: activeTab === 'config' ? 'linear-gradient(135deg, #3b82f633, #8b5cf633)' : 'linear-gradient(135deg, #8b5cf633, #ec489933)',
+                                width: '44px',
+                                height: '44px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                border: '1px solid var(--glass-border)',
                                 color: activeTab === 'config' ? 'var(--primary-color)' : 'var(--accent-color)'
                             }}>
-                                {activeTab === 'config' ? <Settings size={18} /> : <Clock size={18} />}
+                                {activeTab === 'config' ? <Settings size={20} /> : <Clock size={20} />}
                             </div>
-
-                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
 
                             <button
                                 onClick={() => document.getElementById('ref-upload-collapsed').click()}
-                                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--primary-color)', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                                style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
                                 title="上传 PDF（支持多选）"
                             >
-                                <Upload size={18} />
+                                <Upload size={22} />
                                 <input id="ref-upload-collapsed" type="file" multiple className="hidden" accept=".pdf,application/pdf" onChange={handleFileUpload} />
                             </button>
 
                             <button
                                 onClick={isBatchMode ? handleBatchExecute : handleExecute}
                                 disabled={(!file && files.length === 0) || loading}
-                                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s', opacity: ((!file && files.length === 0) || loading) ? 0.5 : 1 }}
+                                style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--success-color)', transition: 'all 0.2s', opacity: ((!file && files.length === 0) || loading) ? 0.5 : 1 }}
                                 title={isBatchMode ? `批量提取 ${files.length} 个文件` : '开始提取'}
                             >
-                                {loading ? <RefreshCw size={18} className="animate-spin" /> : <Play size={18} />}
+                                {loading ? <RefreshCw size={22} className="animate-spin" /> : <Play size={22} />}
                             </button>
 
                             <button
                                 onClick={() => setIsPanelCollapsed(false)}
-                                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
+                                style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
                                 title="展开面板"
                             >
-                                <ChevronRight size={18} />
+                                <ChevronRight size={22} />
                             </button>
                         </div>
                     ) : (

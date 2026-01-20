@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
-import { Edit3, Eye, Sun, Moon, Code, ChevronsLeftRight, ChevronsRightLeft, Cpu, Zap, Box, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit3, Eye, Sun, Moon, Code, Maximize2, Minimize2, Cpu, Zap, Box, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
 
 // 获取系统主题偏好
 const getSystemTheme = () => {
@@ -25,9 +25,10 @@ function App() {
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('hitl-header-collapsed') === 'true');
     const [isHoveringHeaderToggle, setIsHoveringHeaderToggle] = useState(false);
 
-    const toggleSidebars = () => {
+    const toggleZenMode = () => {
         const newState = !isSidebarsCollapsed;
         setIsSidebarsCollapsed(newState);
+        setIsHeaderCollapsed(newState);
         window.dispatchEvent(new CustomEvent('toggle-sidebars', { detail: { collapsed: newState } }));
     };
 
@@ -189,7 +190,7 @@ function App() {
                         {/* 右侧：功能按钮组（缩小版） */}
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <button
-                                onClick={toggleSidebars}
+                                onClick={toggleZenMode}
                                 style={{
                                     background: 'var(--input-bg)',
                                     border: '1px solid var(--glass-border)',
@@ -202,9 +203,9 @@ function App() {
                                     justifyContent: 'center',
                                     transition: 'all 0.2s ease'
                                 }}
-                                title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
+                                title={isSidebarsCollapsed ? '还原界面布局' : '专注模式 (隐藏顶栏及侧栏)'}
                             >
-                                {isSidebarsCollapsed ? <ChevronsLeftRight size={14} /> : <ChevronsRightLeft size={14} />}
+                                {isSidebarsCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
                             </button>
 
                             <button
@@ -329,7 +330,7 @@ function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
-                                    onClick={toggleSidebars}
+                                    onClick={toggleZenMode}
                                     style={{
                                         background: 'var(--input-bg)',
                                         border: '1px solid var(--glass-border)',
@@ -343,9 +344,9 @@ function App() {
                                         transition: 'all 0.2s ease',
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                     }}
-                                    title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
+                                    title={isSidebarsCollapsed ? '还原界面布局' : '专注模式 (隐藏顶栏及侧栏)'}
                                 >
-                                    {isSidebarsCollapsed ? <ChevronsLeftRight size={18} /> : <ChevronsRightLeft size={18} />}
+                                    {isSidebarsCollapsed ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
                                 </button>
 
                                 <button

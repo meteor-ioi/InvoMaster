@@ -486,59 +486,52 @@ fetch(url, {
                     {isPanelCollapsed ? (
                         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                             <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #3b82f633, #8b5cf633)',
+                                width: '44px',
+                                height: '44px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                border: '1px solid var(--glass-border)',
                                 color: 'var(--primary-color)'
                             }}>
-                                <Server size={18} />
+                                <Server size={22} />
                             </div>
-                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
+
                             <div
                                 title="可用模板"
                                 onClick={() => setActiveTab('templates')}
                                 style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    border: `1px solid ${activeTab === 'templates' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
-                                    background: activeTab === 'templates' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    width: '44px',
+                                    height: '44px',
+                                    border: 'none',
+                                    background: 'transparent',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     color: activeTab === 'templates' ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
                                 }}
                             >
-                                <Package size={18} />
+                                <Package size={22} />
                             </div>
-                            <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
+
                             <div
                                 title={`调用记录: ${apiCallRecords.length}`}
                                 onClick={() => setActiveTab('history')}
                                 style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    border: `1px solid ${activeTab === 'history' ? 'var(--accent-color)' : 'var(--glass-border)'}`,
-                                    background: activeTab === 'history' ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                                    width: '44px',
+                                    height: '44px',
+                                    border: 'none',
+                                    background: 'transparent',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     color: activeTab === 'history' ? 'var(--accent-color)' : 'var(--text-secondary)',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
                                 }}
                             >
-                                <Clock size={14} />
+                                <Clock size={20} />
                             </div>
                         </div>
                     ) : (

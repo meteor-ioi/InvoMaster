@@ -114,35 +114,30 @@ const LeftPanel = ({
             {collapsed ? (
                 <div className="glass-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
                     <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'linear-gradient(135deg, #3b82f633, #8b5cf633)',
+                        width: '44px',
+                        height: '44px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px solid var(--glass-border)',
                         color: 'var(--primary-color)'
                     }}>
                         <Layout size={20} />
                     </div>
 
-                    <div style={{ width: '20px', height: '1px', background: 'var(--glass-border)' }} />
-
                     <button
                         onClick={() => document.getElementById('panel-file-upload').click()}
-                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--primary-color)', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
                         title="上传 PDF 文件"
                     >
-                        <Upload size={20} />
+                        <Upload size={22} />
                     </button>
 
                     <button
                         onClick={() => setCollapsed(false)}
-                        style={{ width: '44px', height: '44px', borderRadius: '50%', border: '1px solid var(--accent-color)', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-color)', transition: 'all 0.2s' }}
                         title="模板仓库"
                     >
-                        <Package size={20} />
+                        <Package size={22} />
                     </button>
 
                     <input id="panel-file-upload" type="file" className="hidden" accept="application/pdf" onChange={handleFileSelect} />
