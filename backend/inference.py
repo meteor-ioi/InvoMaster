@@ -36,7 +36,27 @@ class LayoutEngine:
     def __init__(self, model_path=None, device=None):
         if model_path is None:
             base_data = os.environ.get("APP_DATA_DIR", "data")
-            model_path = os.path.join(base_data, "models", "yolov10-doclayout.onnx")
+            
+            # Candidates for model discovery
+            candidates = [
+                os.path.join(base_data, "models", "yolov10-doclayout.onnx"),
+                os.path.join("data", "models", "yolov10-doclayout.onnx"),
+                os.path.join("models", "yolov10-doclayout.onnx"),
+            ]
+            
+            # If running in a frozen app, check the bundle path
+            if getattr(sys, 'frozen', False):
+                candidates.insert(0, os.path.join(sys._MEIPASS, "models", "yolov10-doclayout.onnx"))
+            
+            # Find the first existing path
+            for path in candidates:
+                if os.path.exists(path):
+                    model_path = path
+                    break
+            
+            # Fallback for error message
+            if model_path is None:
+                model_path = candidates[0]
         
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"MODEL_MISSING: {os.path.basename(model_path)}")

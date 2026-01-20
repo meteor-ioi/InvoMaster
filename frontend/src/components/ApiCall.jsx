@@ -288,7 +288,7 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const pythonCode = `import requests
 
 # 1. 准备参数
-url = "${API_BASE}/extract"
+url = "${API_BASE || 'http://localhost:8291'}/extract"
 params = {
     "template_id": "${selectedTemplateId}", # 选择自动模式 auto 或输入模板id
     "device": "${device || 'auto'}"        # 可选类型：auto, cpu, cuda, mps
@@ -312,7 +312,9 @@ else:
 const formData = new FormData();
 formData.append('file', fileInput.files[0]); // 获取上传的文件对象
 
-const url = new URL("${API_BASE}/extract");
+// 构建接口地址
+const baseUrl = "${API_BASE}" || window.location.origin;
+const url = new URL("/extract", baseUrl);
 url.searchParams.append('template_id', '${selectedTemplateId}');
 url.searchParams.append('device', '${device || 'auto'}');
 
@@ -332,7 +334,8 @@ fetch(url, {
     console.error("网络错误:", error);
 });`;
 
-    const curlCode = `curl -X POST "${API_BASE}/extract?template_id=${selectedTemplateId}&device=${device || 'auto'}" \\
+    const curlBase = API_BASE || "http://localhost:8291";
+    const curlCode = `curl -X POST "${curlBase}/extract?template_id=${selectedTemplateId}&device=${device || 'auto'}" \\
   -F "file=@/path/to/document.pdf"`;
 
     const getCodeSnippet = (lang) => {
