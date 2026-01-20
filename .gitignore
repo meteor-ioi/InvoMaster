@@ -19,7 +19,6 @@ frontend/dist/
 frontend/build/
 dist/
 build/
-*.spec
 
 # IDE
 .vscode/

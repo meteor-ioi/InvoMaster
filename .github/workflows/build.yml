@@ -13,6 +13,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Debug - List files
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in root:"
+          ls -la
+          echo "Checking spec file:"
+          cat industry_pdf.spec | head -20
+      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -54,6 +63,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Debug - List files
+        shell: pwsh
+        run: |
+          Write-Host "Current directory:"
+          Get-Location
+          Write-Host "Files in root:"
+          Get-ChildItem
+          Write-Host "Checking spec file:"
+          Get-Content industry_pdf.spec | Select-Object -First 20
       
       - name: Setup Python
         uses: actions/setup-python@v5
