@@ -6,10 +6,13 @@ from PyInstaller.utils.hooks import copy_metadata
 
 block_cipher = None
 
-# Define data inclusions
+# Get absolute path to the project root
+project_root = os.path.abspath(os.curdir)
+
+# Define data inclusions with absolute paths
 datas = [
-    ('frontend/dist', 'frontend/dist'),
-    ('assets', 'assets'),
+    (os.path.join(project_root, 'frontend', 'dist'), 'frontend/dist'),
+    (os.path.join(project_root, 'assets'), 'assets'),
 ]
 
 # Add any package metadata if needed (e.g. module versions)
