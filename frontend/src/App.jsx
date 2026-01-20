@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TemplateCreator from './components/TemplateCreator';
 import TemplateReference from './components/TemplateReference';
 import ApiCall from './components/ApiCall';
-import { Edit3, Eye, Sun, Moon, Code, Maximize2, Minimize2, Cpu, Zap, Box, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
+import SystemSettings from './components/SystemSettings';
+import { Edit3, Eye, Sun, Moon, Code, Maximize2, Minimize2, Cpu, Zap, Box, Monitor, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 // 获取系统主题偏好
 const getSystemTheme = () => {
@@ -24,6 +25,7 @@ function App() {
     const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('hitl-header-collapsed') === 'true');
     const [isHoveringHeaderToggle, setIsHoveringHeaderToggle] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const toggleZenMode = () => {
         const newState = !isSidebarsCollapsed;
@@ -70,6 +72,13 @@ function App() {
     useEffect(() => {
         localStorage.setItem('hitl-header-collapsed', isHeaderCollapsed);
     }, [isHeaderCollapsed]);
+
+    // 监听打开系统设置的全局事件
+    useEffect(() => {
+        const handleOpenSettings = () => setIsSettingsOpen(true);
+        window.addEventListener('open-system-settings', handleOpenSettings);
+        return () => window.removeEventListener('open-system-settings', handleOpenSettings);
+    }, []);
 
     const tabs = [
         { id: 'creator', label: '模板制作', icon: <Edit3 size={18} /> },
@@ -235,6 +244,25 @@ function App() {
                                     themeMode === 'light' ? <Sun size={14} /> :
                                         <Moon size={14} />}
                             </button>
+
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                style={{
+                                    background: 'var(--input-bg)',
+                                    border: '1px solid var(--glass-border)',
+                                    padding: '6px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                title="高级设置"
+                            >
+                                <Settings size={14} />
+                            </button>
                         </div>
                     </>
                 ) : (
@@ -378,6 +406,26 @@ function App() {
                                         themeMode === 'light' ? <Sun size={18} /> :
                                             <Moon size={18} />}
                                 </button>
+
+                                <button
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    style={{
+                                        background: 'var(--input-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        padding: '10px',
+                                        borderRadius: '12px',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-primary)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                    }}
+                                    title="高级设置"
+                                >
+                                    <Settings size={18} />
+                                </button>
                             </div>
                         </div>
                     </>
@@ -427,6 +475,13 @@ function App() {
                 {view === 'reference' && <TemplateReference theme={appliedTheme} device={device} headerCollapsed={isHeaderCollapsed} />}
                 {view === 'apicall' && <ApiCall theme={appliedTheme} device={device} headerCollapsed={isHeaderCollapsed} />}
             </main>
+
+            {/* 系统设置弹窗 */}
+            <SystemSettings
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                theme={appliedTheme}
+            />
         </div>
     );
 }

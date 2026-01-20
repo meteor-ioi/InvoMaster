@@ -417,7 +417,16 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             setTableRefining(null);
         } catch (err) {
             console.error(err);
-            alert('识别失败，请检查后端服务状态');
+            const detail = err.response?.data?.detail || "";
+            if (detail.includes("MODEL_MISSING")) {
+                const modelName = detail.split(": ")[1] || "核心模型";
+                if (window.confirm(`检测到模型文件缺失 (${modelName})。是否立即前往“高级设置”下载模型？`)) {
+                    // Trigger settings opening in App.jsx via window event or prop
+                    window.dispatchEvent(new CustomEvent('open-system-settings'));
+                }
+            } else {
+                alert('识别失败，请检查后端服务状态');
+            }
         } finally {
             setLoading(false);
         }

@@ -141,7 +141,7 @@ const LeftPanel = ({
                         <Package size={22} />
                     </button>
 
-                    <input id="panel-file-upload" type="file" className="hidden" accept="application/pdf" onChange={handleFileSelect} />
+                    <input id="panel-file-upload" type="file" className="hidden" onChange={handleFileSelect} />
                 </div>
             ) : (
                 <>
@@ -196,7 +196,6 @@ const LeftPanel = ({
                             id="panel-file-upload"
                             type="file"
                             className="hidden"
-                            accept=".pdf,application/pdf"
                             onChange={handleFileSelect}
                         />
                     </div>

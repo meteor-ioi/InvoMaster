@@ -1174,6 +1174,172 @@ async def batch_delete_tasks(req: TaskBatchDeleteRequest):
     deleted_count = delete_tasks_batch(req.task_ids)
     return {"status": "success", "deleted": deleted_count}
 
+# ========== System Management Endpoints ==========
+
+MODELS_CONFIG = {
+    "yolo": {
+        "name": "Layout Analysis (YOLOv10)",
+        "file": "yolov10-doclayout.onnx", # This matches config["filename"] in get_model_status
+        "repo": "Kira-P/industry-pdf-models",
+        "filename": "yolov10-doclayout.onnx",
+        "size": "77MB",
+        "expected_size": 80742400, # Approx size in bytes
+        "description": "用于自动识别页面布局和表格区域"
+    },
+    "ocr_det": {
+        "name": "OCR Detection",
+        "file": "ch_PP-OCRv4_det_infer.onnx", # Flat name for local check
+        "repo": "Kira-P/industry-pdf-models",
+        "filename": "ocr/ch_PP-OCRv4_det_infer.onnx", # Subpath for HF download
+        "size": "4.7MB",
+        "expected_size": 4894371, 
+        "description": "用于检测文字所在位置"
+    },
+    "ocr_rec": {
+        "name": "OCR Recognition",
+        "file": "ch_PP-OCRv4_rec_infer.onnx",
+        "repo": "Kira-P/industry-pdf-models",
+        "filename": "ocr/ch_PP-OCRv4_rec_infer.onnx", # Subpath in repo
+        "size": "11MB",
+        "expected_size": 10905190,
+        "description": "用于将图片文字转为文本内容"
+    }
+}
+
+# Real-time download progress store
+DOWNLOAD_PROGRESS = {}
+
+def get_model_status():
+    status = []
+    user_models_dir = os.path.join(base_data_dir, "models")
+    
+    # Multiple search paths for models
+    search_paths = [user_models_dir]
+    
+    if getattr(sys, 'frozen', False):
+        # Packaged app: check bundled models
+        search_paths.append(os.path.join(sys._MEIPASS, "models"))
+    else:
+        # Dev mode: check various locations
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        search_paths.append(os.path.join(script_dir, "models"))
+        search_paths.append(os.path.join(script_dir, "data", "models"))
+        # Also check relative to CWD (how inference.py works in dev mode)
+        search_paths.append(os.path.join("data", "models"))
+        search_paths.append("models")
+    
+    for mid, config in MODELS_CONFIG.items():
+        m_path = None
+        exists = False
+        
+        # Build candidate paths from all search locations
+        candidates = []
+        for sp in search_paths:
+            candidates.append(os.path.join(sp, config["file"]))
+            candidates.append(os.path.join(sp, os.path.basename(config["file"])))
+            if "ocr" in mid:
+                candidates.append(os.path.join(sp, "ocr", os.path.basename(config["file"])))
+        
+        for c in candidates:
+            if os.path.exists(c):
+                m_path = c
+                exists = True
+                break
+        
+        if not m_path:
+            m_path = config["file"] # Fallback for display
+        
+        size = os.path.getsize(m_path) if exists else 0
+        
+        status.append({
+            "id": mid,
+            "name": config["name"],
+            "exists": exists,
+            "size": f"{size / (1024*1024):.1f}MB" if exists else config["size"],
+            "path": m_path if exists else config["file"],
+            "description": config["description"],
+            "downloading": mid in DOWNLOAD_PROGRESS and DOWNLOAD_PROGRESS[mid] < 100
+        })
+    return status
+
+@app.get("/system/status")
+async def get_system_status():
+    return {
+        "models": get_model_status(),
+        "app_data_dir": base_data_dir,
+        "platform": sys.platform,
+        "version": "1.1.0"
+    }
+
+@app.get("/system/models/progress")
+async def get_download_progress():
+    return DOWNLOAD_PROGRESS
+
+@app.post("/system/models/download")
+async def download_model(model_id: str):
+    if model_id not in MODELS_CONFIG:
+        raise HTTPException(status_code=400, detail="Invalid model ID")
+    
+    config = MODELS_CONFIG[model_id]
+    DOWNLOAD_PROGRESS[model_id] = 0
+    
+    def perform_download():
+        from huggingface_hub import hf_hub_download
+        import os
+        
+        os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+        models_dir = os.path.join(base_data_dir, "models")
+        os.makedirs(models_dir, exist_ok=True)
+        
+        try:
+            DOWNLOAD_PROGRESS[model_id] = 5
+            
+            # Start observer thread to monitor file size
+            dest_path = os.path.join(models_dir, config["filename"]) # Use HF subpath as download target
+            
+            def monitor_size():
+                expected = config.get("expected_size", 100)
+                while model_id in DOWNLOAD_PROGRESS and DOWNLOAD_PROGRESS[model_id] < 100:
+                    if os.path.exists(dest_path):
+                        current = os.path.getsize(dest_path)
+                        DOWNLOAD_PROGRESS[model_id] = min(99, int((current / expected) * 100))
+                    time.sleep(1)
+            
+            threading.Thread(target=monitor_size, daemon=True).start()
+            
+            hf_hub_download(
+                repo_id=config["repo"],
+                filename=config["filename"],
+                local_dir=models_dir,
+                local_dir_use_symlinks=False
+            )
+            
+            DOWNLOAD_PROGRESS[model_id] = 100
+            print(f"Successfully downloaded {model_id}")
+        except Exception as e:
+            DOWNLOAD_PROGRESS[model_id] = -1 
+            print(f"Failed to download {model_id}: {e}")
+
+    import threading
+    threading.Thread(target=perform_download, daemon=True).start()
+    
+    return {"status": "success", "message": f"Download started for {model_id}"}
+
+@app.post("/system/models/import")
+async def import_model(model_id: str, file: UploadFile = File(...)):
+    if model_id not in MODELS_CONFIG:
+        raise HTTPException(status_code=400, detail="Invalid model ID")
+        
+    config = MODELS_CONFIG[model_id]
+    models_dir = os.path.join(base_data_dir, "models")
+    dest_path = os.path.join(models_dir, config["file"])
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    
+    with open(dest_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"status": "success", "message": f"Model {model_id} imported successfully"}
+
 # ========== Application Lifecycle ==========
 import sys
 

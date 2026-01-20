@@ -39,7 +39,7 @@ class LayoutEngine:
             model_path = os.path.join(base_data, "models", "yolov10-doclayout.onnx")
         
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"ONNX model not found: {model_path}")
+            raise FileNotFoundError(f"MODEL_MISSING: {os.path.basename(model_path)}")
         
         # 确定执行提供者
         if device == 'cuda':

@@ -24,13 +24,12 @@ def bootstrap_assets(dest_root):
 
     bundle_root = sys._MEIPASS
     
-    # 1. Models
-    src_models = os.path.join(bundle_root, 'data', 'models')
-    dest_models = os.path.join(dest_root, 'models')
-    
-    if os.path.exists(src_models) and not os.path.exists(dest_models):
-        print(f"Bootstrapping models to {dest_models}...")
-        shutil.copytree(src_models, dest_models)
+    # 1. Assets
+    src_assets = os.path.join(bundle_root, 'assets')
+    dest_assets = os.path.join(dest_root, 'assets')
+    if os.path.exists(src_assets) and not os.path.exists(dest_assets):
+        print(f"Bootstrapping assets to {dest_assets}...")
+        shutil.copytree(src_assets, dest_assets)
     
     # 2. Uploads/Templates structure
     for d in ["uploads", "templates/auto", "templates/custom", "template_sources"]:
@@ -149,8 +148,8 @@ def main():
     webview.create_window(
         '票据识别专家', 
         f'http://127.0.0.1:{port}',
-        width=1280,
-        height=800,
+        width=1420,
+        height=820,
         resizable=True
     )
     webview.start()

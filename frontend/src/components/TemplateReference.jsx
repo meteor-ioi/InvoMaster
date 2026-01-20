@@ -323,7 +323,15 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
             setIsBatchMode(false); // Reset to single mode if no files left or one file left
         } catch (err) {
             console.error(err);
-            alert("执行失败: " + (err.response?.data?.detail || err.message));
+            const detail = err.response?.data?.detail || "";
+            if (detail.includes("MODEL_MISSING")) {
+                const modelName = detail.split(": ")[1] || "核心模型";
+                if (window.confirm(`检测到模型文件缺失 (${modelName})。是否立即前往“高级设置”下载模型？`)) {
+                    window.dispatchEvent(new CustomEvent('open-system-settings'));
+                }
+            } else {
+                alert("执行失败: " + (err.response?.data?.detail || err.message));
+            }
         } finally {
             setLoading(false);
         }
@@ -410,11 +418,24 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                 }
             } catch (err) {
                 console.error(`处理文件 ${files[i].name} 失败:`, err);
+                const detail = err.response?.data?.detail || "";
+                let errorMsg = detail || err.message;
+
+                if (detail.includes("MODEL_MISSING")) {
+                    const modelName = detail.split(": ")[1] || "核心模型";
+                    if (window.confirm(`检测到关键模型缺失 (${modelName})，批处理无法继续。是否立即前往“高级设置”？`)) {
+                        window.dispatchEvent(new CustomEvent('open-system-settings'));
+                        setProcessingIndex(-1);
+                        setLoading(false);
+                        return; // Stop batch
+                    }
+                }
+
                 const errorResult = {
                     status: 'error',
                     filename: files[i].name,
                     template_name: '处理失败',
-                    error: err.response?.data?.detail || err.message,
+                    error: errorMsg,
                     data: {},
                     timestamp: new Date().toISOString()
                 };
@@ -879,7 +900,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                 title="上传 PDF（支持多选）"
                             >
                                 <Upload size={22} />
-                                <input id="ref-upload-collapsed" type="file" multiple className="hidden" accept=".pdf,application/pdf" onChange={handleFileUpload} />
+                                <input id="ref-upload-collapsed" type="file" multiple className="hidden" onChange={handleFileUpload} />
                             </button>
 
                             <button
@@ -1187,7 +1208,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <input id="ref-upload-side" type="file" multiple className="hidden" accept="application/pdf" onChange={handleFileUpload} />
+                                                    <input id="ref-upload-side" type="file" multiple className="hidden" onChange={handleFileUpload} />
                                                 </div>
                                             </div>
 
