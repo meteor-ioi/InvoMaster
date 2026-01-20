@@ -11,18 +11,37 @@ import logging
 import multiprocessing
 
 # Configure Logging
-log_file = os.path.join(os.path.expanduser('~'), 'industry_pdf_debug.log')
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+def setup_logging():
+    log_dir = os.path.join(os.path.expanduser('~'), 'IndustryPDF_Logs')
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        
+    log_file = os.path.join(log_dir, 'debug.log')
+    err_file = os.path.join(log_dir, 'error.log')
+    
+    # Configure main logger
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - [PID:%(process)d] - %(levelname)s - %(message)s',
+        force=True
+    )
+    
+    # Redirect stdout/stderr for frozen app to capture C-level or early Python errors
+    if getattr(sys, 'frozen', False):
+        sys.stdout = open(os.path.join(log_dir, 'stdout.log'), 'a', encoding='utf-8', buffering=1)
+        sys.stderr = open(err_file, 'a', encoding='utf-8', buffering=1)
+
+# Initialize logging immediately
+setup_logging()
 logging.info("Starting application...")
+logging.info(f"Python: {sys.version}")
+logging.info(f"Platform: {sys.platform}")
 
 # Ensure backend modules can be imported
 if getattr(sys, 'frozen', False):
     bundle_root = sys._MEIPASS
-    backend_dir = bundle_root # In frozen app, backend is usually at root or explicitly added
+    backend_dir = bundle_root
 else:
     bundle_root = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.join(bundle_root, 'backend')
@@ -34,8 +53,6 @@ logging.info(f"Sys Path updated with: {backend_dir}")
 def bootstrap_assets(dest_root):
     """
     Copy bundled assets (models, etc.) to the user data directory.
-    This is necessary because the bundle is read-only, but the app might expect strictly structure.
-    Also ensures models are present.
     """
     if not getattr(sys, 'frozen', False):
         return
@@ -47,14 +64,14 @@ def bootstrap_assets(dest_root):
     dest_assets = os.path.join(dest_root, 'assets')
     
     if os.path.exists(src_assets):
-        logging.info(f"Bootstrapping assets to {dest_assets} (dirs_exist_ok=True)...")
+        logging.info(f"Bootstrapping assets to {dest_assets}...")
         try:
             shutil.copytree(src_assets, dest_assets, dirs_exist_ok=True)
         except Exception as e:
             logging.error(f"Failed to bootstrap assets: {e}")
-    
+            
     # 2. Uploads/Templates structure
-    for d in ["uploads", "templates/auto", "templates/custom", "template_sources"]:
+    for d in ["uploads", "templates/auto", "templates/custom", "template_sources", "data/models"]:
         target = os.path.join(dest_root, d)
         if not os.path.exists(target):
             os.makedirs(target)
@@ -80,6 +97,7 @@ try:
     logging.info("Backend 'main' module imported successfully.")
 except Exception as e:
     logging.error(f"Error importing backend: {e}", exc_info=True)
+    # Important: Re-raise or exit so we see this in the error log
     sys.exit(1)
 
 def get_free_port():
@@ -91,16 +109,18 @@ def get_free_port():
 
 def start_server(port):
     logging.info(f"Starting uvicorn on port {port}...")
-    
-    # Fix for PyInstaller noconsole: stdout/stderr might be None, causing Uvicorn to crash
-    if sys.stdout is None:
-        sys.stdout = open(os.devnull, 'w')
-    if sys.stderr is None:
-        sys.stderr = open(os.devnull, 'w')
-        
     try:
-        # Use Config/Server pattern for better control if needed, but run() is fine with valid streams
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", workers=1)
+        # Use Config/Server for better robustness
+        config = uvicorn.Config(
+            app, 
+            host="127.0.0.1", 
+            port=port, 
+            log_level="info", 
+            workers=1,
+            loop="asyncio"
+        )
+        server = uvicorn.Server(config)
+        server.run()
     except Exception as e:
         logging.error(f"Uvicorn error: {e}", exc_info=True)
 
@@ -112,13 +132,13 @@ def wait_for_server(port, timeout=60):
         attempts += 1
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
-                logging.info(f"Server is up and listening on port {port} (after {attempts} attempts)")
+                logging.info(f"Server is up on port {port}")
                 return True
         except (socket.timeout, ConnectionRefusedError):
             if attempts % 5 == 0:
-                logging.info(f"Still waiting for server on port {port}... (attempt {attempts})")
+                logging.info(f"Waiting for server... ({attempts})")
             time.sleep(1)
-    logging.error(f"Server failed to start on port {port} within {timeout} seconds after {attempts} attempts")
+    logging.error(f"Timeout waiting for server on port {port}")
     return False
 
 try:
