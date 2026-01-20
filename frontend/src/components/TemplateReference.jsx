@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function TemplateReference({ device, headerCollapsed = false }) {
@@ -1520,11 +1520,9 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
                     <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
                         {!result ? (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', gap: '20px', opacity: 0.5 }}>
-                                <div style={{ width: '144px', height: '144px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <FileText size={64} style={{ opacity: 0.3 }} />
-                                </div>
-                                <p style={{ fontSize: '1.2rem', fontWeight: '500' }}>待执行: 请上传文件并点击"开始提取"</p>
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', opacity: 0.5 }}>
+                                <Files size={64} strokeWidth={1.5} style={{ marginBottom: '25px', opacity: 0.6 }} />
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>工作台就绪</div>
                             </div>
                         ) : (
                             <div className="animate-fade-in">

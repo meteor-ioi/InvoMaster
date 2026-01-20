@@ -12,7 +12,7 @@ const getSystemTheme = () => {
 };
 
 function App() {
-    const [view, setView] = useState('reference'); // 'creator', 'reference', 'apicall'
+    const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
     // 主题模式: 'system' | 'light' | 'dark'
     const [themeMode, setThemeMode] = useState(() => localStorage.getItem('hitl-theme-mode') || 'system');
     // 实际应用的主题: 'light' | 'dark'
