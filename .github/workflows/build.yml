@@ -7,8 +7,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: IndustryPDF-macOS
+            zip_name: IndustryPDF-macOS.zip
+          - os: windows-latest
+            artifact_name: IndustryPDF-Windows
+            zip_name: IndustryPDF-Windows.zip
+    runs-on: ${{ matrix.os }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,76 +40,64 @@ jobs:
       
       - name: Build Frontend
         working-directory: frontend
-        run: |
-          npm install
-          npm run build
-      
-      - name: Build Desktop App
-        run: |
-          python -m PyInstaller industry_pdf.spec --clean --noconfirm
-      
-      - name: Compress App Bundle
-        run: |
-          cd dist
-          zip -r IndustryPDF-macOS.zip 票据识别专家.app
-      
-      - name: Upload macOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: IndustryPDF-macOS
-          path: dist/IndustryPDF-macOS.zip
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Python dependencies
-        shell: cmd
-        run: |
-          python -m pip install --upgrade pip
-          pip install fastapi huggingface-hub numpy onnxruntime opencv-python-headless pdfplumber pillow pydantic-settings pymupdf python-multipart rapidocr-onnxruntime uvicorn pywebview pyinstaller
-      
-      - name: Build Frontend
-        working-directory: frontend
-        shell: cmd
+        shell: bash
         run: |
           npm install && npm run build
       
       - name: Verify Frontend Build
-        shell: pwsh
+        shell: bash
         run: |
-          if (Test-Path "frontend/dist") {
-              Write-Host "Frontend build verified."
+          if [ -d "frontend/dist" ]; then
+              echo "Frontend build verified."
               ls frontend/dist
-          } else {
-              Write-Error "Frontend dist directory NOT found!"
+          else
+              echo "Frontend dist directory NOT found!"
               exit 1
-          }
+          fi
       
       - name: Build Desktop App
-        shell: cmd
+        shell: bash
         run: |
           python -m PyInstaller industry_pdf.spec --clean --noconfirm
       
-      - name: Compress App Folder
+      - name: Compress App Bundle (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r ../${{ matrix.zip_name }} 票据识别专家.app
+      
+      - name: Compress App Folder (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist\票据识别专家" -DestinationPath "dist\IndustryPDF-Windows.zip"
+          Compress-Archive -Path "dist\票据识别专家" -DestinationPath "${{ matrix.zip_name }}"
       
-      - name: Upload Windows Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: IndustryPDF-Windows
-          path: dist/IndustryPDF-Windows.zip
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.zip_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      
+      - name: List artifacts
+        run: ls -R
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            IndustryPDF-macOS/IndustryPDF-macOS.zip
+            IndustryPDF-Windows/IndustryPDF-Windows.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
