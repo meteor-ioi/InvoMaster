@@ -103,13 +103,29 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
         setTimeout(() => setCopied(null), 2000);
     };
 
-    const handleDownload = (data, filename) => {
+    const handleDownload = async (data, filename) => {
         const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
+        const saveFilename = filename.split('.')[0] + '_result.json';
+
+        // Check if running in pywebview
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file) {
+            try {
+                await window.pywebview.api.save_file(json, saveFilename);
+            } catch (err) {
+                console.error("Native save failed", err);
+                triggerBrowserDownload(json, saveFilename);
+            }
+        } else {
+            triggerBrowserDownload(json, saveFilename);
+        }
+    };
+
+    const triggerBrowserDownload = (content, filename) => {
+        const blob = new Blob([content], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = filename.split('.')[0] + '_result.json';
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

@@ -794,7 +794,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         let content = "";
         let ext = "";
         let type = "text/plain";
@@ -804,12 +804,35 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
         else if (outputFormat === 'xml') { content = getXml(); ext = "xml"; type = "application/xml"; }
         else if (outputFormat === 'csv') { content = getCsv(); ext = "csv"; type = "text/csv;charset=utf-8;"; }
 
+        const filename = `extraction_${new Date().getTime()}.${ext}`;
+
+        // Check if running in pywebview
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file) {
+            try {
+                const success = await window.pywebview.api.save_file(content, filename);
+                if (success) {
+                    // Optional: Show a success toast or notification
+                }
+            } catch (err) {
+                console.error("Native save failed", err);
+                // Fallback to browser download if native fails
+                triggerBrowserDownload(content, filename, type);
+            }
+        } else {
+            triggerBrowserDownload(content, filename, type);
+        }
+    };
+
+    const triggerBrowserDownload = (content, filename, type) => {
         const blob = new Blob([content], { type });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `extraction_${new Date().getTime()}.${ext}`;
+        a.download = filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     // --- Filtered Templates Logic ---

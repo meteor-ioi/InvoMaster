@@ -116,6 +116,40 @@ try:
 except Exception as e:
     logging.warning(f"Failed to set DPI awareness: {e}")
 
+class JSApi:
+    def __init__(self):
+        self.window = None
+
+    def save_file(self, content, filename):
+        """
+        Open a native save file dialog and write content to the selected path.
+        """
+        if not self.window:
+            return False
+            
+        file_types = ('All files (*.*)',)
+        if filename.endswith('.json'): file_types = ('JSON files (*.json)', 'All files (*.*)')
+        elif filename.endswith('.csv'): file_types = ('CSV files (*.csv)', 'All files (*.*)')
+        elif filename.endswith('.md'): file_types = ('Markdown files (*.md)', 'All files (*.*)')
+        elif filename.endswith('.xml'): file_types = ('XML files (*.xml)', 'All files (*.*)')
+        
+        try:
+            result = self.window.create_file_dialog(
+                webview.SAVE_DIALOG, 
+                save_filename=filename, 
+                file_types=file_types
+            )
+            
+            if result:
+                # result is the path string
+                with open(result, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return True
+        except Exception as e:
+            logging.error(f"Error saving file: {e}")
+            
+        return False
+
 def main():
     try:
         # Check for pythonnet on Windows
@@ -131,6 +165,9 @@ def main():
         
         # Bootstrap Assets
         bootstrap_assets(base_path)
+
+        # Initialize API
+        js_api = JSApi()
 
         # 1. Let's Modify app instance BEFORE starting uvicorn to avoid race conditions!
         from fastapi.staticfiles import StaticFiles
@@ -181,8 +218,10 @@ def main():
             width=1420,
             height=820,
             resizable=True,
-            background_color='#0f172a' # Prevent white flash, match dark theme
+            background_color='#0f172a', # Prevent white flash, match dark theme
+            js_api=js_api
         )
+        js_api.window = window
         
         # On Windows, force edgechromium (WebView2)
         gui_engine = 'edgechromium' if sys.platform == 'win32' else None
