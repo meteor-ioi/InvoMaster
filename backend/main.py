@@ -1229,7 +1229,7 @@ MODELS_CONFIG = {
     "yolo": {
         "name": "Layout Analysis (YOLOv10)",
         "file": "yolov10-doclayout.onnx", # This matches config["filename"] in get_model_status
-        "repo": "Kira-P/industry-pdf-models",
+        "repo": "jameslahm/yolov10-doclayout",
         "filename": "yolov10-doclayout.onnx",
         "size": "77MB",
         "expected_size": 80742400, # Approx size in bytes
@@ -1238,7 +1238,7 @@ MODELS_CONFIG = {
     "ocr_det": {
         "name": "OCR Detection",
         "file": "ch_PP-OCRv4_det_infer.onnx", # Flat name for local check
-        "repo": "Kira-P/industry-pdf-models",
+        "repo": "intelligent-flow/RapidOCR",
         "filename": "ocr/ch_PP-OCRv4_det_infer.onnx", # Subpath for HF download
         "size": "4.7MB",
         "expected_size": 4894371, 
@@ -1247,7 +1247,7 @@ MODELS_CONFIG = {
     "ocr_rec": {
         "name": "OCR Recognition",
         "file": "ch_PP-OCRv4_rec_infer.onnx",
-        "repo": "Kira-P/industry-pdf-models",
+        "repo": "intelligent-flow/RapidOCR",
         "filename": "ocr/ch_PP-OCRv4_rec_infer.onnx", # Subpath in repo
         "size": "11MB",
         "expected_size": 10905190,
