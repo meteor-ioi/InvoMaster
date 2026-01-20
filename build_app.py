@@ -26,11 +26,13 @@ def main():
 
     # 2. Package with PyInstaller
     print("\n--- Step 2: Packaging with PyInstaller ---")
-    # Ensure we use the backend venv if available, or current python
-    pyinstaller_cmd = "pyinstaller industry_pdf.spec --clean --noconfirm"
     
-    # Optional: If you want to use 'uv' to run pyinstaller (recommended for this project)
-    # pyinstaller_cmd = "uv run --project backend pyinstaller industry_pdf.spec --clean --noconfirm"
+    # Check if we should use uv (recommended for this project)
+    has_uv = subprocess.call("command -v uv", shell=True, stdout=subprocess.DEVNULL) == 0
+    if has_uv:
+        pyinstaller_cmd = "uv run pyinstaller industry_pdf.spec --clean --noconfirm"
+    else:
+        pyinstaller_cmd = "pyinstaller industry_pdf.spec --clean --noconfirm"
     
     run_command(pyinstaller_cmd, cwd=project_root)
 
@@ -38,9 +40,9 @@ def main():
     print(f"The packaged application can be found in: {dist_dir}")
     
     if sys.platform == 'darwin':
-        print("Final App: dist/票据识别专家.app")
+        print("Final App: dist/InvoMaster.app")
     elif sys.platform == 'win32':
-        print("Final App Folder: dist/票据识别专家")
+        print("Final App Folder: dist/InvoMaster")
 
 if __name__ == "__main__":
     main()

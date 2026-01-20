@@ -91,22 +91,34 @@ def get_free_port():
 
 def start_server(port):
     logging.info(f"Starting uvicorn on port {port}...")
+    
+    # Fix for PyInstaller noconsole: stdout/stderr might be None, causing Uvicorn to crash
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+        
     try:
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="error")
+        # Use Config/Server pattern for better control if needed, but run() is fine with valid streams
+        uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", workers=1)
     except Exception as e:
         logging.error(f"Uvicorn error: {e}", exc_info=True)
 
-def wait_for_server(port, timeout=30):
+def wait_for_server(port, timeout=60):
     """Wait for the server to start listening on the given port."""
     start_time = time.time()
+    attempts = 0
     while time.time() - start_time < timeout:
+        attempts += 1
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
-                logging.info(f"Server is up and listening on port {port}")
+                logging.info(f"Server is up and listening on port {port} (after {attempts} attempts)")
                 return True
         except (socket.timeout, ConnectionRefusedError):
-            time.sleep(0.5)
-    logging.error(f"Server failed to start on port {port} within {timeout} seconds")
+            if attempts % 5 == 0:
+                logging.info(f"Still waiting for server on port {port}... (attempt {attempts})")
+            time.sleep(1)
+    logging.error(f"Server failed to start on port {port} within {timeout} seconds after {attempts} attempts")
     return False
 
 try:
@@ -152,6 +164,19 @@ class JSApi:
 
 def main():
     try:
+        # 0. Check for UNC Path (Windows only)
+        # Running from a network share (like \\Mac\Home) is known to cause Uvicorn/Python issues
+        current_exe_path = os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__)
+        if sys.platform == 'win32' and current_exe_path.startswith('\\\\'):
+            msg = "检测到程序正在网络共享路径（UNC）下运行。这可能导致服务启动失败或极度缓慢。\n\n强烈建议将程序文件夹移动到本地磁盘（如 C: 或 D: 盘）后再运行。"
+            logging.warning("Running from UNC path: " + current_exe_path)
+            # Show message box
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(0, msg, "运行环境警告", 0x30)
+            except:
+                pass
+
         # Check for pythonnet on Windows
         if sys.platform == 'win32':
             try:
@@ -206,6 +231,12 @@ def main():
         # 3. Wait for server to start
         if not wait_for_server(port):
             logging.error("Backend server did not start in time. Exiting.")
+            # Show fatal error dialog on Windows
+            if sys.platform == 'win32':
+                try:
+                    import ctypes
+                    ctypes.windll.user32.MessageBoxW(0, "后端服务启动超时，请检查日志或移动到本地磁盘运行。", "启动失败", 0x10)
+                except: pass
             return
 
         # 4. Start WebView
@@ -213,7 +244,7 @@ def main():
         
         # Important: window must be created BEFORE start()
         window = webview.create_window(
-            '票据识别专家', 
+            'InvoMaster', 
             f'http://127.0.0.1:{port}',
             width=1420,
             height=820,
@@ -227,7 +258,7 @@ def main():
         gui_engine = 'edgechromium' if sys.platform == 'win32' else None
         
         logging.info(f"Calling webview.start(gui={gui_engine})...")
-        webview.start(gui=gui_engine, debug=True) # debug=True can provide more info in logs if supported
+        webview.start(gui=gui_engine, debug=False)
         logging.info("Webview closed.")
         
     except Exception as e:

@@ -110,13 +110,13 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           cd dist
-          zip -r ../${{ matrix.zip_name }} 票据识别专家.app
+          zip -r ../${{ matrix.zip_name }} InvoMaster.app
       
       - name: Compress App Folder (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist\票据识别专家" -DestinationPath "${{ matrix.zip_name }}"
+          Compress-Archive -Path "dist\InvoMaster" -DestinationPath "${{ matrix.zip_name }}"
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

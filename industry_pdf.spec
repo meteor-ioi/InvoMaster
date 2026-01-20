@@ -82,7 +82,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='票据识别专家',
+    name='InvoMaster',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -103,7 +103,7 @@ if sys.platform == 'darwin':
         a.binaries,
         a.zipfiles,
         a.datas,
-        name='票据识别专家.app',
+        name='InvoMaster.app',
         icon=icon_file,
         bundle_identifier='com.industrypdf.app'
     )
@@ -117,5 +117,5 @@ else:
         strip=False,
         upx=True,
         upx_exclude=[],
-        name='票据识别专家',
+        name='InvoMaster',
     )
