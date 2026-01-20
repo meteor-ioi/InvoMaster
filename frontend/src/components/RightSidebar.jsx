@@ -340,83 +340,94 @@ const RightSidebar = ({
                                 width: '100%',
                                 padding: '15px',
                                 flexDirection: 'column',
-                                gap: '15px',
                                 borderRadius: '16px',
                                 display: 'flex',
                                 flex: 1,
-                                overflowY: 'auto'
+                                overflow: 'hidden'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '5px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Package size={16} color="var(--accent-color)" />
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
+                            {/* 内部可滚动区域 */}
+                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px', paddingRight: '2px' }} className="custom-scrollbar">
+                                <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Package size={16} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
+                                    </div>
                                 </div>
 
-                                {/* Compact Mode Tabs */}
-                                <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                {/* 模式切换栏 (移动至卡片内容中) */}
+                                <div style={{ display: 'flex', gap: '2px', background: 'var(--input-bg)', padding: '2px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                                     <button
                                         onClick={() => setTemplateMode('auto')}
                                         title="标准模式"
                                         style={{
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
+                                            flex: 1,
+                                            padding: '6px 8px',
+                                            borderRadius: '8px',
                                             border: 'none',
-                                            fontSize: '10px',
+                                            fontSize: '11px',
                                             cursor: 'pointer',
                                             background: templateMode === 'auto' ? 'var(--primary-color)' : 'transparent',
                                             color: templateMode === 'auto' ? '#fff' : 'var(--text-secondary)',
                                             fontWeight: templateMode === 'auto' ? 'bold' : 'normal',
                                             transition: 'all 0.3s ease',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                         }}
                                     >
-                                        <Sparkles size={10} /> 标准模式
+                                        <Sparkles size={12} /> 标准模式
                                     </button>
                                     <button
                                         onClick={() => setTemplateMode('custom')}
                                         title="自定义模式"
                                         style={{
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
+                                            flex: 1,
+                                            padding: '6px 8px',
+                                            borderRadius: '8px',
                                             border: 'none',
-                                            fontSize: '10px',
+                                            fontSize: '11px',
                                             cursor: 'pointer',
                                             background: templateMode === 'custom' ? 'var(--accent-color)' : 'transparent',
                                             color: templateMode === 'custom' ? '#fff' : 'var(--text-secondary)',
                                             fontWeight: templateMode === 'custom' ? 'bold' : 'normal',
                                             transition: 'all 0.3s ease',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                                         }}
                                     >
-                                        <User size={10} /> 自定义模式
+                                        <User size={12} /> 自定义模式
                                     </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>模板名称</div>
+                                    <input
+                                        type="text"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                        placeholder="请输入保存模板名称..."
+                                        style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+                                    />
                                 </div>
                             </div>
 
-                            <input
-                                type="text"
-                                value={templateName}
-                                onChange={(e) => setTemplateName(e.target.value)}
-                                placeholder="请输入保存模板名称"
-                                style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '12px' }}
-                            />
-
-                            <button
-                                onClick={handleSaveTemplate}
-                                className="btn-primary"
-                                style={{
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '10px',
-                                    background: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)',
-                                    borderColor: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)'
-                                }}
-                            >
-                                <Save size={16} /> 保存并入库
-                            </button>
+                            {/* 底部固定按钮区 */}
+                            <div style={{ paddingTop: '15px' }}>
+                                <button
+                                    onClick={handleSaveTemplate}
+                                    className="btn-primary"
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '10px',
+                                        margin: 0,
+                                        background: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)',
+                                        borderColor: templateMode === 'auto' ? 'var(--primary-color)' : 'var(--accent-color)'
+                                    }}
+                                >
+                                    <Save size={16} /> 保存并入库
+                                </button>
+                            </div>
                         </div>
                     )}
                 </>

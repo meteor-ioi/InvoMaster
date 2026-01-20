@@ -14,15 +14,15 @@ const getSystemTheme = () => {
 function App() {
     const [view, setView] = useState('reference'); // 'creator', 'reference', 'apicall'
     // 主题模式: 'system' | 'light' | 'dark'
-    const [themeMode, setThemeMode] = useState(() => localStorage.getItem('babeldoc-theme-mode') || 'system');
+    const [themeMode, setThemeMode] = useState(() => localStorage.getItem('hitl-theme-mode') || 'system');
     // 实际应用的主题: 'light' | 'dark'
     const [appliedTheme, setAppliedTheme] = useState(() => {
-        const mode = localStorage.getItem('babeldoc-theme-mode') || 'system';
+        const mode = localStorage.getItem('hitl-theme-mode') || 'system';
         return mode === 'system' ? getSystemTheme() : mode;
     });
-    const [device, setDevice] = useState(localStorage.getItem('babeldoc-device') || 'cpu');
+    const [device, setDevice] = useState(localStorage.getItem('hitl-device') || 'cpu');
     const [isSidebarsCollapsed, setIsSidebarsCollapsed] = useState(false);
-    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('babeldoc-header-collapsed') === 'true');
+    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('hitl-header-collapsed') === 'true');
     const [isHoveringHeaderToggle, setIsHoveringHeaderToggle] = useState(false);
 
     const toggleSidebars = () => {
@@ -44,7 +44,7 @@ function App() {
 
         setAppliedTheme(newAppliedTheme);
         document.documentElement.setAttribute('data-theme', newAppliedTheme);
-        localStorage.setItem('babeldoc-theme-mode', themeMode);
+        localStorage.setItem('hitl-theme-mode', themeMode);
     }, [themeMode]);
 
     // 监听系统主题变化
@@ -63,11 +63,11 @@ function App() {
     }, [themeMode]);
 
     useEffect(() => {
-        localStorage.setItem('babeldoc-device', device);
+        localStorage.setItem('hitl-device', device);
     }, [device]);
 
     useEffect(() => {
-        localStorage.setItem('babeldoc-header-collapsed', isHeaderCollapsed);
+        localStorage.setItem('hitl-header-collapsed', isHeaderCollapsed);
     }, [isHeaderCollapsed]);
 
     const tabs = [
@@ -96,7 +96,7 @@ function App() {
                 position: 'sticky',
                 top: 0,
                 zIndex: 1000,
-                padding: isHeaderCollapsed ? '0 12px' : '0 20px',
+                padding: '0 20px',
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 overflow: 'visible'
             }}>
@@ -106,7 +106,7 @@ function App() {
                         {/* 左侧：硬件加速（缩小版） */}
                         <div style={{
                             display: 'flex',
-                            gap: '3px',
+                            gap: '2px',
                             background: 'var(--input-bg)',
                             border: '1px solid var(--glass-border)',
                             padding: '2px',
@@ -118,23 +118,23 @@ function App() {
                                     key={d.id}
                                     onClick={() => setDevice(d.id)}
                                     style={{
-                                        padding: '3px 6px',
+                                        padding: '4px 8px',
                                         borderRadius: '6px',
                                         border: 'none',
                                         background: 'transparent',
                                         color: device === d.id ? 'white' : 'var(--text-secondary)',
-                                        fontSize: '9px',
+                                        fontSize: '11px',
                                         fontWeight: 'bold',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '3px',
+                                        gap: '4px',
                                         position: 'relative',
                                         zIndex: 1,
                                         transition: 'color 0.2s ease'
                                     }}
                                 >
-                                    {React.cloneElement(d.icon, { size: 11 })}
+                                    {React.cloneElement(d.icon, { size: 13 })}
                                     {d.label}
                                     {device === d.id && (
                                         <motion.div
@@ -159,14 +159,14 @@ function App() {
                             left: '50%',
                             transform: 'translateX(-50%)',
                             display: 'flex',
-                            gap: '6px'
+                            gap: '4px'
                         }}>
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setView(tab.id)}
                                     style={{
-                                        padding: '4px 8px',
+                                        padding: '4px 10px',
                                         borderRadius: '8px',
                                         border: 'none',
                                         background: view === tab.id ? 'var(--primary-color)' : 'transparent',
@@ -174,26 +174,26 @@ function App() {
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '4px',
-                                        fontSize: '10px',
+                                        gap: '6px',
+                                        fontSize: '11px',
                                         fontWeight: 'bold',
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    {React.cloneElement(tab.icon, { size: 13 })}
+                                    {React.cloneElement(tab.icon, { size: 14 })}
                                     <span>{tab.label}</span>
                                 </button>
                             ))}
                         </div>
 
                         {/* 右侧：功能按钮组（缩小版） */}
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                                 onClick={toggleSidebars}
                                 style={{
                                     background: 'var(--input-bg)',
                                     border: '1px solid var(--glass-border)',
-                                    padding: '5px',
+                                    padding: '6px',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     color: isSidebarsCollapsed ? 'var(--primary-color)' : 'var(--text-primary)',
@@ -204,7 +204,7 @@ function App() {
                                 }}
                                 title={isSidebarsCollapsed ? '展开所有侧边栏' : '折叠所有侧边栏'}
                             >
-                                {isSidebarsCollapsed ? <ChevronsLeftRight size={13} /> : <ChevronsRightLeft size={13} />}
+                                {isSidebarsCollapsed ? <ChevronsLeftRight size={14} /> : <ChevronsRightLeft size={14} />}
                             </button>
 
                             <button
@@ -215,7 +215,7 @@ function App() {
                                 style={{
                                     background: 'var(--input-bg)',
                                     border: '1px solid var(--glass-border)',
-                                    padding: '5px',
+                                    padding: '6px',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     color: 'var(--text-primary)',
@@ -230,9 +230,9 @@ function App() {
                                             '黑夜主题'
                                 }
                             >
-                                {themeMode === 'system' ? <Monitor size={13} /> :
-                                    themeMode === 'light' ? <Sun size={13} /> :
-                                        <Moon size={13} />}
+                                {themeMode === 'system' ? <Monitor size={14} /> :
+                                    themeMode === 'light' ? <Sun size={14} /> :
+                                        <Moon size={14} />}
                             </button>
                         </div>
                     </>
