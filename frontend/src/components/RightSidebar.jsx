@@ -345,7 +345,7 @@ const RightSidebar = ({
                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px', paddingRight: '2px' }} className="custom-scrollbar">
                                 <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Package size={16} color="var(--primary-color)" />
+                                        <Package size={16} color={templateMode === 'custom' ? 'var(--accent-color)' : 'var(--primary-color)'} />
                                         <span style={{ fontSize: '13px', fontWeight: 'bold' }}>模板保存</span>
                                     </div>
                                 </div>
@@ -422,7 +422,7 @@ const RightSidebar = ({
                                                 : 'linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%)',
                                             border: 'none',
                                             boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
-                                            fontSize: '14px',
+                                            fontSize: '12px',
                                             padding: '0 12px',
                                             height: '42px',
                                             borderRadius: '12px',
@@ -438,7 +438,7 @@ const RightSidebar = ({
                                             e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.25)';
                                         }}
                                     >
-                                        <Save size={16} />
+                                        <Save size={14} />
                                         保存模板
                                     </button>
 

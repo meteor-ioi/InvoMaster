@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files, XCircle, Filter } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function TemplateReference({ device, headerCollapsed = false }) {
@@ -34,6 +34,13 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
     const [processingIndex, setProcessingIndex] = useState(-1);  // 当前处理的文件索引 (-1 表示未在处理)
     const [isBatchMode, setIsBatchMode] = useState(false);       // 是否处于批处理模式
     const [isDragging, setIsDragging] = useState(false);         // 拖拽状态
+
+    // --- Filter States ---
+    const [filterStatus, setFilterStatus] = useState('all');     // 'all' | 'success' | 'failed' | 'processing'
+    const [filterSearch, setFilterSearch] = useState('');        // 搜索关键词
+    const [filterTemplate, setFilterTemplate] = useState('all'); // 'all' | templateId
+    const [filterDateRange, setFilterDateRange] = useState('all'); // 'all' | 'today' | 'week' | 'month'
+    const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false); // 高级筛选展开状态
 
     useEffect(() => {
         fetchTemplates();
@@ -422,6 +429,84 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
         setProcessingIndex(-1);
         setLoading(false);
     };
+
+    // --- Filter Helper Functions ---
+    const getRecordStatus = (record) => {
+        // For processing files
+        if (files.some((f, i) => f.name === record.filename && (i === processingIndex || loading))) {
+            return 'processing';
+        }
+        // For history records - all completed
+        return 'success';
+    };
+
+    const isInDateRange = (timestamp, range) => {
+        if (range === 'all') return true;
+        const recordDate = new Date(timestamp);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        switch (range) {
+            case 'today':
+                return recordDate >= today;
+            case 'week':
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return recordDate >= weekAgo;
+            case 'month':
+                const monthAgo = new Date(today);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                return recordDate >= monthAgo;
+            default:
+                return true;
+        }
+    };
+
+    const matchesKeyword = (record, keyword) => {
+        if (!keyword) return true;
+        const lowerKeyword = keyword.toLowerCase();
+        return (
+            record.filename?.toLowerCase().includes(lowerKeyword) ||
+            record.template_name?.toLowerCase().includes(lowerKeyword)
+        );
+    };
+
+    // Filtered history records
+    const filteredHistory = useMemo(() => {
+        return history.filter(record => {
+            // 1. Status filter
+            if (filterStatus !== 'all' && getRecordStatus(record) !== filterStatus) return false;
+
+            // 2. Date range filter
+            if (filterDateRange !== 'all' && !isInDateRange(record.timestamp, filterDateRange)) return false;
+
+            // 3. Template filter
+            if (filterTemplate !== 'all') {
+                // Match by template name or ID
+                const matchById = record.template_id === filterTemplate;
+                const matchByName = record.template_name === templates.find(t => t.id === filterTemplate)?.name;
+                if (!matchById && !matchByName) return false;
+            }
+
+            // 4. Keyword search
+            if (filterSearch && !matchesKeyword(record, filterSearch)) return false;
+
+            return true;
+        });
+    }, [history, filterStatus, filterDateRange, filterTemplate, filterSearch, files, processingIndex, loading, templates]);
+
+    // Count records by status
+    const statusCounts = useMemo(() => {
+        const counts = { all: history.length, success: 0, failed: 0, processing: 0 };
+        history.forEach(record => {
+            const status = getRecordStatus(record);
+            counts[status] = (counts[status] || 0) + 1;
+        });
+        // Add processing files
+        counts.processing += files.length;
+        counts.all += files.length;
+        return counts;
+    }, [history, files, processingIndex, loading]);
 
     // 按页面位置排序(从左上到右下):优先按 y 坐标,同一水平线上按 x 坐标
     const getSortedEntries = (data) => {
@@ -1284,13 +1369,218 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                             padding: '15px',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            gap: '10px',
+                                            gap: '12px',
                                             animation: 'fadeIn 0.3s ease',
                                             overflow: 'hidden'
                                         }}>
+                                            {/* Search Box */}
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                                    <Search size={14} color="var(--text-secondary)" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="搜索文件名/模板名..."
+                                                        value={filterSearch}
+                                                        onChange={(e) => setFilterSearch(e.target.value)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            outline: 'none',
+                                                            fontSize: '12px',
+                                                            color: 'var(--text-primary)',
+                                                            width: '100%'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Status Filter Buttons */}
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', paddingLeft: '2px' }}>状态</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                                                    <button
+                                                        onClick={() => setFilterStatus('all')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'all' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'all' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'all' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'all' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <Package size={12} />
+                                                        全部 {statusCounts.all > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--primary-color)', color: 'white' }}>{statusCounts.all}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('success')}
+                                                        style={{
+                                                            padding: ' 8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'success' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'success' ? 'var(--success-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'success' ? 'var(--success-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <CheckCircle size={12} />
+                                                        成功 {statusCounts.success > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--success-color)', color: 'white' }}>{statusCounts.success}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('processing')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'processing' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'processing' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'processing' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'processing' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <RefreshCw size={12} className={statusCounts.processing > 0 ? 'animate-spin' : ''} />
+                                                        处理中 {statusCounts.processing > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--primary-color)', color: 'white' }}>{statusCounts.processing}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('failed')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'failed' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'failed' ? '#ef4444' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'failed' ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'failed' ? '#ef4444' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <XCircle size={12} />
+                                                        失败 {statusCounts.failed > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: '#ef4444', color: 'white' }}>{statusCounts.failed}</span>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Advanced Filters (Collapsible) */}
+                                            <div>
+                                                <div
+                                                    onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        cursor: 'pointer',
+                                                        padding: '6px 2px',
+                                                        fontSize: '11px',
+                                                        color: 'var(--text-secondary)',
+                                                        userSelect: 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <Filter size={12} />
+                                                        更多筛选
+                                                    </div>
+                                                    {isAdvancedFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                </div>
+                                                <div style={{
+                                                    maxHeight: isAdvancedFilterOpen ? '500px' : '0',
+                                                    opacity: isAdvancedFilterOpen ? 1 : 0,
+                                                    overflow: 'hidden',
+                                                    transition: 'max-height 0.3s ease, opacity 0.2s ease',
+                                                    marginTop: isAdvancedFilterOpen ? '8px' : '0'
+                                                }}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '10px',
+                                                        padding: '10px',
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--glass-border)'
+                                                    }}>
+                                                        {/* Date Range Filter */}
+                                                        <div>
+                                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                                                时间范围
+                                                            </label>
+                                                            <select
+                                                                value={filterDateRange}
+                                                                onChange={(e) => setFilterDateRange(e.target.value)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '6px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '11px',
+                                                                    background: 'var(--input-bg)',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    color: 'var(--text-primary)',
+                                                                    outline: 'none'
+                                                                }}
+                                                            >
+                                                                <option value="all">全部时间</option>
+                                                                <option value="today">今天</option>
+                                                                <option value="week">近7天</option>
+                                                                <option value="month">近30天</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {/* Template Filter */}
+                                                        <div>
+                                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                                                指定模板
+                                                            </label>
+                                                            <select
+                                                                value={filterTemplate}
+                                                                onChange={(e) => setFilterTemplate(e.target.value)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '6px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '11px',
+                                                                    background: 'var(--input-bg)',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    color: 'var(--text-primary)',
+                                                                    outline: 'none'
+                                                                }}
+                                                            >
+                                                                <option value="all">全部模板</option>
+                                                                {templates.map(t => (
+                                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Result Count and Actions */}
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    共 {history.length} 条记录
+                                                    共 {filteredHistory.length} 条记录
                                                 </span>
                                                 {history.length > 0 && selectedHistory.size > 0 && (
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1333,10 +1623,14 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                             </div>
                                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                                 {/* 统一的提取记录列表 (Pending + Processing + History) */}
-                                                {files.length === 0 && history.length === 0 ? (
+                                                {files.length === 0 && filteredHistory.length === 0 ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
                                                         <Clock size={32} />
-                                                        <span style={{ fontSize: '12px' }}>暂无记录</span>
+                                                        <span style={{ fontSize: '12px' }}>
+                                                            {filterStatus !== 'all' || filterSearch || filterTemplate !== 'all' || filterDateRange !== 'all'
+                                                                ? '未找到匹配的记录'
+                                                                : '暂无记录'}
+                                                        </span>
                                                     </div>
                                                 ) : (
                                                     <>
@@ -1390,7 +1684,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                                         })}
 
                                                         {/* 已完成的历史记录 */}
-                                                        {history.map((h, hIdx) => (
+                                                        {filteredHistory.map((h, hIdx) => (
                                                             <div
                                                                 key={`history-${h.index}`}
                                                                 onClick={() => handleViewHistory(h.index)}

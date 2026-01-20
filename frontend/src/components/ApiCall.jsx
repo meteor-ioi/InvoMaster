@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
-import { Code, Copy, Terminal, ChevronDown, ChevronUp, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles, Clock, Trash2, CheckCircle, XCircle, RefreshCw, FileJson, Download, Eye, Upload, Package, User } from 'lucide-react';
+import { Code, Copy, Terminal, ChevronDown, ChevronUp, Check, ChevronLeft, ChevronRight, Search, Layout, Server, Sparkles, Clock, Trash2, CheckCircle, XCircle, RefreshCw, FileJson, Download, Eye, Upload, Package, User, Filter } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function ApiCall({ theme, device, headerCollapsed = false }) {
@@ -22,6 +22,13 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const [rightPanelMode, setRightPanelMode] = useState('code'); // 'code' | 'preview'
     const [activeTab, setActiveTab] = useState('templates'); // 'templates' | 'history'
     const fileInputRef = useRef(null);
+
+    // --- Filter States ---
+    const [filterStatus, setFilterStatus] = useState('all');     // 'all' | 'completed' | 'failed' | 'processing'
+    const [filterSearch, setFilterSearch] = useState('');        // 搜索关键词
+    const [filterTemplate, setFilterTemplate] = useState('all'); // 'all' | templateId
+    const [filterDateRange, setFilterDateRange] = useState('all'); // 'all' | 'today' | 'week' | 'month'
+    const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false); // 高级筛选展开状态
 
     // 测试 API 上传
     const handleTestUpload = async (e) => {
@@ -152,6 +159,71 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
             alert("删除失败");
         }
     };
+
+    // --- Filter Helper Functions ---
+    const getRecordStatus = (record) => {
+        return record.status; // 'completed', 'processing', 'failed'
+    };
+
+    const isInDateRange = (timestamp, range) => {
+        if (range === 'all') return true;
+        const recordDate = new Date(timestamp);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        switch (range) {
+            case 'today':
+                return recordDate >= today;
+            case 'week':
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return recordDate >= weekAgo;
+            case 'month':
+                const monthAgo = new Date(today);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                return recordDate >= monthAgo;
+            default:
+                return true;
+        }
+    };
+
+    const matchesKeyword = (record, keyword) => {
+        if (!keyword) return true;
+        const lowerKeyword = keyword.toLowerCase();
+        return (
+            record.filename?.toLowerCase().includes(lowerKeyword) ||
+            record.template_id?.toLowerCase().includes(lowerKeyword)
+        );
+    };
+
+    // Filtered API call records
+    const filteredRecords = useMemo(() => {
+        return apiCallRecords.filter(record => {
+            // 1. Status filter
+            if (filterStatus !== 'all' && getRecordStatus(record) !== filterStatus) return false;
+
+            // 2. Date range filter
+            if (filterDateRange !== 'all' && !isInDateRange(record.created_at, filterDateRange)) return false;
+
+            // 3. Template filter
+            if (filterTemplate !== 'all' && record.template_id !== filterTemplate) return false;
+
+            // 4. Keyword search
+            if (filterSearch && !matchesKeyword(record, filterSearch)) return false;
+
+            return true;
+        });
+    }, [apiCallRecords, filterStatus, filterDateRange, filterTemplate, filterSearch]);
+
+    // Count records by status
+    const statusCounts = useMemo(() => {
+        const counts = { all: apiCallRecords.length, completed: 0, failed: 0, processing: 0 };
+        apiCallRecords.forEach(record => {
+            const status = getRecordStatus(record);
+            counts[status] = (counts[status] || 0) + 1;
+        });
+        return counts;
+    }, [apiCallRecords]);
 
     // 删除单条记录
     const handleDeleteRecord = async (recordId, e) => {
@@ -748,13 +820,219 @@ fetch(url, {
                                             padding: '15px',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            gap: '10px',
+                                            gap: '12px',
                                             animation: 'fadeIn 0.3s ease',
                                             overflow: 'hidden'
                                         }}>
+                                            {/* Search Box */}
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                                    <Search size={14} color="var(--text-secondary)" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="搜索文件名/模板ID..."
+                                                        value={filterSearch}
+                                                        onChange={(e) => setFilterSearch(e.target.value)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            outline: 'none',
+                                                            fontSize: '12px',
+                                                            color: 'var(--text-primary)',
+                                                            width: '100%'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Status Filter Buttons */}
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', paddingLeft: '2px' }}>状态</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                                                    <button
+                                                        onClick={() => setFilterStatus('all')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'all' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'all' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'all' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'all' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <Package size={12} />
+                                                        全部 {statusCounts.all > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--primary-color)', color: 'white' }}>{statusCounts.all}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('completed')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'completed' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'completed' ? 'var(--success-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'completed' ? 'var(--success-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <CheckCircle size={12} />
+                                                        已完成 {statusCounts.completed > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--success-color)', color: 'white' }}>{statusCounts.completed}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('processing')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'processing' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'processing' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'processing' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'processing' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <RefreshCw size={12} className={statusCounts.processing > 0 ? 'animate-spin' : ''} />
+                                                        处理中 {statusCounts.processing > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: 'var(--primary-color)', color: 'white' }}>{statusCounts.processing}</span>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFilterStatus('failed')}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11px',
+                                                            fontWeight: filterStatus === 'failed' ? 'bold' : 'normal',
+                                                            border: `1px solid ${filterStatus === 'failed' ? '#ef4444' : 'var(--glass-border)'}`,
+                                                            background: filterStatus === 'failed' ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
+                                                            color: filterStatus === 'failed' ? '#ef4444' : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <XCircle size={12} />
+                                                        失败 {statusCounts.failed > 0 && <span style={{ fontSize: '10px', padding: '0px 4px', borderRadius: '8px', background: '#ef4444', color: 'white' }}>{statusCounts.failed}</span>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Advanced Filters (Collapsible) */}
+                                            <div>
+                                                <div
+                                                    onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        cursor: 'pointer',
+                                                        padding: '6px 2px',
+                                                        fontSize: '11px',
+                                                        color: 'var(--text-secondary)',
+                                                        userSelect: 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <Filter size={12} />
+                                                        更多筛选
+                                                    </div>
+                                                    {isAdvancedFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                </div>
+                                                <div style={{
+                                                    maxHeight: isAdvancedFilterOpen ? '500px' : '0',
+                                                    opacity: isAdvancedFilterOpen ? 1 : 0,
+                                                    overflow: 'hidden',
+                                                    transition: 'max-height 0.3s ease, opacity 0.2s ease',
+                                                    marginTop: isAdvancedFilterOpen ? '8px' : '0'
+                                                }}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '10px',
+                                                        padding: '10px',
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--glass-border)'
+                                                    }}>
+                                                        {/* Date Range Filter */}
+                                                        <div>
+                                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                                                时间范围
+                                                            </label>
+                                                            <select
+                                                                value={filterDateRange}
+                                                                onChange={(e) => setFilterDateRange(e.target.value)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '6px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '11px',
+                                                                    background: 'var(--input-bg)',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    color: 'var(--text-primary)',
+                                                                    outline: 'none'
+                                                                }}
+                                                            >
+                                                                <option value="all">全部时间</option>
+                                                                <option value="today">今天</option>
+                                                                <option value="week">近7天</option>
+                                                                <option value="month">近30天</option>
+                                                            </select>
+                                                        </div>
+
+                                                        {/* Template Filter */}
+                                                        <div>
+                                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                                                指定模板
+                                                            </label>
+                                                            <select
+                                                                value={filterTemplate}
+                                                                onChange={(e) => setFilterTemplate(e.target.value)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '6px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '11px',
+                                                                    background: 'var(--input-bg)',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    color: 'var(--text-primary)',
+                                                                    outline: 'none'
+                                                                }}
+                                                            >
+                                                                <option value="all">全部模板</option>
+                                                                <option value="auto">自动识别</option>
+                                                                {templates.map(t => (
+                                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Result Count and Actions */}
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '5px' }}>
                                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    共 {apiCallRecords.length} 条记录
+                                                    共 {filteredRecords.length} 条记录
                                                 </span>
                                                 {apiCallRecords.length > 0 && selectedRecords.size > 0 && (
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -796,15 +1074,17 @@ fetch(url, {
                                                 )}
                                             </div>
                                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
-                                                {apiCallRecords.length === 0 ? (
+                                                {filteredRecords.length === 0 ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5, gap: '10px' }}>
                                                         <Clock size={24} />
                                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                                                            暂无调用记录
+                                                            {filterStatus !== 'all' || filterSearch || filterTemplate !== 'all' || filterDateRange !== 'all'
+                                                                ? '未找到匹配的记录'
+                                                                : '暂无调用记录'}
                                                         </p>
                                                     </div>
                                                 ) : (
-                                                    apiCallRecords.map((record) => (
+                                                    filteredRecords.map((record) => (
                                                         <div
                                                             key={record.id}
                                                             onClick={() => handleViewRecord(record)}
