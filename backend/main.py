@@ -1229,8 +1229,8 @@ MODELS_CONFIG = {
     "yolo": {
         "name": "Layout Analysis (YOLOv10)",
         "file": "yolov10-doclayout.onnx", # This matches config["filename"] in get_model_status
-        "repo": "jameslahm/yolov10-doclayout",
-        "filename": "yolov10-doclayout.onnx",
+        "repo": "wybxc/DocLayout-YOLO-DocStructBench-onnx",
+        "filename": "doclayout_yolo_docstructbench_imgsz1024.onnx",
         "size": "77MB",
         "expected_size": 80742400, # Approx size in bytes
         "description": "用于自动识别页面布局和表格区域"
@@ -1238,8 +1238,8 @@ MODELS_CONFIG = {
     "ocr_det": {
         "name": "OCR Detection",
         "file": "ch_PP-OCRv4_det_infer.onnx", # Flat name for local check
-        "repo": "intelligent-flow/RapidOCR",
-        "filename": "ocr/ch_PP-OCRv4_det_infer.onnx", # Subpath for HF download
+        "repo": "SWHL/RapidOCR",
+        "filename": "PP-OCRv4/ch_PP-OCRv4_det_infer.onnx", # Subpath for HF download
         "size": "4.7MB",
         "expected_size": 4894371, 
         "description": "用于检测文字所在位置"
@@ -1247,8 +1247,8 @@ MODELS_CONFIG = {
     "ocr_rec": {
         "name": "OCR Recognition",
         "file": "ch_PP-OCRv4_rec_infer.onnx",
-        "repo": "intelligent-flow/RapidOCR",
-        "filename": "ocr/ch_PP-OCRv4_rec_infer.onnx", # Subpath in repo
+        "repo": "SWHL/RapidOCR",
+        "filename": "PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx", # Subpath in repo
         "size": "11MB",
         "expected_size": 10905190,
         "description": "用于将图片文字转为文本内容"

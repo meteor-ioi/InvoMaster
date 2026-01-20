@@ -65,16 +65,35 @@ jobs:
           python -c "
           from huggingface_hub import hf_hub_download
           import os
+          import shutil
           
-          # 1. Download YOLO model
+          # 1. Download YOLO model (from verified source)
           print('Downloading YOLO model...')
-          hf_hub_download(repo_id='jameslahm/yolov10-doclayout', filename='yolov10-doclayout.onnx', local_dir='backend/data/models', local_dir_use_symlinks=False)
+          yolo_path = hf_hub_download(
+              repo_id='wybxc/DocLayout-YOLO-DocStructBench-onnx', 
+              filename='doclayout_yolo_docstructbench_imgsz1024.onnx', 
+              local_dir='backend/data/models', 
+              local_dir_use_symlinks=False
+          )
+          # Rename to what the code expects: yolov10-doclayout.onnx
+          shutil.move(yolo_path, os.path.join('backend/data/models', 'yolov10-doclayout.onnx'))
           
-          # 2. Download OCR models
-          ocr_models = ['ch_PP-OCRv4_det_infer.onnx', 'ch_PP-OCRv4_rec_infer.onnx']
-          for m in ocr_models:
-              print(f'Downloading OCR model {m}...')
-              hf_hub_download(repo_id='intelligent-flow/RapidOCR', filename=f'ocr/{m}', local_dir='backend/data/models', local_dir_use_symlinks=False)
+          # 2. Download OCR models (from verified source)
+          ocr_repo = 'SWHL/RapidOCR'
+          ocr_files = ['ch_PP-OCRv4_det_infer.onnx', 'ch_PP-OCRv4_rec_infer.onnx']
+          for f in ocr_files:
+              print(f'Downloading OCR model {f}...')
+              hf_hub_download(
+                  repo_id=ocr_repo, 
+                  filename=f'PP-OCRv4/{f}', 
+                  local_dir='backend/data/models/ocr', 
+                  local_dir_use_symlinks=False
+              )
+              # hf_hub_download with local_dir + subpath creates a subfolder. Move file to root of /ocr
+              src = os.path.join('backend/data/models/ocr', 'PP-OCRv4', f)
+              dst = os.path.join('backend/data/models/ocr', f)
+              if os.path.exists(src):
+                  shutil.move(src, dst)
           "
 
       - name: Build Desktop App
