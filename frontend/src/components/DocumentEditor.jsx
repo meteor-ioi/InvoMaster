@@ -377,8 +377,11 @@ const DocumentEditor = ({
                 height: Math.abs(currentRect.height)
             };
 
+            const activeFilters = Object.entries(viewFilters || {}).filter(([_, v]) => v).map(([k, _]) => k);
+            const visibleRegions = activeFilters.length === 0 ? regions : regions.filter(r => activeFilters.includes(r.type.toLowerCase()));
+
             // Find intersecting regions
-            const intersectingIds = regions.filter(r => {
+            const intersectingIds = visibleRegions.filter(r => {
                 const rRight = r.x + r.width;
                 const rBottom = r.y + r.height;
                 const boxRight = selBox.x + selBox.width;

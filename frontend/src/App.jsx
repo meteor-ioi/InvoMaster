@@ -392,7 +392,7 @@ function App() {
                         transform: 'translateX(-50%)',
                         zIndex: 100,
                         cursor: 'pointer',
-                        opacity: isHoveringHeaderToggle ? 0.5 : 0.1,
+                        opacity: isHoveringHeaderToggle ? 0.7 : 0.5,
                         transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={() => setIsHoveringHeaderToggle(true)}

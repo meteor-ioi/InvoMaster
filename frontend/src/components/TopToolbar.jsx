@@ -58,7 +58,10 @@ const TopToolbar = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filterTypes = ['table', 'title', 'figure', 'plain text', 'custom', 'abandon'];
+    const filterTypes = [
+        'title', 'table', 'plain text', 'figure', 'header', 'footer',
+        'list', 'equation', 'table caption', 'figure caption', 'abandon', 'custom'
+    ];
     const activeFiltersCount = Object.values(viewFilters).filter(Boolean).length;
     // 无筛选状态：空对象或全选
     const isFiltering = activeFiltersCount > 0 && activeFiltersCount < filterTypes.length;

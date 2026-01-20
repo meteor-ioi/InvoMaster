@@ -36,7 +36,21 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         iou: 0.45,
         agnostic_nms: false
     });
-    const [viewFilters, setViewFilters] = useState({});
+    const [viewFilters, setViewFilters] = useState({
+        'title': true,
+        'table': true,
+        'plain text': true,
+        'text': true,
+        'abandon': true,
+        'figure': true,
+        'list': true,
+        'header': true,
+        'footer': true,
+        'equation': true,
+        'table caption': true,
+        'figure caption': true,
+        'custom': true
+    });
 
     // --- 智能去重：合并重叠区块 ---
     const mergeOverlappingRegions = (regionsToMerge, mode) => {
@@ -116,6 +130,12 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     });
 
     const [regions, setRegions] = useState([]);
+    const filteredRegions = useMemo(() => {
+        const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
+        if (activeFilters.length === 0) return regions;
+        return regions.filter(r => activeFilters.includes(r.type.toLowerCase()));
+    }, [regions, viewFilters]);
+
     const [history, setHistory] = useState([[]]);
     const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -602,7 +622,12 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     };
 
     const deleteRegion = (ids) => {
-        const idsToDelete = Array.isArray(ids) ? ids : [ids];
+        const idsToProcess = Array.isArray(ids) ? ids : [ids];
+        const visibleIds = filteredRegions.map(r => r.id);
+        const idsToDelete = idsToProcess.filter(id => visibleIds.includes(id));
+
+        if (idsToDelete.length === 0) return;
+
         const newRegions = regions.filter(r => !idsToDelete.includes(r.id));
         setRegions(newRegions);
         recordHistory(newRegions);
@@ -617,7 +642,12 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     };
 
     const updateRegionType = (ids, type) => {
-        const targetIds = Array.isArray(ids) ? ids : [ids];
+        const idsToProcess = Array.isArray(ids) ? ids : [ids];
+        const visibleIds = filteredRegions.map(r => r.id);
+        const targetIds = idsToProcess.filter(id => visibleIds.includes(id));
+
+        if (targetIds.length === 0) return;
+
         const newRegions = regions.map(r => targetIds.includes(r.id) ? {
             ...r,
             type,
@@ -640,13 +670,16 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     };
 
     const clearAllRegions = () => {
-        if (regions.length === 0) return;
-        if (window.confirm('确定要清空预览中的所有区块吗？此操作可以被撤销。')) {
-            setRegions([]);
-            recordHistory([]);
-            setSelectedId(null);
-            setSelectedIds([]);
-            setToast({ type: 'success', text: '已清空所有区块' });
+        const visibleIds = filteredRegions.map(r => r.id);
+        if (visibleIds.length === 0) return;
+
+        if (window.confirm(`确定要清空预览中当前可见的 ${visibleIds.length} 个区块吗？隐藏的区块将保持不变。`)) {
+            const newRegions = regions.filter(r => !visibleIds.includes(r.id));
+            setRegions(newRegions);
+            recordHistory(newRegions);
+            if (visibleIds.includes(selectedId)) setSelectedId(null);
+            setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
+            setToast({ type: 'success', text: '已清空当前可见区块' });
             setTimeout(() => setToast(null), 2000);
         }
     };
@@ -654,11 +687,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const selectedRegion = useMemo(() => regions.find(r => r.id === selectedId), [regions, selectedId]);
 
 
-    const filteredRegions = useMemo(() => {
-        const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
-        if (activeFilters.length === 0) return regions;
-        return regions.filter(r => activeFilters.includes(r.type.toLowerCase()));
-    }, [regions, viewFilters]);
+
 
     return (
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>

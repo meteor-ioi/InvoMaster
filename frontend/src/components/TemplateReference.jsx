@@ -836,7 +836,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                             transform: 'translateY(-50%)',
                             zIndex: 100,
                             cursor: 'pointer',
-                            opacity: isHoveringToggle ? 0.5 : 0.1,
+                            opacity: isHoveringToggle ? 0.7 : 0.5,
                             transition: 'all 0.3s ease'
                         }}
                         onMouseEnter={() => setIsHoveringToggle(true)}
