@@ -157,7 +157,8 @@ def main():
             f'http://127.0.0.1:{port}',
             width=1420,
             height=820,
-            resizable=True
+            resizable=True,
+            background_color='#0f172a' # Prevent white flash, match dark theme
         )
         webview.start()
         
