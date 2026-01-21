@@ -7,9 +7,25 @@
     <title>正在启动 - Industry PDF</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --accent-blue: #38bdf8;
-            --text-silver: #94a3b8;
+            /* 默认浅色主题变量 */
+            --bg-color: #f8fafc;
+            --accent-blue: #3b82f6;
+            --text-primary: #0f172a;
+            --text-silver: #64748b;
+            --doc-bg: rgba(59, 130, 246, 0.05);
+            --doc-border: rgba(59, 130, 246, 0.3);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* 深色主题变量 */
+                --bg-color: #0f172a;
+                --accent-blue: #38bdf8;
+                --text-primary: #f8fafc;
+                --text-silver: #94a3b8;
+                --doc-bg: rgba(56, 189, 248, 0.1);
+                --doc-border: rgba(56, 189, 248, 0.4);
+            }
         }
 
         body,
@@ -25,9 +41,10 @@
             align-items: center;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden !important;
-            color: white;
+            color: var(--text-primary);
             -ms-overflow-style: none;
             scrollbar-width: none;
+            transition: background-color 0.3s ease;
         }
 
         body::-webkit-scrollbar {
@@ -53,8 +70,8 @@
             position: absolute;
             width: 60px;
             height: 80px;
-            background: rgba(56, 189, 248, 0.1);
-            border: 1px solid rgba(56, 189, 248, 0.4);
+            background: var(--doc-bg);
+            border: 1px solid var(--doc-border);
             border-radius: 4px;
             backdrop-filter: blur(4px);
             animation: flow 4s infinite ease-in-out;
@@ -68,8 +85,8 @@
             left: 15%;
             width: 70%;
             height: 2px;
-            background: rgba(56, 189, 248, 0.3);
-            box-shadow: 0 10px 0 rgba(56, 189, 248, 0.3), 0 20px 0 rgba(56, 189, 248, 0.3);
+            background: var(--doc-border);
+            box-shadow: 0 10px 0 var(--doc-border), 0 20px 0 var(--doc-border);
         }
 
         .doc-item:nth-child(1) {
@@ -137,7 +154,7 @@
             font-size: 24px;
             font-weight: 600;
             letter-spacing: 1px;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
 

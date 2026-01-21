@@ -207,6 +207,22 @@ def main():
 
         port = get_free_port()
         logging.info(f"Using port: {port}")
+
+        def get_windows_theme():
+            """Checks Windows registry for theme preference (1=Light, 0=Dark)"""
+            if sys.platform != 'win32':
+                return 'dark' # Default to dark for other platforms
+            try:
+                import winreg
+                registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+                key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+                return 'light' if value == 1 else 'dark'
+            except Exception:
+                return 'dark'
+
+        system_theme = get_windows_theme()
+        bg_color = '#ffffff' if system_theme == 'light' else '#0f172a'
         
         # Bootstrap Assets
         bootstrap_assets(base_path)
@@ -266,7 +282,7 @@ def main():
             width=1420,
             height=820,
             resizable=True,
-            background_color='#0f172a',
+            background_color=bg_color,
             js_api=js_api
         )
         js_api.window = window
