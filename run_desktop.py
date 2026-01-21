@@ -277,13 +277,34 @@ def main():
         else:
             logging.warning(f"Frontend dist not found at {dist_dir}")
 
+        def get_window_scale(window):
+            """Returns the monitor scale factor (DPI) for the current window."""
+            try:
+                # pywebview usually handles this internally in some engines, 
+                # but explicit calculation ensures our target 1420x820 is 'logical' pixels.
+                import webview.platforms.win32 as win32_platform
+                from ctypes import windll
+                # Get the scale factor for the primary monitor (simplified for desktop apps)
+                # 96 is standard DPI
+                logical_dpi = 96
+                h_dc = windll.user32.GetDC(0)
+                actual_dpi = windll.gdi32.GetDeviceCaps(h_dc, 88) # LOGPIXELSX
+                windll.user32.ReleaseDC(0, h_dc)
+                return actual_dpi / logical_dpi
+            except:
+                return 1.0
+
         # 3. Create WebView Window IMMEDIATELY with Splash Page
         logging.info("Starting webview window with initial URL...")
+        
+        # Initial estimate for creation (will be corrected after window exists)
+        base_w, base_h = 1420, 820
+        
         window = webview.create_window(
             'InvoMaster', 
             initial_url,
-            width=1420,
-            height=820,
+            width=base_w,
+            height=base_h,
             resizable=True,
             background_color=bg_color,
             js_api=js_api
@@ -304,9 +325,17 @@ def main():
                 
                 logging.info("Redirecting to main app...")
                 # Force resize to target resolution when switching to main app
+                # Apply DPI scaling multiplier
                 try:
+                    scale = get_window_scale(window)
+                    target_w = int(1420 * scale)
+                    target_h = int(820 * scale)
+                    logging.info(f"Applying DPI Scale: {scale}x -> {target_w}x{target_h}")
+                    window.resize(target_w, target_h)
+                except Exception as e:
+                    logging.warning(f"Failed to resize with DPI scaling: {e}")
                     window.resize(1420, 820)
-                except: pass
+                
                 window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")
