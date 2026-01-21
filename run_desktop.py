@@ -272,15 +272,17 @@ def main():
         js_api.window = window
 
         # 4. Start Backend and Redirect when ready
-        def backend_loader():
-            # Start Backend
-            start_server(port)
-
+        start_time = time.time()
+        
         def redirect_when_ready():
             if wait_for_server(port):
-                logging.info("Server is ready, redirecting...")
-                # Small extra delay for smoothness
-                time.sleep(0.5)
+                logging.info("Server is ready, checking minimum wait time...")
+                # Ensure at least 6 seconds of splash screen visibility
+                elapsed = time.time() - start_time
+                if elapsed < 6.0:
+                    time.sleep(6.0 - elapsed)
+                
+                logging.info("Redirecting to main app...")
                 window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")
