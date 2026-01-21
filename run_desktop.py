@@ -299,6 +299,10 @@ def main():
                     time.sleep(6.0 - elapsed)
                 
                 logging.info("Redirecting to main app...")
+                # Force resize to target resolution when switching to main app
+                try:
+                    window.resize(1420, 820)
+                except: pass
                 window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")
