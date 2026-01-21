@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,19 +12,26 @@
             --text-silver: #94a3b8;
         }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
+        body,
+        html {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
             background-color: var(--bg-color);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
+            overflow: hidden !important;
             color: white;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body::-webkit-scrollbar {
+            display: none !important;
         }
 
         .container {
@@ -64,13 +72,36 @@
             box-shadow: 0 10px 0 rgba(56, 189, 248, 0.3), 0 20px 0 rgba(56, 189, 248, 0.3);
         }
 
-        .doc-item:nth-child(1) { animation-delay: 0s; left: 0; top: 0; }
-        .doc-item:nth-child(2) { animation-delay: 1.3s; right: 0; top: 20px; }
-        .doc-item:nth-child(3) { animation-delay: 2.6s; left: 30px; bottom: 0; }
+        .doc-item:nth-child(1) {
+            animation-delay: 0s;
+            left: 0;
+            top: 0;
+        }
+
+        .doc-item:nth-child(2) {
+            animation-delay: 1.3s;
+            right: 0;
+            top: 20px;
+        }
+
+        .doc-item:nth-child(3) {
+            animation-delay: 2.6s;
+            left: 30px;
+            bottom: 0;
+        }
 
         @keyframes flow {
-            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
-            50% { transform: translateY(-20px) rotate(5deg); opacity: 1; }
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(5deg);
+                opacity: 1;
+            }
         }
 
         /* 扫描线效果 */
@@ -87,9 +118,19 @@
         }
 
         @keyframes scan {
-            0% { top: 0%; opacity: 0; }
-            50% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+            0% {
+                top: 0%;
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
         }
 
         .title {
@@ -118,12 +159,15 @@
             animation: dot-flashing 1s infinite linear alternate;
             animation-delay: .5s;
         }
-        .dot-flashing::before, .dot-flashing::after {
+
+        .dot-flashing::before,
+        .dot-flashing::after {
             content: '';
             display: inline-block;
             position: absolute;
             top: 0;
         }
+
         .dot-flashing::before {
             left: -12px;
             width: 6px;
@@ -134,6 +178,7 @@
             animation: dot-flashing 1s infinite linear alternate;
             animation-delay: 0s;
         }
+
         .dot-flashing::after {
             left: 12px;
             width: 6px;
@@ -146,11 +191,18 @@
         }
 
         @keyframes dot-flashing {
-            0% { background-color: var(--accent-blue); }
-            50%, 100% { background-color: rgba(56, 189, 248, 0.2); }
+            0% {
+                background-color: var(--accent-blue);
+            }
+
+            50%,
+            100% {
+                background-color: rgba(56, 189, 248, 0.2);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="doc-container">
@@ -168,4 +220,5 @@
         </div>
     </div>
 </body>
+
 </html>

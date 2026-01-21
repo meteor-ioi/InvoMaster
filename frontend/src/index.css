@@ -52,18 +52,45 @@
   --success-color: #10b981;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100vh;
-  overflow: hidden;
+html,
+body,
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100vh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
   background: var(--bg-gradient);
   color: var(--text-primary);
   background-attachment: fixed;
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
-#root {
-  width: 100%;
+/* 彻底隐藏全局 Webkit 滚动条 (针对 WebView2) */
+::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* 恢复内部指定区域的滚动条 */
+.custom-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--glass-border) !important;
+  border-radius: 10px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color) !important;
 }
 
 * {

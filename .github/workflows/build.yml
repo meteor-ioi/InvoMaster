@@ -109,6 +109,15 @@ jobs:
                   shutil.move(src, dst)
           "
 
+      - name: Convert Icons
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            uv run --project backend python backend/scripts/convert_icons.py
+          else
+            python backend/scripts/convert_icons.py
+          fi
+
       - name: Build Desktop App
         shell: bash
         run: |

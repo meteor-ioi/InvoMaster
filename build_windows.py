@@ -16,6 +16,7 @@ def run_command(command, cwd=None):
 def main():
     project_root = os.path.abspath(os.path.dirname(__file__))
     frontend_dir = os.path.join(project_root, "frontend")
+    backend_dir = os.path.join(project_root, "backend")
     dist_dir = os.path.join(project_root, "dist")
 
     print("========================================")
@@ -23,7 +24,7 @@ def main():
     print("========================================")
 
     # 1. Build Frontend
-    print("\n[Step 1/3] Building Frontend Assets...")
+    print("\n[Step 1/4] Building Frontend Assets...")
     if not os.path.exists(os.path.join(frontend_dir, "node_modules")):
         print("Installing npm dependencies...")
         run_command("npm install", cwd=frontend_dir)
@@ -31,8 +32,12 @@ def main():
     print("Running npm run build...")
     run_command("npm run build", cwd=frontend_dir)
 
-    # 2. Package with PyInstaller via uv
-    print("\n[Step 2/3] Packaging Python App with PyInstaller...")
+    # 2. Convert Icons
+    print("\n[Step 2/4] Converting Icons...")
+    run_command("uv run python scripts/convert_icons.py", cwd=backend_dir)
+
+    # 3. Package with PyInstaller via uv
+    print("\n[Step 3/4] Packaging Python App with PyInstaller...")
     
     # We use uv run --project backend to ensure we are in the correct virtual environment
     # The spec file 'industry_pdf.spec' already contains all the complex configuration
@@ -40,8 +45,8 @@ def main():
     
     run_command(pyinstaller_cmd, cwd=project_root)
 
-    # 3. Final Verification
-    print("\n[Step 3/3] Verifying Output...")
+    # 4. Final Verification
+    print("\n[Step 4/4] Verifying Output...")
     final_output = os.path.join(dist_dir, "InvoMaster")
     if os.path.exists(final_output):
         print(f"\n✅ Build Successful!")
