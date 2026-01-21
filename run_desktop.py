@@ -214,7 +214,21 @@ def main():
         # Initialize API
         js_api = JSApi()
 
-        # 1. Let's Modify app instance BEFORE starting uvicorn to avoid race conditions!
+        # 1. Prepare Splash Page URL
+        if getattr(sys, 'frozen', False):
+            splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
+        else:
+            splash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'splash.html')
+        
+        if os.path.exists(splash_path):
+            splash_path_url = splash_path.replace("\\", "/")
+            splash_url = f'file:///{splash_path_url}'
+        else:
+            splash_url = None
+        
+        initial_url = splash_url if splash_url else f'http://127.0.0.1:{port}'
+
+        # 2. Modify app instance BEFORE starting uvicorn to avoid race conditions!
         from fastapi.staticfiles import StaticFiles
         from starlette.responses import FileResponse
         
@@ -244,39 +258,49 @@ def main():
         else:
             logging.warning(f"Frontend dist not found at {dist_dir}")
 
-        # 2. Start Backend in a separate thread
-        t = threading.Thread(target=start_server, args=(port,), daemon=True)
-        t.start()
-        
-        # 3. Wait for server to start
-        if not wait_for_server(port):
-            logging.error("Backend server did not start in time. Exiting.")
-            # Show fatal error dialog on Windows
-            if sys.platform == 'win32':
-                try:
-                    import ctypes
-                    ctypes.windll.user32.MessageBoxW(0, "后端服务启动超时，请检查日志或移动到本地磁盘运行。", "启动失败", 0x10)
-                except: pass
-            return
-
-        # 4. Start WebView
-        logging.info("Starting webview window...")
-        
-        # Important: window must be created BEFORE start()
+        # 3. Create WebView Window IMMEDIATELY with Splash Page
+        logging.info("Starting webview window with initial URL...")
         window = webview.create_window(
             'InvoMaster', 
-            f'http://127.0.0.1:{port}',
+            initial_url,
             width=1420,
             height=820,
             resizable=True,
-            background_color='#0f172a', # Prevent white flash, match dark theme
+            background_color='#0f172a',
             js_api=js_api
         )
         js_api.window = window
-        
-        # On Windows, force edgechromium (WebView2)
+
+        # 4. Start Backend and Redirect when ready
+        def backend_loader():
+            # Start Backend
+            start_server(port)
+
+        def redirect_when_ready():
+            if wait_for_server(port):
+                logging.info("Server is ready, redirecting...")
+                # Small extra delay for smoothness
+                time.sleep(0.5)
+                window.load_url(f'http://127.0.0.1:{port}')
+            else:
+                logging.error("Backend server did not start in time.")
+                # Show fatal error dialog on Windows
+                if sys.platform == 'win32':
+                    try:
+                        import ctypes
+                        ctypes.windll.user32.MessageBoxW(0, "后端服务启动超时，请检查日志或移动到本地磁盘运行。", "启动失败", 0x10)
+                    except: pass
+
+        # Start monitoring thread
+        monitor_thread = threading.Thread(target=redirect_when_ready, daemon=True)
+        monitor_thread.start()
+
+        # Start server thread (daemon)
+        server_thread = threading.Thread(target=start_server, args=(port,), daemon=True)
+        server_thread.start()
+
+        # 5. Start WebView Main Loop
         gui_engine = 'edgechromium' if sys.platform == 'win32' else None
-        
         logging.info(f"Calling webview.start(gui={gui_engine})...")
         webview.start(gui=gui_engine, debug=False)
         logging.info("Webview closed.")

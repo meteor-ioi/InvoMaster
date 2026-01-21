@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在启动 - Industry PDF</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --accent-blue: #38bdf8;
+            --text-silver: #94a3b8;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+
+        .container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        /* 方案 2: Document Flow 动效 */
+        .doc-container {
+            position: relative;
+            width: 120px;
+            height: 160px;
+        }
+
+        .doc-item {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            animation: flow 4s infinite ease-in-out;
+        }
+
+        /* 内部横杠线模拟文本 */
+        .doc-item::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 15%;
+            width: 70%;
+            height: 2px;
+            background: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 10px 0 rgba(56, 189, 248, 0.3), 0 20px 0 rgba(56, 189, 248, 0.3);
+        }
+
+        .doc-item:nth-child(1) { animation-delay: 0s; left: 0; top: 0; }
+        .doc-item:nth-child(2) { animation-delay: 1.3s; right: 0; top: 20px; }
+        .doc-item:nth-child(3) { animation-delay: 2.6s; left: 30px; bottom: 0; }
+
+        @keyframes flow {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+            50% { transform: translateY(-20px) rotate(5deg); opacity: 1; }
+        }
+
+        /* 扫描线效果 */
+        .scan-bar {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 120%;
+            height: 2px;
+            background: var(--accent-blue);
+            box-shadow: 0 0 15px var(--accent-blue);
+            animation: scan 2s infinite linear;
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .status {
+            font-size: 14px;
+            color: var(--text-silver);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dot-flashing {
+            position: relative;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: var(--accent-blue);
+            color: var(--accent-blue);
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before {
+            left: -12px;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: var(--accent-blue);
+            color: var(--accent-blue);
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 12px;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: var(--accent-blue);
+            color: var(--accent-blue);
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 1s;
+        }
+
+        @keyframes dot-flashing {
+            0% { background-color: var(--accent-blue); }
+            50%, 100% { background-color: rgba(56, 189, 248, 0.2); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="doc-container">
+            <div class="doc-item"></div>
+            <div class="doc-item"></div>
+            <div class="doc-item"></div>
+            <div class="scan-bar"></div>
+        </div>
+        <div style="text-align: center;">
+            <div class="title">Industry PDF</div>
+            <div class="status">
+                正在初始化 AI 引擎
+                <div class="dot-flashing"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
