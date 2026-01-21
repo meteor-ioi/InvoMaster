@@ -307,15 +307,18 @@ def main():
                         time.sleep(6.0 - elapsed)
                 
                 logging.info("Redirecting to main app...")
-                logging.info("Redirecting to main app...")
-                # Force resize using JS-detected DPI scale from the current (splash) view
-                # This ensures we match the actual rendering scale of the WebView
+                # Force resize using JS-detected DPI scale from the current (splash) view (Windows Only)
+                # This ensures we match the actual rendering scale of the WebView on high-DPI Windows screens.
+                # On macOS, window sizing is handled in logical points, so we use 1.0 scale to avoid oversized windows.
                 try:
-                    dpi_scale = window.evaluate_js('window.devicePixelRatio')
-                    if dpi_scale is None: 
-                        dpi_scale = 1.0
+                    if is_windows:
+                        dpi_scale = window.evaluate_js('window.devicePixelRatio')
+                        if dpi_scale is None: 
+                            dpi_scale = 1.0
+                        else:
+                            dpi_scale = float(dpi_scale)
                     else:
-                        dpi_scale = float(dpi_scale)
+                        dpi_scale = 1.0 # macOS handles high-DPI scaling natively for window sizes
                         
                     target_w = int(1420 * dpi_scale)
                     target_h = int(820 * dpi_scale)
