@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
-import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files, XCircle, Filter } from 'lucide-react';
+import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, Eye, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files, XCircle, Filter } from 'lucide-react';
 import { API_BASE } from '../config';
 
 export default function TemplateReference({ device, headerCollapsed = false }) {
@@ -1858,10 +1858,10 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
                     <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
                         {!result ? (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexDirection: 'column', opacity: 0.5 }}>
-                                <Files size={64} strokeWidth={1.5} style={{ marginBottom: '25px', opacity: 0.6 }} />
-                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>工作台就绪</div>
-                                <div style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Inspired by babeldoc, vibe coded by icychick.</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
+                                <Eye size={48} />
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>工作台就绪</div>
+                                <div style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>Inspired by babeldoc, vibe coded by icychick.</div>
                             </div>
                         ) : (
                             <div className="animate-fade-in">

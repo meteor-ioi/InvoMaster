@@ -379,7 +379,7 @@ fetch(url, {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
                     <Eye size={48} />
                     <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>选择一条已完成的记录查看数据</span>
-                    <span style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>Inspired by babeldoc, vibe coded by icychick.</span>
+                    <span style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>Inspired by babeldoc, vibe coded by icychick.</span>
                 </div>
             );
         }
