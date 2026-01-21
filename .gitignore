@@ -7,20 +7,35 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# Large data files
+# Large data & User Content
 data/
 backend/data/
 backend/runs/
 PDF/
 PDF测试汇总/
+test_docs/
+uploads/
+storage/
 
-# Build outputs
+# Logs
+*.log
+backend/*.log
+logs/
+
+# Build & Temporary files
 frontend/dist/
 frontend/build/
 dist/
 build/
+*.bak
+*.tmp
+*.temp
+~$*
+backend/debug_output.txt
+backend/group3_dump.txt
+backend/analysis_results*.txt
 
-# IDE
+# AI & Editor
 .vscode/
 .idea/
 .gemini/
@@ -28,3 +43,16 @@ build/
 .system_generated/
 chat.md
 PROJECT_RULES.md
+README_backup.md
+.env
+.env.*
+
+# Local Dev & Debug Scripts
+backend/debug_*.py
+backend/test_*.py
+backend/analyze_*.py
+backend/batch_*.py
+backend/dump_*.py
+backend/migrate_*.py
+backend/test_fp.py
+test_onnx_inference.py

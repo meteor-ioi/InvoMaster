@@ -1,116 +1,117 @@
-# Industry PDF Data Extraction - 行业 PDF 数据提取工具
+<div align="center">
+  <img src="ICON_MAC.png" width="128" alt="InvoMaster Logo" />
+  <h1>InvoMaster | 票据专家</h1>
+  <p><b>基于 HITL 设计的高精度行业 PDF 数据提取解决方案</b></p>
 
-一个基于 **HITL (Human-In-The-Loop)** 设计思想的行业 PDF 数据提取平台。通过深度学习布局分析、高精度 OCR 和智能模版匹配，实现对各类复杂 PDF 文档（如行业报告、财务报表、技术说明书等）的结构化提取。
-
-![Homepage Screenshot](docs/homepage.png)
-
-## 🌟 主要功能
-
-- **智能布局分析**: 采用 `DocLayout-YOLO` 模型，自动识别 PDF 中的文本、标题、表格、图片、公式等元素。
-- **高精度表格提取**: 支持基于线条、文本对齐和显式坐标的表格识别策略，可精细调节表格结构。
-- **混合 OCR 引擎**: 自动检测 PDF 扫描状态，对无文本层或识别不佳的区域调用 `RapidOCR` 进行文字识别。
-- **智能模版系统**: 支持“指纹识别”功能，对于同类型的文档可自动匹配已有的提取模版，实现一键批量处理。
-- **可视化编辑器**: 提供交互式界面，用户可手动调整识别框、定义字段标签及备注，确保提取结果 100% 准确。
-- **多格式导出**: 支持将提取结果导出为 JSON 和 Markdown（表格保持结构化）。
-
-## 🧠 版面分析优化策略
-
-为了应对制造业单据、复杂报表等高难度场景，本项目在 `DocLayout-YOLO` 基础上实施了三重优化：
-
-1.  **高分辨率推理 (Resolution Boost)**: 默认将模型输入尺寸 (`imgsz`) 从 1024 提升至 **1280**。这使模型能更清晰地识别细小的单元格边框和密集的文本排版。
-2.  **制造业单据启发式修正 (Heuristic Class Correction)**: 针对宽大表格容易被误判为“图片 (Figure)”的问题，增加了宽度动态判定。凡是宽度超过页面 50% 的区域且类别为图片时，系统会智能将其修正为“表格 (Table)”，大幅提升单据处理的自动化率。
-3.  **图像预处理增强 (Image Enhancement)**: 在推理前引入了图像增强流水线，包括：
-    *   **自动对比度拉伸**: 消除背景噪点，使线框更黑白分明。
-    *   **锐度增强**: 强化边缘特征，辅助模型在模糊扫描件下依然能精准定位表格边界。
+  <p>
+    <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python" alt="Python" />
+    <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react" alt="React" />
+    <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
+    <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-lightgrey?style=for-the-badge" alt="Platform" />
+  </p>
+</div>
 
 ---
 
-## 🛠 技术架构
+## 🌟 什么是 InvoMaster？
 
-该项目采用前后端分离架构，核心技术栈如下：
+**InvoMaster (票据专家)** 是一款专为处理复杂行业 PDF（如制造业单据、财务报表、技术说明书）而设计的智能提取平台。它融合了深度学习布局分析、自研表格提取引擎和 **Human-In-The-Loop (HITL)** 交互机制，将 AI 的效率与人工的精准度完美结合，确保关键数据提取的 100% 可靠性。
 
-### 后端 (Backend)
-- **框架**: [FastAPI](https://fastapi.tiangolo.com/) - 高性能的异步 Python Web API 框架。
-- **布局分析**: [DocLayout-YOLO](https://github.com/DocLayout/DocLayout-YOLO) - 针对文档布局优化的 YOLO 模型。
-- **文本/表格处理**: [pdfplumber](https://github.com/jsvine/pdfplumber) - 强大的 PDF 文本与表格信息提取工具。
-- **OCR 引擎**: [RapidOCR](https://github.com/RapidAI/RapidOCR) - 基于 ONNX Runtime 的高性能 OCR，适配中文与复杂排版。
-- **数据库**: [SQLite](https://www.sqlite.org/) - 存储模版元数据、字段定义及提取记录。
-- **包管理**: [uv](https://github.com/astral-sh/uv) - 超快速的 Python 包安装与环境管理工具。
+### 🖼️ 软件截图
 
-### 前端 (Frontend)
-- **框架**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) - 现代前端开发环境。
-- **UI 库**: [Lucide React](https://lucide.dev/) (图标), [Framer Motion](https://www.framer.com/motion/) (动画)。
-- **PDF 渲染**: [react-pdf](https://github.com/wojtekmaj/react-pdf) - 高性能 PDF 预览与交互。
-- **样式**: CSS Modules / Vanilla CSS (现代简约风格)。
+![InvoMaster UI](docs/invo_master_ui.png)
 
 ---
 
-## 📊 数据提取流程
+## ✨ 核心优势
+
+- **🚀 智能布局分析 (AI-First)**: 集成 `DocLayout-YOLO` 深度学习模型，针对制造业单据进行三重优化（分辨率增强、启发式修正、图像增强），精准识别文本、表格、图表等关键区块。
+- **📊 卓越的表格提取**: 支持基于线条、文本对齐和显式坐标的混合提取策略。提供原生 PDF 与 OCR 双重模式，完美应对扫描件及复杂合并单元格。
+- **🧩 智能模版系统**: “指纹识别”技术可自动识别文档特征并匹配提取模版，实现“一次定义，无限复用”。
+- **✍️ 可视化交互编辑**: 专为数据采集人员设计的编辑器，支持实时微调、区块合并、多格式导出，让数据提取像编辑文档一样简单。
+- **🔌 工业级 API 支持**: 除了桌面客户端，系统内置轻量级高性能 API，可轻松集成到现有的自动化流水线中。
+
+---
+
+## 🏗️ 技术架构
+
+InvoMaster 采用现代化的前后端分离架构，通过桌面壳程序 (`PyWebView`) 提供流畅的端侧体验。
+
+### 后端 (Python Stack)
+*   **API**: [FastAPI](https://fastapi.tiangolo.com/) - 异步高性能 Web 服务。
+*   **分析引擎**: [DocLayout-YOLO](https://github.com/DocLayout/DocLayout-YOLO) - 文档视觉识别旗舰。
+*   **基础工具**: `pdfplumber` + `OpenCV` + `NumPy`。
+*   **OCR 系统**: [RapidOCR](https://github.com/RapidAI/RapidOCR) (ONNX 加速)。
+*   **包管理**: [uv](https://github.com/astral-sh/uv) - 超快速构建与运行环境。
+
+### 前端 (TypeScript/React Stack)
+*   **核心**: `React` + `Vite`。
+*   **交互**: `Framer Motion` (动画) + `Lucide Icons`。
+*   **渲染**: `react-pdf` 深度定制化预览器。
+
+---
+
+## 📊 数据提取闭环
 
 ```mermaid
 graph TD
-    A[上传 PDF 文档] --> B{指纹计算与匹配}
-    B -- 匹配成功 --> C[加载既有模版]
-    B -- 匹配失败 --> D[AI 布局分析 - YOLO]
-    D --> E[识别区块: 文本/表格/图片]
-    E --> F[用户手动微调/打标]
-    F --> G[保存为新模版]
-    G --> H[执行数据提取]
-    C --> H
-    H --> I{检测是否为扫描件}
-    I -- 是 --> J[注入 RapidOCR 识别字符]
-    I -- 否 --> K[原生 pdfplumber 提取]
-    J --> L[结构化处理]
-    K --> L
-    L --> M[输出 JSON / Markdown]
-    M --> N[存储提取历史]
+    A[📤 上传 PDF] --> B{🔍 自动识别指纹}
+    B -- 匹配已存模版 --> C[🚀 直接输出结果]
+    B -- 新文档类型 --> D[🤖 AI 自动版面分析]
+    D --> E[📝 交互微调与定义]
+    E --> F[💾 保存为提取模版]
+    F --> G[⚙️ 执行全量提取]
+    G --> H{🔎 质量检查}
+    H -- 有错 --> E
+    H -- 100% 合格 --> I[📎 导出 JSON/MD/CSV]
 ```
 
 ---
 
-## 🚀 快速开始
+## 🚀 开发者快速上手
 
-### 1. 克隆项目
-```bash
-git clone https://github.com/your-repo/industry_PDF.git
-cd industry_PDF
-```
+### 预备工作
+*   安装 Python 3.10+
+*   安装 Node.js 18+
+*   (推荐) 安装 [uv](https://github.com/astral-sh/uv)
 
-### 2. 后端部署
-推荐使用 `uv` 环境管理：
-```bash
-cd backend
-uv sync
-uv run python run_server.py
-```
-或使用传统方式：
-```bash
-cd backend
-pip install -r ../requirements.txt
-python run_server.py
-```
-后端服务将运行在 `http://localhost:8291`。
+### 本地运行
+1. **启动后端/前端演示模式**:
+   如果你想快速查看应用界面，可以直接运行桌面入口：
+   ```bash
+   python run_desktop.py
+   ```
 
-### 3. 前端部署
+2. **开发模式部署**:
+   - **后端**:
+     ```bash
+     cd backend
+     uv sync
+     uv run python main.py
+     ```
+   - **前端**:
+     ```bash
+     cd frontend
+     npm install
+     npm run dev
+     ```
+
+### 项目构建
+我们提供了全自动化的构建脚本：
 ```bash
-cd frontend
-npm install
-npm run dev
+# 构建 macOS App 或 Windows 绿色包
+python build_app.py
 ```
-前端服务将运行在 `http://localhost:5173`。
 
 ---
 
-## 📖 使用示例
+## 📄 开源协议
 
-1. **上传文档**: 在首页上传需要处理的 PDF。
-2. **AI 分析**: 系统会自动运行 YOLO 模型识别页面结构。
-3. **微调区域**: 如果是表格，可以点击“表格微调”按钮，调整行列分割线。
-4. **保存模版**: 对于周期性文档，输入模版名称并保存，下次相同格式的文档将自动匹配。
-5. **获取数据**: 点击“提取数据”，实时查看侧边栏生成的结构化 JSON/Markdown 结果。
+本项目基于 **MIT License** 开源。
 
 ---
 
-## 📄 许可证
-
-基于 MIT 许可证开源。请在使用时遵守相关法律法规，保护数据隐私。
+<div align="center">
+  <p>Made with ❤️ by InvoMaster Team</p>
+</div>
