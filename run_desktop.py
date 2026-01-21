@@ -230,19 +230,22 @@ def main():
         # Initialize API
         js_api = JSApi()
 
-        # 1. Prepare Splash Page URL
-        if getattr(sys, 'frozen', False):
-            splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
-        else:
-            splash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'splash.html')
+        # 1. Prepare Splash Page URL (Windows Only)
+        is_windows = sys.platform == 'win32'
+        splash_url = None
         
-        if os.path.exists(splash_path):
-            splash_path_url = splash_path.replace("\\", "/")
-            splash_url = f'file:///{splash_path_url}'
-        else:
-            splash_url = None
+        if is_windows:
+            if getattr(sys, 'frozen', False):
+                splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
+            else:
+                splash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'splash.html')
+            
+            if os.path.exists(splash_path):
+                splash_path_url = splash_path.replace("\\", "/")
+                splash_url = f'file:///{splash_path_url}'
         
-        initial_url = splash_url if splash_url else f'http://127.0.0.1:{port}'
+        # On macOS or if splash disabled, go straight to backend
+        initial_url = splash_url if (is_windows and splash_url) else f'http://127.0.0.1:{port}'
 
         # 2. Modify app instance BEFORE starting uvicorn to avoid race conditions!
         from fastapi.staticfiles import StaticFiles
@@ -293,10 +296,11 @@ def main():
         def redirect_when_ready():
             if wait_for_server(port):
                 logging.info("Server is ready, checking minimum wait time...")
-                # Ensure at least 6 seconds of splash screen visibility
-                elapsed = time.time() - start_time
-                if elapsed < 6.0:
-                    time.sleep(6.0 - elapsed)
+                # Ensure at least 6 seconds of splash screen visibility (Windows Only)
+                if is_windows:
+                    elapsed = time.time() - start_time
+                    if elapsed < 6.0:
+                        time.sleep(6.0 - elapsed)
                 
                 logging.info("Redirecting to main app...")
                 # Force resize to target resolution when switching to main app
