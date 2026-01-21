@@ -93,7 +93,7 @@ function App() {
     ];
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* 顶栏导航 */}
             <header style={{
                 height: isHeaderCollapsed ? '36px' : '60px',

@@ -52,11 +52,11 @@
   --success-color: #10b981;
 }
 
-body {
+html, body {
   margin: 0;
-  display: block;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
   background: var(--bg-gradient);
   color: var(--text-primary);
   background-attachment: fixed;
