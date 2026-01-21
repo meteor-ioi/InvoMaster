@@ -277,23 +277,6 @@ def main():
         else:
             logging.warning(f"Frontend dist not found at {dist_dir}")
 
-        def get_window_scale(window):
-            """Returns the monitor scale factor (DPI) for the current window."""
-            try:
-                # pywebview usually handles this internally in some engines, 
-                # but explicit calculation ensures our target 1420x820 is 'logical' pixels.
-                import webview.platforms.win32 as win32_platform
-                from ctypes import windll
-                # Get the scale factor for the primary monitor (simplified for desktop apps)
-                # 96 is standard DPI
-                logical_dpi = 96
-                h_dc = windll.user32.GetDC(0)
-                actual_dpi = windll.gdi32.GetDeviceCaps(h_dc, 88) # LOGPIXELSX
-                windll.user32.ReleaseDC(0, h_dc)
-                return actual_dpi / logical_dpi
-            except:
-                return 1.0
-
         # 3. Create WebView Window IMMEDIATELY with Splash Page
         logging.info("Starting webview window with initial URL...")
         
@@ -324,16 +307,23 @@ def main():
                         time.sleep(6.0 - elapsed)
                 
                 logging.info("Redirecting to main app...")
-                # Force resize to target resolution when switching to main app
-                # Apply DPI scaling multiplier
+                logging.info("Redirecting to main app...")
+                # Force resize using JS-detected DPI scale from the current (splash) view
+                # This ensures we match the actual rendering scale of the WebView
                 try:
-                    scale = get_window_scale(window)
-                    target_w = int(1420 * scale)
-                    target_h = int(820 * scale)
-                    logging.info(f"Applying DPI Scale: {scale}x -> {target_w}x{target_h}")
+                    dpi_scale = window.evaluate_js('window.devicePixelRatio')
+                    if dpi_scale is None: 
+                        dpi_scale = 1.0
+                    else:
+                        dpi_scale = float(dpi_scale)
+                        
+                    target_w = int(1420 * dpi_scale)
+                    target_h = int(820 * dpi_scale)
+                    
+                    logging.info(f"JS DPI Scale: {dpi_scale} -> Resizing to {target_w}x{target_h}")
                     window.resize(target_w, target_h)
                 except Exception as e:
-                    logging.warning(f"Failed to resize with DPI scaling: {e}")
+                    logging.warning(f"Failed to resize with JS DPI scaling: {e}")
                     window.resize(1420, 820)
                 
                 window.load_url(f'http://127.0.0.1:{port}')
