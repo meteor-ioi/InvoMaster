@@ -13,11 +13,11 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            artifact_name: IndustryPDF-macOS
-            zip_name: IndustryPDF-macOS.zip
+            artifact_name: InvoMaster-macOS
+            zip_name: InvoMaster-macOS.zip
           - os: windows-latest
-            artifact_name: IndustryPDF-Windows
-            zip_name: IndustryPDF-Windows.zip
+            artifact_name: InvoMaster-Windows
+            zip_name: InvoMaster-Windows.zip
     runs-on: ${{ matrix.os }}
     
     steps:
@@ -133,8 +133,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            IndustryPDF-macOS/IndustryPDF-macOS.zip
-            IndustryPDF-Windows/IndustryPDF-Windows.zip
+            InvoMaster-macOS/InvoMaster-macOS.zip
+            InvoMaster-Windows/InvoMaster-Windows.zip
           draft: false
           prerelease: false
           generate_release_notes: true
