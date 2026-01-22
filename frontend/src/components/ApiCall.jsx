@@ -207,7 +207,8 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
         const lowerKeyword = keyword.toLowerCase();
         return (
             record.filename?.toLowerCase().includes(lowerKeyword) ||
-            record.template_id?.toLowerCase().includes(lowerKeyword)
+            record.templateName?.toLowerCase().includes(lowerKeyword) ||
+            record.templateId?.toLowerCase().includes(lowerKeyword)
         );
     };
 
@@ -218,10 +219,10 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
             if (filterStatus !== 'all' && getRecordStatus(record) !== filterStatus) return false;
 
             // 2. Date range filter
-            if (filterDateRange !== 'all' && !isInDateRange(record.created_at, filterDateRange)) return false;
+            if (filterDateRange !== 'all' && !isInDateRange(record.timestamp, filterDateRange)) return false;
 
             // 3. Template filter
-            if (filterTemplate !== 'all' && record.template_id !== filterTemplate) return false;
+            if (filterTemplate !== 'all' && record.templateId !== filterTemplate) return false;
 
             // 4. Keyword search
             if (filterSearch && !matchesKeyword(record, filterSearch)) return false;
@@ -279,11 +280,11 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
             case 'pending':
                 return <Clock size={12} color="var(--text-secondary)" style={{ opacity: 0.5 }} />;
             case 'processing':
-                return <RefreshCw size={12} className="animate-spin" color="var(--primary-color)" />;
+                return <Clock size={12} color="#fbbf24" />;
             case 'completed':
                 return <CheckCircle size={12} color="var(--success-color)" />;
             case 'failed':
-                return <XCircle size={12} color="#ef4444" />;
+                return <AlertCircle size={12} color="#ef4444" />;
             default:
                 return <Clock size={12} color="var(--text-secondary)" />;
         }
@@ -293,8 +294,8 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     const getStatusText = (status) => {
         switch (status) {
             case 'pending': return '待处理';
-            case 'processing': return '处理中...';
-            case 'completed': return '已完成';
+            case 'processing': return '排队中'; // 统一为“排队”
+            case 'completed': return '成功';    // 统一为“成功”
             case 'failed': return '失败';
             default: return '未知';
         }
@@ -525,7 +526,7 @@ fetch(url, {
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} minmax(0, 1fr) ${rightPanelCollapsed ? '64px' : '320px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} minmax(0, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px',
@@ -584,24 +585,27 @@ fetch(url, {
                         </div>
                     ) : (
                         <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-                            <div style={{ padding: '12px 15px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ padding: '12px 15px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Package size={16} color="var(--primary-color)" />
-                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>可用模板</span>
+                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板调用</span>
                             </div>
                             <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'var(--input-bg)', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-                                    <Search size={14} color="var(--text-secondary)" />
-                                    <input
-                                        type="text"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="搜索模板..."
-                                        style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'var(--text-primary)', width: '100%' }}
-                                    />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>模板搜索</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'var(--input-bg)', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                                        <Search size={14} color="var(--text-secondary)" />
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="搜索模板名称或模板 ID..."
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'var(--text-primary)', width: '100%' }}
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }} className="custom-scrollbar">
                                     <div
-                                        onClick={() => setSelectedTemplateId('auto')}
+                                        onClick={() => { setSelectedTemplateId('auto'); setRightPanelMode('code'); setSelectedRecordId(null); }}
                                         style={{
                                             padding: '10px 12px',
                                             borderRadius: '10px',
@@ -618,10 +622,11 @@ fetch(url, {
                                         </div>
                                         <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>auto</div>
                                     </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '2px' }}>模板列表</div>
                                     {templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
                                         <div
                                             key={t.id}
-                                            onClick={() => setSelectedTemplateId(t.id)}
+                                            onClick={() => { setSelectedTemplateId(t.id); setRightPanelMode('code'); setSelectedRecordId(null); }}
                                             style={{
                                                 padding: '10px 12px',
                                                 borderRadius: '10px',
@@ -660,41 +665,11 @@ fetch(url, {
                 }}>
                     <div style={{
                         padding: '15px 24px',
-                        borderBottom: '1px solid var(--glass-border)',
                         background: 'rgba(255,255,255,0.03)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px' }}>
-                                <button
-                                    onClick={() => { setRightPanelMode('code'); setSelectedRecordId(null); }}
-                                    style={{
-                                        padding: '6px 12px', borderRadius: '6px', border: 'none', fontSize: '11px', cursor: 'pointer',
-                                        background: rightPanelMode === 'code' ? 'var(--primary-color)' : 'transparent',
-                                        color: rightPanelMode === 'code' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: rightPanelMode === 'code' ? 'bold' : 'normal',
-                                        display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <Terminal size={12} /> 代码示例
-                                </button>
-                                <button
-                                    onClick={() => setRightPanelMode('preview')}
-                                    style={{
-                                        padding: '6px 12px', borderRadius: '6px', border: 'none', fontSize: '11px', cursor: 'pointer',
-                                        background: rightPanelMode === 'preview' ? 'var(--accent-color)' : 'transparent',
-                                        color: rightPanelMode === 'preview' ? '#fff' : 'var(--text-secondary)',
-                                        fontWeight: rightPanelMode === 'preview' ? 'bold' : 'normal',
-                                        display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <FileJson size={12} /> 数据预览
-                                </button>
-                            </div>
-                        </div>
-
                         {rightPanelMode === 'code' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{ position: 'relative' }}>
@@ -732,6 +707,18 @@ fetch(url, {
                                 </button>
                             </div>
                         )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {rightPanelMode === 'code' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--primary-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
+                                    <Terminal size={12} /> 代码示例
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--accent-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
+                                    <FileJson size={12} /> 数据预览
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -758,7 +745,7 @@ fetch(url, {
                 <aside style={{
                     position: 'sticky',
                     top: '20px',
-                    width: rightPanelCollapsed ? '64px' : '320px',
+                    width: rightPanelCollapsed ? '64px' : '300px',
                     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -806,58 +793,262 @@ fetch(url, {
                         </div>
                     ) : (
                         <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-                            <div style={{ padding: '12px 15px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                            <div style={{ padding: '12px 15px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Clock size={16} color="var(--accent-color)" />
                                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>调用记录</span>
+                                    <span style={{
+                                        fontSize: '10px',
+                                        background: 'var(--accent-color)',
+                                        color: 'white',
+                                        padding: '1px 6px',
+                                        borderRadius: '10px',
+                                        minWidth: '18px',
+                                        textAlign: 'center',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {statusCounts.all}
+                                    </span>
                                 </div>
-                                {selectedRecords.size > 0 && (
-                                    <button onClick={handleBatchDeleteRecords} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: '#ef4444', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>
-                                        删除({selectedRecords.size})
-                                    </button>
-                                )}
                             </div>
                             <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                    <Search size={12} color="var(--text-secondary)" />
-                                    <input
-                                        type="text"
-                                        value={filterSearch}
-                                        onChange={(e) => setFilterSearch(e.target.value)}
-                                        placeholder="搜索记录..."
-                                        style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '11px', color: 'var(--text-primary)', width: '100%' }}
-                                    />
-                                </div>
-                                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }} className="custom-scrollbar">
-                                    {filteredRecords.length === 0 ? (
-                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5, fontSize: '11px' }}>暂无记录</div>
-                                    ) : (
-                                        filteredRecords.map(record => (
-                                            <div
-                                                key={record.id}
-                                                onClick={() => handleViewRecord(record)}
+                                {/* 记录搜索和筛选 */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>记录搜索</label>
+                                        <button
+                                            onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: isAdvancedFilterOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                fontSize: '11px',
+                                                cursor: 'pointer',
+                                                padding: '0'
+                                            }}
+                                        >
+                                            <Filter size={12} />
+                                            高级筛选
+                                            <ChevronDown size={12} style={{
+                                                transform: isAdvancedFilterOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.3s ease'
+                                            }} />
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                                        <Search size={14} color="var(--text-secondary)" />
+                                        <input
+                                            type="text"
+                                            value={filterSearch}
+                                            onChange={(e) => setFilterSearch(e.target.value)}
+                                            placeholder="搜索文件名/模板名..."
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'var(--text-primary)', width: '100%' }}
+                                        />
+                                    </div>
+
+                                    {/* 高级筛选面板 - 使用 CSS 类控制垂直展开 */}
+                                    <div className={`expand-vertical ${isAdvancedFilterOpen ? 'expanded' : ''}`} style={{
+                                        padding: isAdvancedFilterOpen ? '12px' : '0 12px',
+                                        marginBottom: isAdvancedFilterOpen ? '10px' : '0',
+                                        background: 'rgba(255,255,255,0.02)',
+                                        borderRadius: '10px',
+                                        border: `1px solid ${isAdvancedFilterOpen ? 'var(--glass-border)' : 'transparent'}`,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: isAdvancedFilterOpen ? '10px' : '0',
+                                        pointerEvents: isAdvancedFilterOpen ? 'all' : 'none'
+                                    }}>
+                                        <div>
+                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>日期范围</label>
+                                            <select
+                                                value={filterDateRange}
+                                                onChange={(e) => setFilterDateRange(e.target.value)}
                                                 style={{
-                                                    padding: '8px 10px', borderRadius: '10px', background: selectedRecordId === record.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                                    border: selectedRecords.has(record.id) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
-                                                    cursor: record.status === 'completed' ? 'pointer' : 'default', transition: 'all 0.2s', display: 'flex', gap: '8px', alignItems: 'flex-start'
+                                                    width: '100%',
+                                                    padding: '6px',
+                                                    borderRadius: '6px',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '11px',
+                                                    outline: 'none'
                                                 }}
                                             >
-                                                <div onClick={(e) => toggleRecordSelection(record.id, e)} style={{ marginTop: '2px', width: '14px', height: '14px', borderRadius: '3px', border: '1px solid var(--glass-border)', background: selectedRecords.has(record.id) ? 'var(--primary-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                                    {selectedRecords.has(record.id) && <Check size={10} color="white" />}
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.filename}</div>
-                                                        {getStatusIcon(record.status)}
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-secondary)', opacity: 0.7 }}>
-                                                        <span>{record.templateName || record.templateId}</span>
-                                                        <span>{new Date(record.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
+                                                <option value="all">全部时间</option>
+                                                <option value="today">今天</option>
+                                                <option value="week">本周</option>
+                                                <option value="month">本月</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>关联模板</label>
+                                            <select
+                                                value={filterTemplate}
+                                                onChange={(e) => setFilterTemplate(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '6px',
+                                                    borderRadius: '6px',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '11px',
+                                                    outline: 'none'
+                                                }}
+                                            >
+                                                <option value="all">全部模板</option>
+                                                {templates.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* 状态分布 - 2x2 网格布局 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                                        {[
+                                            { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
+                                            { id: 'completed', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
+                                            { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
+                                            { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
+                                        ].map(s => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => setFilterStatus(s.id)}
+                                                style={{
+                                                    padding: '6px 8px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '10px',
+                                                    fontWeight: filterStatus === s.id ? 'bold' : 'normal',
+                                                    border: `1px solid ${filterStatus === s.id ? s.activeColor : 'var(--glass-border)'}`,
+                                                    background: filterStatus === s.id ? s.activeBg : 'var(--input-bg)',
+                                                    color: filterStatus === s.id ? s.activeColor : 'var(--text-secondary)',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                {s.icon} <span>{s.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 记录列表 */}
+                                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>
+                                            记录列表
+                                        </label>
+                                        {selectedRecords.size > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <button
+                                                    onClick={handleBatchDeleteRecords}
+                                                    style={{
+                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                        color: '#ef4444',
+                                                        fontSize: '10px',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                >
+                                                    <Trash2 size={10} /> 删除({selectedRecords.size})
+                                                </button>
+                                                <div
+                                                    onClick={toggleSelectAllRecords}
+                                                    style={{
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        borderRadius: '3px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        background: selectedRecords.size === filteredRecords.length && filteredRecords.length > 0 ? 'var(--primary-color)' : 'transparent',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="全选/取消全选"
+                                                >
+                                                    {selectedRecords.size === filteredRecords.length && filteredRecords.length > 0 && <Check size={10} color="white" />}
                                                 </div>
                                             </div>
-                                        ))
-                                    )}
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
+                                        {filteredRecords.length === 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
+                                                <Clock size={32} />
+                                                <span style={{ fontSize: '12px' }}>
+                                                    {filterStatus !== 'all' || filterSearch ? '未找到匹配的记录' : '暂无记录'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            filteredRecords.map(record => (
+                                                <div
+                                                    key={record.id}
+                                                    onClick={() => handleViewRecord(record)}
+                                                    style={{
+                                                        padding: '10px',
+                                                        borderRadius: '10px',
+                                                        background: selectedRecordId === record.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                        border: selectedRecords.has(record.id) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                        cursor: record.status === 'completed' ? 'pointer' : 'default',
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        gap: '8px',
+                                                        alignItems: 'flex-start'
+                                                    }}
+                                                    className="list-item-hover"
+                                                >
+                                                    <div
+                                                        onClick={(e) => toggleRecordSelection(record.id, e)}
+                                                        style={{
+                                                            marginTop: '2px',
+                                                            width: '14px',
+                                                            minWidth: '14px',
+                                                            height: '14px',
+                                                            borderRadius: '3px',
+                                                            border: '1px solid var(--glass-border)',
+                                                            background: selectedRecords.has(record.id) ? 'var(--primary-color)' : 'transparent',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        {selectedRecords.has(record.id) && <Check size={10} color="white" />}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{record.filename}</div>
+                                                            {getStatusIcon(record.status)}
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{record.templateName || record.templateId}</span>
+                                                            <span style={{ fontSize: '9px', opacity: 0.5 }}>
+                                                                {new Date(record.timestamp).toLocaleString('zh-CN', {
+                                                                    month: '2-digit', day: '2-digit',
+                                                                    hour: '2-digit', minute: '2-digit',
+                                                                    hour12: false
+                                                                }).replace(/\//g, '-')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -956,7 +956,6 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                 {/* 标题栏 */}
                                 <div style={{
                                     padding: '12px 15px',
-                                    borderBottom: '1px solid var(--glass-border)',
                                     background: 'rgba(255,255,255,0.02)',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1623,7 +1622,6 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                             {/* 标题栏 */}
                             <div style={{
                                 padding: '12px 15px',
-                                borderBottom: '1px solid var(--glass-border)',
                                 background: 'rgba(255,255,255,0.02)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1790,51 +1788,61 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                     ))}
                                 </div>
 
-                                {/* 批量操作 */}
-                                {history.length > 0 && selectedHistory.size > 0 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                                        <button
-                                            onClick={handleBatchDeleteHistory}
-                                            style={{
-                                                background: 'rgba(239, 68, 68, 0.1)',
-                                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                                color: '#ef4444',
-                                                fontSize: '10px',
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <Trash2 size={10} /> 删除({selectedHistory.size})
-                                        </button>
-                                        <div
-                                            onClick={toggleSelectAllHistory}
-                                            style={{
-                                                width: '14px',
-                                                height: '14px',
-                                                borderRadius: '3px',
-                                                border: '1px solid var(--glass-border)',
-                                                background: selectedHistory.size === history.length && history.length > 0 ? 'var(--primary-color)' : 'transparent',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: 'pointer'
-                                            }}
-                                            title="全选/取消全选"
-                                        >
-                                            {selectedHistory.size === history.length && history.length > 0 && <Check size={10} color="white" />}
-                                        </div>
-                                    </div>
-                                )}
 
                                 {/* 记录列表 */}
                                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
-                                        记录列表
-                                    </label>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '10px',
+                                        minHeight: '20px'
+                                    }}>
+                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>
+                                            记录列表
+                                        </label>
+
+                                        {history.length > 0 && selectedHistory.size > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', animation: 'fadeIn 0.2s ease' }}>
+                                                <button
+                                                    onClick={handleBatchDeleteHistory}
+                                                    style={{
+                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                        color: '#ef4444',
+                                                        fontSize: '10px',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <Trash2 size={10} /> 删除({selectedHistory.size})
+                                                </button>
+                                                <div
+                                                    onClick={toggleSelectAllHistory}
+                                                    style={{
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        borderRadius: '3px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        background: selectedHistory.size === history.length && history.length > 0 ? 'var(--primary-color)' : 'transparent',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    title="全选/取消全选"
+                                                >
+                                                    {selectedHistory.size === history.length && history.length > 0 && <Check size={10} color="white" />}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
                                         {filteredHistory.length === 0 ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
