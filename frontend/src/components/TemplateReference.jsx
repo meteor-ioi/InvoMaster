@@ -455,16 +455,20 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
 
     // --- Filter Helper Functions ---
     const getRecordStatus = (record) => {
-        // For processing files
+        // 1. 如果记录本身带有状态（如后端返回的失败状态），优先使用
+        if (record.status === 'failed' || record.status === 'error') return 'failed';
+
+        // 2. 检查是否在当前处理队列中
         if (files.some((f, i) => f.name === record.filename && (i === processingIndex || loading))) {
             return 'processing';
         }
-        // For history records - all completed
-        return 'success';
+
+        // 3. 默认为成功（历史记录通常是处理完成的）
+        return record.status || 'success';
     };
 
     const isInDateRange = (timestamp, range) => {
-        if (range === 'all') return true;
+        if (range === 'all' || !timestamp) return true;
         const recordDate = new Date(timestamp);
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1653,64 +1657,137 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                 overflow: 'hidden'
                             }}>
                                 {/* 搜索框 */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                                    <Search size={14} color="var(--text-secondary)" />
-                                    <input
-                                        type="text"
-                                        placeholder="搜索文件名/模板名..."
-                                        value={filterSearch}
-                                        onChange={(e) => setFilterSearch(e.target.value)}
-                                        style={{
-                                            border: 'none',
-                                            background: 'transparent',
-                                            outline: 'none',
-                                            fontSize: '12px',
-                                            color: 'var(--text-primary)',
-                                            width: '100%'
-                                        }}
-                                    />
+                                <div>
+                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <span>记录搜索</span>
+                                        <button
+                                            onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: isAdvancedFilterOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                fontSize: '10px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <Filter size={10} />
+                                            高级筛选
+                                            <div style={{ transform: isAdvancedFilterOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s ease' }}>
+                                                <ChevronDown size={10} />
+                                            </div>
+                                        </button>
+                                    </label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                        <Search size={14} color="var(--text-secondary)" />
+                                        <input
+                                            type="text"
+                                            placeholder="搜索文件名/模板名..."
+                                            value={filterSearch}
+                                            onChange={(e) => setFilterSearch(e.target.value)}
+                                            style={{
+                                                border: 'none',
+                                                background: 'transparent',
+                                                outline: 'none',
+                                                fontSize: '12px',
+                                                color: 'var(--text-primary)',
+                                                width: '100%'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* 高级筛选面板 - 使用 CSS 类控制垂直展开 */}
+                                <div className={`expand-vertical ${isAdvancedFilterOpen ? 'expanded' : ''}`} style={{
+                                    padding: isAdvancedFilterOpen ? '12px' : '0 12px',
+                                    marginBottom: isAdvancedFilterOpen ? '10px' : '0',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '10px',
+                                    border: `1px solid ${isAdvancedFilterOpen ? 'var(--glass-border)' : 'transparent'}`,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: isAdvancedFilterOpen ? '10px' : '0',
+                                    pointerEvents: isAdvancedFilterOpen ? 'all' : 'none'
+                                }}>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>日期范围</label>
+                                        <select
+                                            value={filterDateRange}
+                                            onChange={(e) => setFilterDateRange(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '6px',
+                                                borderRadius: '6px',
+                                                background: 'var(--input-bg)',
+                                                border: '1px solid var(--glass-border)',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '11px',
+                                                outline: 'none'
+                                            }}
+                                        >
+                                            <option value="all">全部时间</option>
+                                            <option value="today">今天</option>
+                                            <option value="week">本周</option>
+                                            <option value="month">本月</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>引用模板</label>
+                                        <select
+                                            value={filterTemplate}
+                                            onChange={(e) => setFilterTemplate(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '6px',
+                                                borderRadius: '6px',
+                                                background: 'var(--input-bg)',
+                                                border: '1px solid var(--glass-border)',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '11px',
+                                                outline: 'none'
+                                            }}
+                                        >
+                                            <option value="all">全部模板</option>
+                                            {templates.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {/* 状态筛选 */}
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                                    <button
-                                        onClick={() => setFilterStatus('all')}
-                                        style={{
-                                            padding: '6px 8px',
-                                            borderRadius: '6px',
-                                            fontSize: '10px',
-                                            fontWeight: filterStatus === 'all' ? 'bold' : 'normal',
-                                            border: `1px solid ${filterStatus === 'all' ? 'var(--primary-color)' : 'var(--glass-border)'}`,
-                                            background: filterStatus === 'all' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                            color: filterStatus === 'all' ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <Package size={10} /> 全部
-                                    </button>
-                                    <button
-                                        onClick={() => setFilterStatus('success')}
-                                        style={{
-                                            padding: '6px 8px',
-                                            borderRadius: '6px',
-                                            fontSize: '10px',
-                                            fontWeight: filterStatus === 'success' ? 'bold' : 'normal',
-                                            border: `1px solid ${filterStatus === 'success' ? 'var(--success-color)' : 'var(--glass-border)'}`,
-                                            background: filterStatus === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'var(--input-bg)',
-                                            color: filterStatus === 'success' ? 'var(--success-color)' : 'var(--text-secondary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <CheckCircle size={10} /> 成功
-                                    </button>
+                                    {[
+                                        { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
+                                        { id: 'success', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
+                                        { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
+                                        { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
+                                    ].map(btn => (
+                                        <button
+                                            key={btn.id}
+                                            onClick={() => setFilterStatus(btn.id)}
+                                            style={{
+                                                padding: '6px 8px',
+                                                borderRadius: '6px',
+                                                fontSize: '10px',
+                                                fontWeight: filterStatus === btn.id ? 'bold' : 'normal',
+                                                border: `1px solid ${filterStatus === btn.id ? btn.activeColor : 'var(--glass-border)'}`,
+                                                background: filterStatus === btn.id ? btn.activeBg : 'var(--input-bg)',
+                                                color: filterStatus === btn.id ? btn.activeColor : 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '4px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            {btn.icon} {btn.label}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 {/* 批量操作 */}
@@ -1754,68 +1831,73 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                 )}
 
                                 {/* 记录列表 */}
-                                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
-                                    {filteredHistory.length === 0 ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
-                                            <Clock size={32} />
-                                            <span style={{ fontSize: '12px' }}>
-                                                {filterStatus !== 'all' || filterSearch ? '未找到匹配的记录' : '暂无记录'}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        filteredHistory.map((h) => (
-                                            <div
-                                                key={`history-${h.index}`}
-                                                onClick={() => handleViewHistory(h.index)}
-                                                style={{
-                                                    padding: '10px',
-                                                    borderRadius: '10px',
-                                                    background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                                    border: selectedHistory.has(h.index) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    display: 'flex',
-                                                    gap: '8px',
-                                                    alignItems: 'flex-start'
-                                                }}
-                                                className="list-item-hover"
-                                            >
-                                                <div
-                                                    onClick={(e) => toggleHistorySelection(h.index, e)}
-                                                    style={{
-                                                        marginTop: '2px',
-                                                        width: '14px',
-                                                        minWidth: '14px',
-                                                        height: '14px',
-                                                        borderRadius: '3px',
-                                                        border: '1px solid var(--glass-border)',
-                                                        background: selectedHistory.has(h.index) ? 'var(--primary-color)' : 'transparent',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                    }}
-                                                >
-                                                    {selectedHistory.has(h.index) && <Check size={10} color="white" />}
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
-                                                        <CheckCircle size={12} color="var(--success-color)" />
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
-                                                        <span style={{ fontSize: '9px', opacity: 0.5 }}>
-                                                            {new Date(h.timestamp).toLocaleString('zh-CN', {
-                                                                month: '2-digit', day: '2-digit',
-                                                                hour: '2-digit', minute: '2-digit',
-                                                                hour12: false
-                                                            }).replace(/\//g, '-')}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                        记录列表
+                                    </label>
+                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
+                                        {filteredHistory.length === 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '10px' }}>
+                                                <Clock size={32} />
+                                                <span style={{ fontSize: '12px' }}>
+                                                    {filterStatus !== 'all' || filterSearch ? '未找到匹配的记录' : '暂无记录'}
+                                                </span>
                                             </div>
-                                        ))
-                                    )}
+                                        ) : (
+                                            filteredHistory.map((h) => (
+                                                <div
+                                                    key={`history-${h.index}`}
+                                                    onClick={() => handleViewHistory(h.index)}
+                                                    style={{
+                                                        padding: '10px',
+                                                        borderRadius: '10px',
+                                                        background: selectedHistoryIndex === h.index ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                        border: selectedHistory.has(h.index) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        gap: '8px',
+                                                        alignItems: 'flex-start'
+                                                    }}
+                                                    className="list-item-hover"
+                                                >
+                                                    <div
+                                                        onClick={(e) => toggleHistorySelection(h.index, e)}
+                                                        style={{
+                                                            marginTop: '2px',
+                                                            width: '14px',
+                                                            minWidth: '14px',
+                                                            height: '14px',
+                                                            borderRadius: '3px',
+                                                            border: '1px solid var(--glass-border)',
+                                                            background: selectedHistory.has(h.index) ? 'var(--primary-color)' : 'transparent',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        {selectedHistory.has(h.index) && <Check size={10} color="white" />}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
+                                                            <CheckCircle size={12} color="var(--success-color)" />
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>
+                                                            <span style={{ fontSize: '9px', opacity: 0.5 }}>
+                                                                {new Date(h.timestamp).toLocaleString('zh-CN', {
+                                                                    month: '2-digit', day: '2-digit',
+                                                                    hour: '2-digit', minute: '2-digit',
+                                                                    hour12: false
+                                                                }).replace(/\//g, '-')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

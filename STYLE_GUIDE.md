@@ -69,6 +69,22 @@
 ### 3.4 按钮 (Buttons)
 - **渐变按钮**: 使用 `linear-gradient(135deg, var(--primary-color), var(--accent-color))`。
 - **图标按钮**: 使用 `var(--input-bg)` 背景，Hover 时切换至 `var(--glass-border)`。
+- **Hover 反馈**: 按钮悬停时应有微弱的 `translateY(-1px)` 效果，增强交互感。
+
+### 3.5 动效规范 (Animations)
+项目动效分为两个层级，旨在提供既有结构感又具有细节交互的体验。
+
+1. **布局级动效 (Layout Animations)**：
+   - **典型场景**: 左右侧边栏折叠/展开。
+   - **特点**: 采用横向平移（TranslateX）与宽度变化，动效较为稳重，时长 `0.4s`，使用 `cubic-bezier(0.4, 0, 0.2, 1)`。
+   
+2. **内部组件级动效 (Component Internal Animations)**：
+   - **典型场景**: 卡片内部的高级筛选扩展、下拉详情。
+   - **特点**: 采用**垂直展开/回收 (Vertical Expand/Collapse)**。通过控制 `max-height` 和 `opacity` 实现。
+   - **规范**: 
+     - 展开时：从上至下“生长”，避免直接挂载导致的视觉跳跃。
+     - 回收时：从下至上“收回”，确保页面下方元素平滑滚动。
+     - 动效类名：`.expand-vertical`。
 
 ---
 

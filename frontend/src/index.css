@@ -393,3 +393,19 @@ select {
   animation: slideOutUp 0.3s ease forwards;
   overflow: hidden;
 }
+
+/* 垂直展开动画 - 用于内部组件如高级筛选 */
+.expand-vertical {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.3s ease,
+              padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-vertical.expanded {
+  max-height: 500px; /* 足够大的高度 */
+  opacity: 1;
+}
