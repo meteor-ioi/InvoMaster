@@ -14,6 +14,7 @@ const getSystemTheme = () => {
 
 function App() {
     const [view, setView] = useState('creator'); // 'creator', 'reference', 'apicall'
+    const [appReady, setAppReady] = useState(false); // 应用就绪状态
     // 主题模式: 'system' | 'light' | 'dark'
     const [themeMode, setThemeMode] = useState(() => localStorage.getItem('hitl-theme-mode') || 'system');
     // 实际应用的主题: 'light' | 'dark'
@@ -26,6 +27,11 @@ function App() {
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(localStorage.getItem('hitl-header-collapsed') === 'true');
     const [isHoveringHeaderToggle, setIsHoveringHeaderToggle] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    // 标记应用已就绪
+    useEffect(() => {
+        setAppReady(true);
+    }, []);
 
     const toggleZenMode = () => {
         const newState = !isSidebarsCollapsed;
@@ -93,7 +99,14 @@ function App() {
     ];
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            opacity: appReady ? 1 : 0,
+            transition: 'opacity 0.4s ease-out'
+        }}>
             {/* 顶栏导航 */}
             <header style={{
                 height: isHeaderCollapsed ? '36px' : '60px',

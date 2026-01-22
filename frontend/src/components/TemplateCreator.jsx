@@ -24,6 +24,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const [templateName, setTemplateName] = useState('');
 
     const [editorMode, setEditorMode] = useState('select');
+    const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [toast, setToast] = useState(null);
     const [emptyDragActive, setEmptyDragActive] = useState(false);
@@ -574,6 +575,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             } else if (templateMode === 'custom' && !saveId.includes('_')) {
                 saveId = `${saveId}_custom`;
             }
+            setIsSaving(true);
             await axios.post(`${API_BASE}/templates`, {
                 id: saveId,
                 fingerprint: analysis.fingerprint,
@@ -587,6 +589,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         } catch (err) {
             console.error(err);
             alert('保存模板失败: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -999,6 +1003,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     setTemplateName={setTemplateName}
                     handleSaveTemplate={handleSaveTemplate}
                     saveSuccess={saveSuccess}
+                    isSaving={isSaving}
                     templateMode={templateMode}
                     setTemplateMode={setTemplateMode}
                     loading={loading || !analysis} // Disable some buttons if no analysis

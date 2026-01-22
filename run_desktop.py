@@ -307,28 +307,27 @@ def main():
                         time.sleep(6.0 - elapsed)
                 
                 logging.info("Redirecting to main app...")
-                # Force resize using JS-detected DPI scale from the current (splash) view (Windows Only)
-                # This ensures we match the actual rendering scale of the WebView on high-DPI Windows screens.
-                # On macOS, window sizing is handled in logical points, so we use 1.0 scale to avoid oversized windows.
-                try:
-                    if is_windows:
+                
+                # Windows: 使用 DPI 缩放调整窗口
+                # macOS: 直接加载，不调整窗口（避免闪烁）
+                if is_windows:
+                    try:
                         dpi_scale = window.evaluate_js('window.devicePixelRatio')
                         if dpi_scale is None: 
                             dpi_scale = 1.0
                         else:
                             dpi_scale = float(dpi_scale)
-                    else:
-                        dpi_scale = 1.0 # macOS handles high-DPI scaling natively for window sizes
                         
-                    target_w = int(1420 * dpi_scale)
-                    target_h = int(820 * dpi_scale)
-                    
-                    logging.info(f"JS DPI Scale: {dpi_scale} -> Resizing to {target_w}x{target_h}")
-                    window.resize(target_w, target_h)
-                except Exception as e:
-                    logging.warning(f"Failed to resize with JS DPI scaling: {e}")
-                    window.resize(1420, 820)
+                        target_w = int(1420 * dpi_scale)
+                        target_h = int(820 * dpi_scale)
+                        
+                        logging.info(f"JS DPI Scale: {dpi_scale} -> Resizing to {target_w}x{target_h}")
+                        window.resize(target_w, target_h)
+                    except Exception as e:
+                        logging.warning(f"Failed to resize with JS DPI scaling: {e}")
+                        window.resize(1420, 820)
                 
+                # 加载主应用 URL
                 window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")

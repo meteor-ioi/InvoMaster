@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正在启动 - Industry PDF</title>
+    <title>正在启动 - InvoMaster</title>
     <style>
         :root {
             /* 默认浅色主题变量 */
@@ -44,7 +44,8 @@
             color: var(--text-primary);
             -ms-overflow-style: none;
             scrollbar-width: none;
-            transition: background-color 0.3s ease;
+            /* 移除过渡动画 - 避免闪烁 */
+            /* transition: background-color 0.3s ease; */
         }
 
         body::-webkit-scrollbar {
@@ -229,7 +230,7 @@
             <div class="scan-bar"></div>
         </div>
         <div style="text-align: center;">
-            <div class="title">Industry PDF</div>
+            <div class="title">InvoMaster</div>
             <div class="status">
                 正在初始化 AI 引擎
                 <div class="dot-flashing"></div>

@@ -34,6 +34,7 @@ const RightSidebar = ({
     setTemplateName,
     handleSaveTemplate,
     saveSuccess,
+    isSaving,
     loading,
     typeConfig,
     theme,
@@ -118,10 +119,11 @@ const RightSidebar = ({
                     {!tableRefining && (
                         <button
                             onClick={() => handleSaveTemplate(false)}
-                            style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                            title="保存模板"
+                            disabled={isSaving}
+                            style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isSaving ? 'not-allowed' : 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                            title={isSaving ? "正在保存..." : "保存模板"}
                         >
-                            <Save size={22} />
+                            {isSaving ? <RefreshCw size={22} className="animate-spin" /> : <Save size={22} />}
                         </button>
                     )}
                 </div>
@@ -422,7 +424,8 @@ const RightSidebar = ({
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <button
                                         onClick={() => handleSaveTemplate(false)}
-                                        className="btn-primary"
+                                        disabled={isSaving}
+                                        className={`btn-primary ${isSaving ? 'shimmer-effect' : ''}`}
                                         style={{
                                             flex: 1,
                                             display: 'flex',
@@ -430,34 +433,44 @@ const RightSidebar = ({
                                             justifyContent: 'center',
                                             gap: '8px',
                                             margin: 0,
-                                            background: templateMode === 'auto'
-                                                ? 'linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%)'
-                                                : 'linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%)',
+                                            background: isSaving
+                                                ? 'var(--text-secondary)'
+                                                : (templateMode === 'auto'
+                                                    ? 'linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%)'
+                                                    : 'linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%)'),
                                             border: 'none',
-                                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                                            boxShadow: isSaving ? 'none' : '0 4px 12px rgba(99, 102, 241, 0.25)',
                                             fontSize: '12px',
                                             padding: '0 12px',
                                             height: '42px',
                                             borderRadius: '12px',
                                             fontWeight: '600',
-                                            transition: 'transform 0.2s, box-shadow 0.2s'
+                                            transition: 'transform 0.2s, box-shadow 0.2s',
+                                            cursor: isSaving ? 'not-allowed' : 'pointer',
+                                            position: 'relative',
+                                            overflow: 'hidden'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(-1px)';
-                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.35)';
+                                            if (!isSaving) {
+                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.35)';
+                                            }
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.25)';
+                                            if (!isSaving) {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.25)';
+                                            }
                                         }}
                                     >
-                                        <Save size={14} />
-                                        保存模板
+                                        {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                                        {isSaving ? '正在保存中...' : '保存模板'}
                                     </button>
 
                                     {templateMode === 'custom' && (
                                         <button
                                             onClick={() => handleSaveTemplate(true)}
+                                            disabled={isSaving}
                                             style={{
                                                 flex: 1,
                                                 display: 'flex',
@@ -473,21 +486,27 @@ const RightSidebar = ({
                                                 height: '42px',
                                                 borderRadius: '12px',
                                                 fontWeight: '600',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                cursor: isSaving ? 'not-allowed' : 'pointer',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                opacity: isSaving ? 0.6 : 1
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)';
-                                                e.currentTarget.style.borderColor = 'var(--accent-color)';
-                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                                if (!isSaving) {
+                                                    e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)';
+                                                    e.currentTarget.style.borderColor = 'var(--accent-color)';
+                                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                                }
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(124, 58, 237, 0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.3)';
-                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                if (!isSaving) {
+                                                    e.currentTarget.style.background = 'rgba(124, 58, 237, 0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.3)';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                }
                                             }}
                                         >
-                                            <CopyPlus size={14} /> 另存为
+                                            {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <CopyPlus size={14} />}
+                                            {isSaving ? '正在另存...' : '另存为'}
                                         </button>
                                     )}
                                 </div>

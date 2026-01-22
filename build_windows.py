@@ -20,7 +20,7 @@ def main():
     dist_dir = os.path.join(project_root, "dist")
 
     print("========================================")
-    print("🚀 Industry PDF - Windows Build Tool")
+    print("🚀 InvoMaster - Windows Build Tool")
     print("========================================")
 
     # 1. Build Frontend

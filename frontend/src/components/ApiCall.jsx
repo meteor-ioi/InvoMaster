@@ -675,49 +675,53 @@ fetch(url, {
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        {rightPanelMode === 'code' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ position: 'relative' }}>
-                                    <select
-                                        value={selectedLanguage}
-                                        onChange={(e) => setSelectedLanguage(e.target.value)}
-                                        style={{
-                                            appearance: 'none', padding: '6px 30px 6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)',
-                                            background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', outline: 'none'
-                                        }}
-                                    >
-                                        <option value="python">Python</option>
-                                        <option value="javascript">JavaScript</option>
-                                        <option value="curl">cURL</option>
-                                    </select>
-                                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
-                                </div>
-                                <button
-                                    onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none',
-                                        cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
-                                    }}
-                                >
-                                    {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
-                                </button>
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', border: 'none',
-                                        cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
-                                    }}
-                                >
-                                    <Upload size={14} /> 接口测试
-                                </button>
-                            </div>
-                        )}
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {rightPanelMode === 'code' ? (
+                        {/* 左侧区域 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '100px' }}>
+                            {rightPanelMode === 'code' && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--primary-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
                                     <Terminal size={12} /> 代码示例
                                 </div>
+                            )}
+                        </div>
+
+                        {/* 右侧区域 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {rightPanelMode === 'code' ? (
+                                <>
+                                    <div style={{ position: 'relative' }}>
+                                        <select
+                                            value={selectedLanguage}
+                                            onChange={(e) => setSelectedLanguage(e.target.value)}
+                                            style={{
+                                                appearance: 'none', padding: '6px 30px 6px 12px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                                                background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', outline: 'none'
+                                            }}
+                                        >
+                                            <option value="python">Python</option>
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="curl">cURL</option>
+                                        </select>
+                                        <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopy(getCodeSnippet(selectedLanguage), 'code')}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--primary-color)', border: 'none',
+                                            cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
+                                        }}
+                                    >
+                                        {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
+                                    </button>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', border: 'none',
+                                            cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
+                                        }}
+                                    >
+                                        <Upload size={14} /> 接口测试
+                                    </button>
+                                </>
                             ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--accent-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
                                     <FileJson size={12} /> 数据预览
