@@ -858,7 +858,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} 1fr ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px',
@@ -976,7 +976,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                 }}>
                                     {/* 模板选择器 */}
                                     <div style={{ position: 'relative' }} ref={dropdownRef}>
-                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'block' }}>
                                             选择模板
                                         </label>
                                         <div
@@ -1100,7 +1100,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
 
                                     {/* File Upload */}
                                     <div>
-                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>
+                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'block' }}>
                                             上传文件
                                         </label>
                                         <div
@@ -1234,15 +1234,15 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                                             style={{
                                                                 padding: '10px 12px',
                                                                 borderRadius: '10px',
-                                                                background: isProcessing ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.03)',
-                                                                border: isProcessing ? '1px solid var(--primary-color)' : 'none',
+                                                                background: isProcessing ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                                border: isProcessing ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: '10px',
                                                                 transition: 'all 0.3s ease',
                                                                 animation: 'slideUp 0.3s ease'
                                                             }}
-                                                            className="file-queue-item"
+                                                            className="file-queue-item list-item-hover"
                                                         >
                                                             {/* Status Icon */}
                                                             <div style={{
@@ -1405,10 +1405,21 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
 
                     <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
                         {!result ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
-                                <Eye size={64} style={{ opacity: 0.3, marginBottom: '25px', transition: '0.3s' }} />
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%',
+                                textAlign: 'center',
+                                color: 'rgb(100, 116, 139)'
+                            }}>
+                                <Upload
+                                    size={64}
+                                    style={{ opacity: 0.3, marginBottom: '25px', transition: '0.3s' }}
+                                />
                                 <h2 style={{ marginBottom: '10px' }}>工作台就绪</h2>
-                                <div style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>Inspired by babeldoc, vibe coded by icychick.</div>
+                                <p style={{ fontSize: '10px' }}>Inspired by babeldoc, vibe coded by icychick.</p>
                             </div>
                         ) : (
                             <div className="animate-fade-in">
@@ -1633,10 +1644,12 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                     {history.length > 0 && (
                                         <span style={{
                                             fontSize: '10px',
-                                            padding: '1px 5px',
-                                            borderRadius: '10px',
                                             background: 'var(--accent-color)',
                                             color: 'white',
+                                            padding: '1px 6px',
+                                            borderRadius: '10px',
+                                            minWidth: '18px',
+                                            textAlign: 'center',
                                             fontWeight: 'bold'
                                         }}>
                                             {history.length}
@@ -1656,7 +1669,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                             }}>
                                 {/* 搜索框 */}
                                 <div>
-                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <span>记录搜索</span>
                                         <button
                                             onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
@@ -1711,7 +1724,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                     pointerEvents: isAdvancedFilterOpen ? 'all' : 'none'
                                 }}>
                                     <div>
-                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>日期范围</label>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'block' }}>日期范围</label>
                                         <select
                                             value={filterDateRange}
                                             onChange={(e) => setFilterDateRange(e.target.value)}
@@ -1733,7 +1746,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>引用模板</label>
+                                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'block' }}>引用模板</label>
                                         <select
                                             value={filterTemplate}
                                             onChange={(e) => setFilterTemplate(e.target.value)}

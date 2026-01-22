@@ -150,7 +150,7 @@ const RightSidebar = ({
                             {tableRefining ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                             垂直策略 (列)：
                                         </p>
                                         <StrategySelect
@@ -166,7 +166,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>水平策略 (行)：</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>水平策略 (行)：</p>
                                         <StrategySelect
                                             value={tableSettings.horizontal_strategy}
                                             onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
@@ -180,7 +180,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>吸附容差：</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>吸附容差：</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                                             <button
                                                 onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.max(1, (prev.snap_tolerance || 3) - 1) }))}
@@ -314,7 +314,7 @@ const RightSidebar = ({
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>业务备注</p>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>业务备注</p>
                                         <textarea
                                             value={selectedRegion?.remarks || ''}
                                             onChange={(e) => selectedRegion && updateRegionRemarks(selectedId, e.target.value)}

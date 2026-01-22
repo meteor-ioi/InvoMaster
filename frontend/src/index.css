@@ -423,7 +423,7 @@ select {
 .filter-label {
   font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;

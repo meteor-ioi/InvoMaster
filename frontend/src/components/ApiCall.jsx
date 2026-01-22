@@ -578,9 +578,12 @@ fetch(url, {
                     </div>
 
                     {leftPanelCollapsed ? (
-                        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px', height: '100%' }}>
+                        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px 0', borderRadius: '16px' }}>
                             <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)' }}>
                                 <Package size={22} />
+                            </div>
+                            <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-color)' }}>
+                                <Sparkles size={20} />
                             </div>
                         </div>
                     ) : (
@@ -603,26 +606,28 @@ fetch(url, {
                                         />
                                     </div>
                                 </div>
-                                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }} className="custom-scrollbar">
-                                    <div
-                                        onClick={() => { setSelectedTemplateId('auto'); setRightPanelMode('code'); setSelectedRecordId(null); }}
-                                        style={{
-                                            padding: '10px 12px',
-                                            borderRadius: '10px',
-                                            background: selectedTemplateId === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                            border: selectedTemplateId === 'auto' ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        className="list-item-hover"
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Sparkles size={14} color="var(--accent-color)" />
-                                            <span style={{ fontSize: '12px', fontWeight: selectedTemplateId === 'auto' ? 'bold' : 'normal', color: 'var(--text-primary)' }}>自动识别模式</span>
-                                        </div>
-                                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>auto</div>
+                                {/* 自动识别模式 - 固定显示，不随列表滚动 */}
+                                <div
+                                    onClick={() => { setSelectedTemplateId('auto'); setRightPanelMode('code'); setSelectedRecordId(null); }}
+                                    style={{
+                                        padding: '10px 12px',
+                                        borderRadius: '10px',
+                                        background: selectedTemplateId === 'auto' ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                        border: selectedTemplateId === 'auto' ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    className="list-item-hover"
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Sparkles size={14} color="var(--accent-color)" />
+                                        <span style={{ fontSize: '12px', fontWeight: selectedTemplateId === 'auto' ? 'bold' : 'normal', color: 'var(--text-primary)' }}>自动识别模式</span>
                                     </div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '2px' }}>模板列表</div>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>auto</div>
+                                </div>
+                                {/* 模板列表 */}
+                                <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>模板列表</label>
+                                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }} className="custom-scrollbar">
                                     {templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
                                         <div
                                             key={t.id}
@@ -786,10 +791,26 @@ fetch(url, {
                     </div>
 
                     {rightPanelCollapsed ? (
-                        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px', height: '100%' }}>
+                        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px 0', borderRadius: '16px' }}>
                             <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-color)' }}>
-                                <Clock size={22} />
+                                <Clock size={20} />
                             </div>
+                            {statusCounts.all > 0 && (
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    background: 'var(--accent-color)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {statusCounts.all}
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
@@ -811,7 +832,7 @@ fetch(url, {
                                     </span>
                                 </div>
                             </div>
-                            <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
                                 {/* 记录搜索和筛选 */}
                                 <div className="filter-section">
                                     <div>

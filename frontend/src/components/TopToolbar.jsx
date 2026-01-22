@@ -469,7 +469,7 @@ const TopToolbar = ({
                             if (zoom < 1.49) setZoom(1.5);
                             else if (zoom < 1.99) setZoom(2.0);
                             else setZoom(1.0);
-                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px' }}>自适应</button>
+                        }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px', whiteSpace: 'nowrap', minWidth: 'fit-content' }}>自适应</button>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -478,7 +478,8 @@ const TopToolbar = ({
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px',
                                 borderRadius: '6px', border: '1px solid var(--glass-border)',
-                                background: 'transparent', color: 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer'
+                                background: 'transparent', color: 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer',
+                                whiteSpace: 'nowrap'
                             }}
                         >
                             {showRegions ? <Eye size={12} /> : <EyeOff size={12} />}

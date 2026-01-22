@@ -702,7 +702,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         <div style={{ padding: '0 20px 40px', position: 'relative' }}>
             <main style={{
                 display: 'grid',
-                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} minmax(740px, 1fr) ${rightPanelCollapsed ? '64px' : '300px'}`,
+                gridTemplateColumns: `${leftPanelCollapsed ? '64px' : '300px'} 1fr ${rightPanelCollapsed ? '64px' : '300px'}`,
                 gap: '20px',
                 alignItems: 'start',
                 marginTop: '20px',
