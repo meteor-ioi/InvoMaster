@@ -8,10 +8,15 @@ This module provides functionality to:
 """
 
 from typing import List, Dict, Any, Optional, Tuple
-import numpy as np
-from PIL import Image
+import os
+import json
 import logging
+from PIL import Image
 logger = logging.getLogger("backend.ocr")
+
+# Cache directory configuration
+base_data = os.environ.get("APP_DATA_DIR", "data")
+OCR_CACHE_DIR = os.path.join(base_data, "cache", "ocr")
 
 # Lazy load RapidOCR to avoid import overhead if not used
 _ocr_engine = None
@@ -162,15 +167,47 @@ def ocr_box_to_pdfplumber_chars(
     return chars
 
 
+def load_ocr_cache(fingerprint: str, page_idx: int) -> Optional[List[Dict[str, Any]]]:
+    """Load OCR results from JSON cache if available."""
+    cache_path = os.path.join(OCR_CACHE_DIR, f"{fingerprint}_p{page_idx}.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load OCR cache: {e}")
+    return None
+
+def save_ocr_cache(fingerprint: str, page_idx: int, chars: List[Dict[str, Any]]):
+    """Save OCR results to JSON cache."""
+    if not os.path.exists(OCR_CACHE_DIR):
+        os.makedirs(OCR_CACHE_DIR, exist_ok=True)
+    
+    cache_path = os.path.join(OCR_CACHE_DIR, f"{fingerprint}_p{page_idx}.json")
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(chars, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Failed to save OCR cache: {e}")
+
 def get_ocr_chars_for_page(
     image_path: str,
     pdf_width: float,
     pdf_height: float,
-    page_bbox: Tuple[float, float, float, float] = (0, 0, 0, 0)
+    page_bbox: Tuple[float, float, float, float] = (0, 0, 0, 0),
+    fingerprint: Optional[str] = None,
+    page_idx: int = 1
 ) -> List[Dict[str, Any]]:
     """
     Run OCR on a page image and return pdfplumber-compatible char objects.
+    Supports persistent caching via fingerprint.
     """
+    if fingerprint:
+        cached = load_ocr_cache(fingerprint, page_idx)
+        if cached:
+            logger.info(f"Loaded OCR results from cache for {fingerprint} p{page_idx}")
+            return cached
+
     # Get image dimensions
     with Image.open(image_path) as img:
         img_width, img_height = img.size
@@ -194,6 +231,11 @@ def get_ocr_chars_for_page(
         all_chars.extend(char_objs)
     
     logger.info(f"OCR detected {len(all_chars)} characters from {image_path}")
+    
+    # Save to cache if fingerprint provided
+    if fingerprint:
+        save_ocr_cache(fingerprint, page_idx, all_chars)
+        
     return all_chars
 
 

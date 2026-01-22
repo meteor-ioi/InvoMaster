@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Upload, FileText, Play, Clock, CheckCircle, AlertCircle, Copy, Download, Layout, Eye, FileJson, FileCode, Check, Search, ChevronDown, ChevronUp, Sparkles, User, ChevronLeft, ChevronRight, Trash2, Package, RefreshCw, FileSpreadsheet, Settings, Files, XCircle, Filter } from 'lucide-react';
 import { API_BASE } from '../config';
 
-export default function TemplateReference({ device, headerCollapsed = false }) {
+export default function TemplateReference({ theme, device, headerCollapsed = false }) {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('auto');
     const [file, setFile] = useState(null);
@@ -704,17 +704,17 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                         <div style={{
                             fontSize: '13px',
                             color: 'var(--text-primary)',
-                            background: 'rgba(255,255,255,0.02)',
+                            background: theme === 'light' ? 'transparent' : 'rgba(255,255,255,0.02)',
                             padding: '12px',
                             borderRadius: '8px',
                             lineHeight: '1.6',
-                            border: '1px solid rgba(255,255,255,0.05)'
+                            border: theme === 'light' ? 'none' : '1px solid rgba(255,255,255,0.05)'
                         }}>
                             {item.type === 'table' && Array.isArray(item.content) ? (
-                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === 'light' ? 'transparent' : 'rgba(0,0,0,0.1)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                                         <thead>
-                                            <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)' }}>
+                                            <tr style={{ background: theme === 'light' ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)' }}>
                                                 {item.content[0]?.map((cell, cIdx) => (
                                                     <th key={cIdx} style={{
                                                         padding: '10px 15px',
@@ -727,7 +727,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         </thead>
                                         <tbody>
                                             {item.content.slice(1).map((row, rowIndex) => (
-                                                <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 2 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                                <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 2 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : (theme === 'light' ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.02)') }}>
                                                     {row.map((cell, cIdx) => (
                                                         <td key={cIdx} style={{
                                                             padding: '10px 15px',
@@ -765,7 +765,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
         return (
             <pre className="custom-scrollbar" style={{
-                background: 'rgba(15, 23, 42, 0.9)',
+                background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
                 padding: '24px',
                 borderRadius: '16px',
                 overflow: 'auto',
@@ -774,7 +774,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                 border: '1px solid var(--glass-border)',
                 animation: 'slideUp 0.3s ease',
                 maxHeight: '600px',
-                color: '#cbd5e1',
+                color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
                 fontFamily: 'monospace'
             }} dangerouslySetInnerHTML={{ __html: highlighted }} />
         );
@@ -1944,7 +1944,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
                                 {outputFormat === 'markdown' && (
                                     <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(15, 23, 42, 0.9)',
+                                        background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
                                         padding: '24px',
                                         borderRadius: '16px',
                                         overflow: 'auto',
@@ -1953,7 +1953,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         border: '1px solid var(--glass-border)',
                                         animation: 'slideUp 0.3s ease',
                                         maxHeight: '600px',
-                                        color: '#cbd5e1',
+                                        color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
                                         fontFamily: 'monospace',
                                         whiteSpace: 'pre-wrap'
                                     }}>
@@ -1971,7 +1971,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
 
                                 {outputFormat === 'csv' && (
                                     <pre className="custom-scrollbar" style={{
-                                        background: 'rgba(15, 23, 42, 0.9)',
+                                        background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
                                         padding: '24px',
                                         borderRadius: '16px',
                                         overflow: 'auto',
@@ -1980,7 +1980,7 @@ export default function TemplateReference({ device, headerCollapsed = false }) {
                                         border: '1px solid var(--glass-border)',
                                         animation: 'slideUp 0.3s ease',
                                         maxHeight: '600px',
-                                        color: '#cbd5e1',
+                                        color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
                                         fontFamily: 'monospace',
                                         whiteSpace: 'pre'
                                     }}>

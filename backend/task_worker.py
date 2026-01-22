@@ -157,7 +157,8 @@ class TaskWorker:
                     regions_objs = [Region(**r) for r in t_data.get("regions", [])]
                     matching_regions = self.main_module.extract_text_from_regions(
                         file_path, regions_objs,
-                        image_path=image_paths[0] if image_paths else None
+                        image_path=image_paths[0] if image_paths else None,
+                        fingerprint=fingerprint
                     )
                     matched_template = match_cand
         
@@ -221,7 +222,8 @@ class TaskWorker:
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
         extracted_regions = self.main_module.extract_text_from_regions(
             file_path, regions_objs,
-            image_path=image_paths[0] if image_paths else None
+            image_path=image_paths[0] if image_paths else None,
+            fingerprint=fingerprint
         )
         
         # 构建结果

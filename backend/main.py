@@ -42,9 +42,11 @@ TEMPLATES_DIR = os.path.join(base_data_dir, "templates") # Root dir
 TEMPLATES_AUTO_DIR = os.path.join(base_data_dir, "templates", "auto")
 TEMPLATES_CUSTOM_DIR = os.path.join(base_data_dir, "templates", "custom")
 TEMPLATES_SOURCE_DIR = os.path.join(base_data_dir, "template_sources")
+OCR_CACHE_DIR = os.path.join(base_data_dir, "cache", "ocr")
 
-for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR]:
-    os.makedirs(d, exist_ok=True)
+for d in [UPLOAD_DIR, TEMPLATES_DIR, TEMPLATES_AUTO_DIR, TEMPLATES_CUSTOM_DIR, TEMPLATES_SOURCE_DIR, OCR_CACHE_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
 
 # Enable CORS
 app.add_middleware(
@@ -281,7 +283,7 @@ def get_file_fingerprint(file_path):
         hasher.update(buf)
     return hasher.hexdigest()
 
-def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optional[str] = None):
+def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optional[str] = None, fingerprint: Optional[str] = None):
     """
     Uses pdfplumber to extract text from specific normalized coordinates.
     Supports high-precision table extraction if region type is 'table'.
@@ -300,7 +302,7 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
             logger.info(f"Scanned PDF detected, attempting OCR injection...")
             if image_path and os.path.exists(image_path):
                 try:
-                    ocr_chars = get_ocr_chars_for_page(image_path, width, height, page_bbox)
+                    ocr_chars = get_ocr_chars_for_page(image_path, width, height, page_bbox, fingerprint=fingerprint, page_idx=1)
                     inject_ocr_chars_to_page(first_page, ocr_chars)
                     logger.info(f"OCR injection successful: {len(ocr_chars)} chars")
                 except Exception as e:
@@ -490,7 +492,7 @@ async def analyze_document(
                             image_paths = pdf_to_images(file_path, img_save_path)
                             
                             regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-                            matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
+                            matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
                             template_found = True
                             matched_template_info = match_cand
                      except Exception as e:
@@ -533,10 +535,29 @@ async def analyze_document(
             ai_regions = []
     else:
         # Auto mode failed to match, and we are not forcing refresh/AI
-        print("Skipping AI inference because no template matched in strict auto mode.")
-        ai_regions = []
-        matching_regions = []
-        inference_time = 0
+        # FIXED: If no template found and not refreshing, we SHOULD trigger AI inference
+        # unless user explicitly wants to skip it. But here we usually want result.
+        # However, to avoid redundancy, we check if we already have regions.
+        if not matching_regions:
+            print("No template matched, triggering AI layout inference...")
+            try:
+                ai_regions = engine.predict(
+                    image_paths[0], 
+                    device=device, 
+                    conf=conf,
+                    imgsz=imgsz,
+                    iou=iou,
+                    agnostic_nms=agnostic_nms
+                )
+                inference_time = time.time() - start_time
+                matching_regions = ai_regions
+            except Exception as e:
+                print(f"Inference error during fallback: {e}")
+                matching_regions = []
+        else:
+            print("Using matched template regions, skipping redundant AI inference.")
+            inference_time = 0
+            ai_regions = []
 
     
     # 5. 构建结果数据 (始终需要用于响应)
@@ -645,7 +666,7 @@ async def analyze_from_source(template_id: str):
         else:
             print(f"Missing cached content for template {template_id}, performing extraction...")
             regions_objs = [Region(**r) for r in regions_data]
-            matching_regions = extract_text_from_regions(source_path, regions_objs, image_path=image_paths[0] if image_paths else None)
+            matching_regions = extract_text_from_regions(source_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
             
             # --- Persist the cache back to the JSON file ---
             try:
@@ -698,7 +719,7 @@ async def analyze_table_structure(req: TableAnalysisRequest):
                 img_path = os.path.join(UPLOAD_DIR, img_subdir, "page_1.png")
                 if os.path.exists(img_path):
                     try:
-                        ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height, page.bbox)
+                        ocr_chars = get_ocr_chars_for_page(img_path, page.width, page.height, page.bbox, fingerprint=fingerprint, page_idx=1)
                         inject_ocr_chars_to_page(page, ocr_chars)
                         logger.info(f"OCR injection successful for table analysis")
                     except Exception as e:
@@ -840,7 +861,8 @@ async def extract_multiple_regions(
         results = extract_text_from_regions(
             file_path, 
             region_objs, 
-            image_path=img_path if os.path.exists(img_path) else None
+            image_path=img_path if os.path.exists(img_path) else None,
+            fingerprint=fingerprint
         )
         return results
     except Exception as e:
@@ -1408,4 +1430,4 @@ async def shutdown_event():
     task_worker.stop()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8291)

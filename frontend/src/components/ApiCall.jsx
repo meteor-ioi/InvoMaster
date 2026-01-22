@@ -479,17 +479,18 @@ fetch(url, {
                             <div style={{
                                 fontSize: '13px',
                                 color: 'var(--text-primary)',
-                                background: 'rgba(255,255,255,0.03)',
-                                padding: '10px',
+                                background: theme === 'light' ? 'transparent' : 'rgba(255,255,255,0.03)',
+                                padding: theme === 'light' ? '0' : '10px',
                                 borderRadius: '6px',
-                                lineHeight: '1.5'
+                                lineHeight: '1.5',
+                                border: theme === 'light' ? 'none' : '1px solid rgba(255,255,255,0.05)'
                             }}>
                                 {item.type === 'table' && Array.isArray(item.content) ? (
-                                    <div style={{ overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                    <div style={{ overflowX: 'auto', borderRadius: '6px', border: '1px solid var(--glass-border)', background: theme === 'light' ? 'transparent' : 'rgba(0,0,0,0.1)' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                                             <tbody>
                                                 {item.content.map((row, rowIndex) => (
-                                                    <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 1 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                                    <tr key={rowIndex} style={{ borderBottom: rowIndex === item.content.length - 1 ? 'none' : '1px solid var(--glass-border)', background: rowIndex % 2 === 0 ? 'transparent' : (theme === 'light' ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.02)') }}>
                                                         {Array.isArray(row) ? row.map((cell, cellIndex) => (
                                                             <td key={cellIndex} style={{
                                                                 padding: '8px 12px',

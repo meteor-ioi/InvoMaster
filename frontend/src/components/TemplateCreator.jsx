@@ -923,8 +923,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                                 document.addEventListener('mouseup', handleMouseUp);
                                                             }}
                                                         />
-                                                        <div style={{ minWidth: 0, minHeight: 0, overflow: 'auto', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)', height: '100%' }}>
+                                                        <div style={{ minWidth: 0, minHeight: 0, overflow: 'auto', background: 'transparent', height: '100%' }}>
                                                             <DataPreview
+                                                                theme={theme}
                                                                 tableRefining={tableRefining}
                                                                 isSplit={true}
                                                                 regions={tableRefining ? [] : (selectedIds.length > 0 ? regions.filter(r => selectedIds.includes(r.id)) : (selectedId ? regions.filter(r => r.id === selectedId) : []))}
