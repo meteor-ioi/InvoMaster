@@ -56,3 +56,5 @@ backend/dump_*.py
 backend/migrate_*.py
 backend/test_fp.py
 test_onnx_inference.py
+temp_log.txt
+uvicorn_check.txt

@@ -1,182 +1,213 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+InvoMaster Desktop 主入口
+
+单 exe 双模式架构：
+- 默认模式：pywebview 前端 GUI
+- --backend 模式：uvicorn 后端服务
+
+通过命令行参数 --backend --port XXX 启动后端模式，
+主进程会 spawn 自己的另一个实例作为后端子进程。
+"""
+
 import os
 import sys
+import subprocess
 import threading
-import uvicorn
-import webview
 import time
 import socket
-import shutil
+import atexit
 import logging
+import urllib.request
+import urllib.error
+import argparse
+import shutil
 
-import multiprocessing
-
-# Configure Logging
-def setup_logging():
+# ============== 日志配置 ==============
+def setup_logging(mode="frontend"):
     log_dir = os.path.join(os.path.expanduser('~'), 'IndustryPDF_Logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
         
-    log_file = os.path.join(log_dir, 'debug.log')
-    err_file = os.path.join(log_dir, 'error.log')
+    log_file = os.path.join(log_dir, f'{mode}.log')
     
-    # Configure main logger
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
-        format='%(asctime)s - [PID:%(process)d] - %(levelname)s - %(message)s',
+        format=f'%(asctime)s - [{mode.upper()}:%(process)d] - %(levelname)s - %(message)s',
         force=True
     )
     
-    # Redirect stdout/stderr for frozen app to capture C-level or early Python errors
     if getattr(sys, 'frozen', False):
-        sys.stdout = open(os.path.join(log_dir, 'stdout.log'), 'a', encoding='utf-8', buffering=1)
-        sys.stderr = open(err_file, 'a', encoding='utf-8', buffering=1)
+        sys.stdout = open(os.path.join(log_dir, f'{mode}_stdout.log'), 'a', encoding='utf-8', buffering=1)
+        sys.stderr = open(os.path.join(log_dir, f'{mode}_stderr.log'), 'a', encoding='utf-8', buffering=1)
 
-# Initialize logging immediately
-setup_logging()
-logging.info("Starting application...")
-logging.info(f"Python: {sys.version}")
-logging.info(f"Platform: {sys.platform}")
+# ============== 全局变量 ==============
+backend_process = None
+SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
 
-# Ensure backend modules can be imported
-if getattr(sys, 'frozen', False):
-    bundle_root = sys._MEIPASS
-    backend_dir = bundle_root
-else:
-    bundle_root = os.path.dirname(os.path.abspath(__file__))
-    backend_dir = os.path.join(bundle_root, 'backend')
-
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-logging.info(f"Sys Path updated with: {backend_dir}")
-
-def bootstrap_assets(dest_root):
-    """
-    Copy bundled assets (models, etc.) to the user data directory.
-    """
-    if not getattr(sys, 'frozen', False):
-        return
-
-    bundle_root = sys._MEIPASS
+# ============== 数据目录配置 ==============
+def setup_data_directory():
+    """配置应用数据目录"""
+    app_name = "IndustryPDF"
     
-    # 1. Assets (Force update to ensure new icons/resources are applied)
-    src_assets = os.path.join(bundle_root, 'assets')
-    dest_assets = os.path.join(dest_root, 'assets')
-    
-    if os.path.exists(src_assets):
-        logging.info(f"Bootstrapping assets to {dest_assets}...")
-        try:
-            shutil.copytree(src_assets, dest_assets, dirs_exist_ok=True)
-        except Exception as e:
-            logging.error(f"Failed to bootstrap assets: {e}")
-            
-    # 2. Uploads/Templates structure
-    for d in ["uploads", "templates/auto", "templates/custom", "template_sources", "data/models"]:
-        target = os.path.join(dest_root, d)
-        if not os.path.exists(target):
-            os.makedirs(target)
-
-# Configure App Data Directory
-app_name = "IndustryPDF"
-
-# Determine application root (where the executable or script is)
-if getattr(sys, 'frozen', False):
-    app_root = os.path.dirname(sys.executable)
-else:
-    app_root = os.path.dirname(os.path.abspath(__file__))
-
-# 1. Check for Portable Mode (local 'data' folder or '.portable' flag)
-portable_data_path = os.path.join(app_root, 'data')
-is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
-
-if is_portable:
-    base_path = portable_data_path
-    mode_str = "PORTABLE"
-else:
-    # 2. Use System Standard Path
-    if sys.platform == 'win32':
-        base_path = os.path.join(os.getenv('APPDATA'), app_name)
-    elif sys.platform == 'darwin':
-        base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
+    if getattr(sys, 'frozen', False):
+        app_root = os.path.dirname(sys.executable)
     else:
-        base_path = os.path.join(os.path.expanduser('~'), '.local', 'share', app_name)
-    mode_str = "SYSTEM"
+        app_root = os.path.dirname(os.path.abspath(__file__))
+    
+    portable_data_path = os.path.join(app_root, 'data')
+    is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
 
-if not os.path.exists(base_path):
-    try:
-        os.makedirs(base_path, exist_ok=True)
-    except Exception as e:
-        logging.error(f"Failed to create data directory {base_path}: {e}")
-        # Fallback to a temp dir if both fail? For now, let it fail or use what we have.
+    if is_portable:
+        base_path = portable_data_path
+        mode_str = "PORTABLE"
+    else:
+        if sys.platform == 'win32':
+            base_path = os.path.join(os.getenv('APPDATA'), app_name)
+        elif sys.platform == 'darwin':
+            base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
+        else:
+            base_path = os.path.join(os.path.expanduser('~'), '.local', 'share', app_name)
+        mode_str = "SYSTEM"
 
-os.environ["APP_DATA_DIR"] = base_path
-logging.info(f"Data Directory set to ({mode_str}): {base_path}")
+    if not os.path.exists(base_path):
+        try:
+            os.makedirs(base_path, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to create data directory {base_path}: {e}")
 
-try:
-    logging.info("Attempting to import backend 'main' module...")
-    from main import app
-    logging.info("Backend 'main' module imported successfully.")
-except Exception as e:
-    logging.error(f"Error importing backend: {e}", exc_info=True)
-    # Important: Re-raise or exit so we see this in the error log
-    sys.exit(1)
+    os.environ["APP_DATA_DIR"] = base_path
+    logging.info(f"Data Directory set to ({mode_str}): {base_path}")
+    return base_path
 
+# ============== 端口管理 ==============
 def get_free_port():
+    """获取可用端口"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('localhost', 0))
     port = sock.getsockname()[1]
     sock.close()
     return port
 
-def start_server(port):
-    logging.info(f"Starting uvicorn on port {port}...")
+# ============== 后端进程管理 ==============
+def start_backend_process(port):
+    """启动后端子进程（使用自己作为后端）"""
+    global backend_process
+    
+    if getattr(sys, 'frozen', False):
+        # 打包环境：使用自己，加上 --backend 参数
+        cmd = [sys.executable, '--backend', '--port', str(port)]
+        cwd = os.path.dirname(sys.executable)
+    else:
+        # 开发环境：使用 python 运行自己
+        script_path = os.path.abspath(__file__)
+        cmd = [sys.executable, script_path, '--backend', '--port', str(port)]
+        cwd = os.path.dirname(os.path.abspath(__file__))
+    
+    logging.info(f"Starting backend process: {' '.join(cmd)}")
+    logging.info(f"Working directory: {cwd}")
+    
+    # Windows 下使用 CREATE_NO_WINDOW 避免弹出控制台
+    creation_flags = 0
+    if sys.platform == 'win32':
+        creation_flags = subprocess.CREATE_NO_WINDOW
+    
     try:
-        # Use Config/Server for better robustness
-        config = uvicorn.Config(
-            app, 
-            host="127.0.0.1", 
-            port=port, 
-            log_level="info", 
-            workers=1,
-            loop="asyncio"
+        backend_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=creation_flags,
+            cwd=cwd
         )
-        server = uvicorn.Server(config)
-        server.run()
+        logging.info(f"Backend process started with PID: {backend_process.pid}")
+        return backend_process
     except Exception as e:
-        logging.error(f"Uvicorn error: {e}", exc_info=True)
+        logging.error(f"Failed to start backend process: {e}", exc_info=True)
+        return None
 
-def wait_for_server(port, timeout=120):
-    """Wait for the server to start listening on the given port."""
-    start_time = time.time()
-    attempts = 0
-    while time.time() - start_time < timeout:
-        attempts += 1
+def cleanup_backend():
+    """确保后端进程退出"""
+    global backend_process
+    if backend_process and backend_process.poll() is None:
+        logging.info(f"Terminating backend process (PID: {backend_process.pid})...")
         try:
-            with socket.create_connection(("127.0.0.1", port), timeout=1):
-                logging.info(f"Server is up on port {port}")
-                return True
-        except (socket.timeout, ConnectionRefusedError):
-            if attempts % 5 == 0:
-                logging.info(f"Waiting for server... ({attempts})")
-            time.sleep(1)
-    logging.error(f"Timeout waiting for server on port {port}")
+            if sys.platform == 'win32':
+                # Windows: 使用 taskkill /T 确保子进程树也被终止
+                subprocess.call(
+                    ['taskkill', '/F', '/T', '/PID', str(backend_process.pid)],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            else:
+                backend_process.terminate()
+            
+            # 等待最多 5 秒
+            backend_process.wait(timeout=5)
+            logging.info("Backend process terminated gracefully.")
+        except subprocess.TimeoutExpired:
+            logging.warning("Backend did not terminate gracefully, killing...")
+            backend_process.kill()
+            backend_process.wait()
+        except Exception as e:
+            logging.error(f"Error cleaning up backend: {e}")
+
+def wait_for_backend(port, timeout=120):
+    """等待后端服务就绪"""
+    start = time.time()
+    url = f"http://127.0.0.1:{port}/health"
+    attempts = 0
+    
+    while time.time() - start < timeout:
+        attempts += 1
+        
+        # 检查后端进程是否还活着
+        if backend_process and backend_process.poll() is not None:
+            logging.error(f"Backend process died unexpectedly with code: {backend_process.returncode}")
+            return False
+        
+        try:
+            with urllib.request.urlopen(url, timeout=2) as response:
+                if response.status == 200:
+                    logging.info(f"Backend ready after {attempts} attempts ({time.time() - start:.1f}s)")
+                    return True
+        except (urllib.error.URLError, ConnectionRefusedError, OSError):
+            pass
+        
+        if attempts % 10 == 0:
+            logging.info(f"Waiting for backend... ({attempts} attempts)")
+        
+        time.sleep(0.5)
+    
+    logging.error(f"Timeout waiting for backend on port {port}")
     return False
 
-try:
-    if sys.platform == 'win32':
-        import ctypes
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-except Exception as e:
-    logging.warning(f"Failed to set DPI awareness: {e}")
+# ============== Windows 主题检测 ==============
+def get_windows_theme():
+    """检查 Windows 注册表获取主题偏好"""
+    if sys.platform != 'win32':
+        return 'dark'
+    try:
+        import winreg
+        registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+        key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        return 'light' if value == 1 else 'dark'
+    except Exception:
+        return 'dark'
+
+# ============== JS API ==============
+import webview
 
 class JSApi:
     def __init__(self):
         self.window = None
 
     def save_file(self, content, filename):
-        """
-        Open a native save file dialog and write content to the selected path.
-        """
+        """打开原生保存文件对话框"""
         if not self.window:
             return False
             
@@ -194,7 +225,6 @@ class JSApi:
             )
             
             if result:
-                # result is the path string
                 mode = 'wb' if isinstance(content, (bytes, bytearray)) else 'w'
                 encoding = None if 'b' in mode else 'utf-8'
                 with open(result, mode, encoding=encoding) as f:
@@ -206,7 +236,7 @@ class JSApi:
         return False
 
     def trigger_export(self):
-        """原生数据导出逻辑：直接在 Python 层打包并弹出保存对话框"""
+        """原生数据导出逻辑"""
         import zipfile
         import tempfile
         import datetime
@@ -221,7 +251,6 @@ class JSApi:
         suggested_name = f"InvoMaster_Backup_{timestamp}.zip"
         
         try:
-            # 1. 弹出保存路径选择
             dest_path = self.window.create_file_dialog(
                 webview.SAVE_DIALOG,
                 save_filename=suggested_name,
@@ -230,7 +259,6 @@ class JSApi:
             
             if not dest_path: return {"status": "cancelled"}
 
-            # 2. 在临时目录打包
             with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
                 tmp_path = tmp.name
             
@@ -242,7 +270,6 @@ class JSApi:
                         arcname = os.path.relpath(file_path, base_data_dir)
                         zipf.write(file_path, arcname)
             
-            # 3. 移动到目标位置
             shutil.move(tmp_path, dest_path)
             logging.info(f"Native export successful: {dest_path}")
             return {"status": "success", "path": dest_path}
@@ -252,14 +279,12 @@ class JSApi:
             return {"status": "error", "message": str(e)}
 
     def trigger_import(self):
-        """原生数据导入逻辑：弹出文件选择对话框并直接在 Python 层解压覆盖"""
+        """原生数据导入逻辑"""
         import zipfile
-        import tempfile
         
         if not self.window: return {"status": "error", "message": "Window not initialized"}
         
         try:
-            # 1. 弹出打开文件对话框
             file_paths = self.window.create_file_dialog(
                 webview.OPEN_DIALOG,
                 allow_multiple=False,
@@ -269,7 +294,6 @@ class JSApi:
             if not file_paths or len(file_paths) == 0: return {"status": "cancelled"}
             src_zip = file_paths[0]
 
-            # 2. 验证 ZIP
             if not zipfile.is_zipfile(src_zip):
                 return {"status": "error", "message": "Selected file is not a valid ZIP archive"}
 
@@ -279,7 +303,6 @@ class JSApi:
                 if "metadata.db" not in zipf.namelist():
                     return {"status": "error", "message": "Invalid backup: metadata.db missing"}
                 
-                # 3. 备份当前数据并解压覆盖
                 old_backup = base_data_dir + "_old_before_native_import"
                 if os.path.exists(old_backup): shutil.rmtree(old_backup)
                 shutil.copytree(base_data_dir, old_backup, ignore=shutil.ignore_patterns('models', 'cache', 'runs'))
@@ -293,55 +316,167 @@ class JSApi:
             logging.error(f"Native import failed: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
 
-def main():
+# ============== 后端模式 ==============
+def run_backend_mode(port, host="127.0.0.1"):
+    """后端服务模式"""
+    setup_logging("backend")
+    logging.info("="*50)
+    logging.info("Starting in BACKEND mode...")
+    logging.info(f"Python: {sys.version}")
+    logging.info(f"Platform: {sys.platform}")
+    
+    # 配置路径
+    if getattr(sys, 'frozen', False):
+        bundle_root = sys._MEIPASS
+        backend_dir = bundle_root
+    else:
+        bundle_root = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.join(bundle_root, 'backend')
+
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    
+    # 配置数据目录
+    base_path = setup_data_directory()
+    
+    # 资源引导
+    bootstrap_assets(base_path)
+    
+    # 导入后端应用
     try:
-        # 0. Check for UNC Path (Windows only)
-        # Running from a network share (like \\Mac\Home) is known to cause Uvicorn/Python issues
+        logging.info("Importing backend 'main' module...")
+        from main import app
+        logging.info("Backend 'main' module imported successfully.")
+    except Exception as e:
+        logging.error(f"Error importing backend: {e}", exc_info=True)
+        sys.exit(1)
+    
+    # 挂载前端路由
+    from fastapi.staticfiles import StaticFiles
+    from starlette.responses import FileResponse
+    
+    if getattr(sys, 'frozen', False):
+        dist_dir = os.path.join(sys._MEIPASS, 'frontend', 'dist')
+    else:
+        dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend', 'dist')
+    
+    if os.path.exists(dist_dir):
+        logging.info(f"Found frontend at {dist_dir}, mounting routes...")
+        app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+        
+        @app.get("/")
+        async def serve_spa_root():
+            return FileResponse(os.path.join(dist_dir, "index.html"))
+
+        @app.get("/{full_path:path}")
+        async def serve_react_app(full_path: str):
+            potential_path = os.path.join(dist_dir, full_path)
+            if os.path.isfile(potential_path):
+                return FileResponse(potential_path)
+            return FileResponse(os.path.join(dist_dir, "index.html"))
+    else:
+        logging.warning(f"Frontend dist not found at {dist_dir}")
+    
+    # 启动服务器
+    import uvicorn
+    import signal
+    
+    def signal_handler(signum, frame):
+        logging.info(f"Received signal {signum}, shutting down...")
+        sys.exit(0)
+    
+    if sys.platform != 'win32':
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+    else:
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGBREAK, signal_handler)
+    
+    logging.info(f"Starting uvicorn on {host}:{port}...")
+    
+    config = uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        workers=1,
+        loop="asyncio"
+    )
+    server = uvicorn.Server(config)
+    
+    try:
+        server.run()
+    except Exception as e:
+        logging.error(f"Uvicorn error: {e}", exc_info=True)
+        sys.exit(1)
+
+def bootstrap_assets(dest_root):
+    """将打包的资源复制到用户数据目录"""
+    if not getattr(sys, 'frozen', False):
+        return
+
+    bundle_root = sys._MEIPASS
+    
+    src_assets = os.path.join(bundle_root, 'assets')
+    dest_assets = os.path.join(dest_root, 'assets')
+    
+    if os.path.exists(src_assets):
+        logging.info(f"Bootstrapping assets to {dest_assets}...")
+        try:
+            shutil.copytree(src_assets, dest_assets, dirs_exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to bootstrap assets: {e}")
+    
+    for d in ["uploads", "templates/auto", "templates/custom", "template_sources", "data/models"]:
+        target = os.path.join(dest_root, d)
+        if not os.path.exists(target):
+            os.makedirs(target)
+
+# ============== 前端模式 ==============
+def run_frontend_mode():
+    """前端 GUI 模式"""
+    setup_logging("frontend")
+    logging.info("="*60)
+    logging.info("Starting in FRONTEND mode...")
+    logging.info(f"Python: {sys.version}")
+    logging.info(f"Platform: {sys.platform}")
+    logging.info(f"Frozen: {getattr(sys, 'frozen', False)}")
+    
+    # 注册退出处理
+    atexit.register(cleanup_backend)
+    
+    try:
+        # 0. Windows DPI 感知
+        if sys.platform == 'win32':
+            try:
+                import ctypes
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            except Exception as e:
+                logging.warning(f"Failed to set DPI awareness: {e}")
+        
+        # 1. 检查 UNC 路径警告
         current_exe_path = os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__)
         if sys.platform == 'win32' and current_exe_path.startswith('\\\\'):
             msg = "检测到程序正在网络共享路径（UNC）下运行。这可能导致服务启动失败或极度缓慢。\n\n强烈建议将程序文件夹移动到本地磁盘（如 C: 或 D: 盘）后再运行。"
             logging.warning("Running from UNC path: " + current_exe_path)
-            # Show message box
             try:
                 import ctypes
                 ctypes.windll.user32.MessageBoxW(0, msg, "运行环境警告", 0x30)
             except:
                 pass
-
-        # Check for pythonnet on Windows
-        if sys.platform == 'win32':
-            try:
-                import clr
-                logging.info("Python.NET (clr) is available.")
-            except ImportError:
-                logging.warning("Python.NET (clr) is NOT available. WebView2 might not work correctly.")
-
+        
+        # 2. 配置数据目录
+        base_path = setup_data_directory()
+        
+        # 3. 获取可用端口
         port = get_free_port()
         logging.info(f"Using port: {port}")
-
-        def get_windows_theme():
-            """Checks Windows registry for theme preference (1=Light, 0=Dark)"""
-            if sys.platform != 'win32':
-                return 'dark' # Default to dark for other platforms
-            try:
-                import winreg
-                registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
-                key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
-                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-                return 'light' if value == 1 else 'dark'
-            except Exception:
-                return 'dark'
-
+        
+        # 4. 获取系统主题
         system_theme = get_windows_theme()
         bg_color = '#ffffff' if system_theme == 'light' else '#0f172a'
         
-        # Bootstrap Assets
-        bootstrap_assets(base_path)
-
-        # Initialize API
-        js_api = JSApi()
-
-        # 1. Prepare Splash Page URL (Windows Only)
+        # 5. 准备 Splash 页面 URL (仅 Windows)
         is_windows = sys.platform == 'win32'
         splash_url = None
         
@@ -355,43 +490,12 @@ def main():
                 splash_path_url = splash_path.replace("\\", "/")
                 splash_url = f'file:///{splash_path_url}'
         
-        # On macOS or if splash disabled, go straight to backend
         initial_url = splash_url if (is_windows and splash_url) else f'http://127.0.0.1:{port}'
-
-        # 2. Modify app instance BEFORE starting uvicorn to avoid race conditions!
-        from fastapi.staticfiles import StaticFiles
-        from starlette.responses import FileResponse
         
-        # Locate dist folder
-        if getattr(sys, 'frozen', False):
-            dist_dir = os.path.join(sys._MEIPASS, 'frontend', 'dist')
-        else:
-            dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend', 'dist')
-            
-        if os.path.exists(dist_dir):
-            logging.info(f"Found frontend at {dist_dir}, mounting routes...")
-            # Mount /assets
-            app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
-            
-            # Explicit root handler
-            @app.get("/")
-            async def serve_spa_root():
-                return FileResponse(os.path.join(dist_dir, "index.html"))
-
-            # Catch-all for index.html (SPA routing)
-            @app.get("/{full_path:path}")
-            async def serve_react_app(full_path: str):
-                potential_path = os.path.join(dist_dir, full_path)
-                if os.path.isfile(potential_path):
-                    return FileResponse(potential_path)
-                return FileResponse(os.path.join(dist_dir, "index.html"))
-        else:
-            logging.warning(f"Frontend dist not found at {dist_dir}")
-
-        # 3. Create WebView Window IMMEDIATELY with Splash Page
-        logging.info("Starting webview window with initial URL...")
+        # 6. 创建 JS API
+        js_api = JSApi()
         
-        # Initial estimate for creation (will be corrected after window exists)
+        # 7. 创建 WebView 窗口
         base_w, base_h = 1420, 820
         
         window = webview.create_window(
@@ -404,24 +508,38 @@ def main():
             js_api=js_api
         )
         js_api.window = window
-
-        # 4. Start Backend and Redirect when ready (Windows only needs redirect)
+        
+        # 8. 启动后端子进程
         start_time = time.time()
         
-        def redirect_when_ready():
-            if wait_for_server(port):
-                logging.info("Server is ready.")
+        def start_backend_and_redirect():
+            """启动后端并在就绪后跳转"""
+            # 启动后端子进程
+            backend_proc = start_backend_process(port)
+            if not backend_proc:
+                logging.error("Failed to start backend process")
+                if sys.platform == 'win32':
+                    try:
+                        import ctypes
+                        ctypes.windll.user32.MessageBoxW(0, "后端服务启动失败，请查看日志文件。", "启动失败", 0x10)
+                    except: pass
+                return
+            
+            # 等待后端就绪
+            if wait_for_backend(port):
+                logging.info("Backend is ready.")
                 
-                # Windows: 需要从 Splash 页面跳转到主应用
                 if is_windows:
-                    # 确保 Splash 页面至少显示 20 秒
+                    # 确保 Splash 页面至少显示指定时间
                     elapsed = time.time() - start_time
-                    if elapsed < 20.0:
-                        time.sleep(20.0 - elapsed)
+                    remaining = SPLASH_DURATION - elapsed
+                    if remaining > 0:
+                        logging.info(f"Splash screen showing for {remaining:.1f}s more...")
+                        time.sleep(remaining)
                     
                     logging.info("Redirecting to main app (Windows)...")
                     
-                    # 使用 DPI 缩放调整窗口
+                    # DPI 缩放调整窗口
                     try:
                         dpi_scale = window.evaluate_js('window.devicePixelRatio')
                         if dpi_scale is None: 
@@ -438,45 +556,55 @@ def main():
                         logging.warning(f"Failed to resize with JS DPI scaling: {e}")
                         window.resize(1420, 820)
                     
-                    # 加载主应用 URL (仅 Windows 需要，从 Splash 跳转)
+                    # 加载主应用 URL
                     window.load_url(f'http://127.0.0.1:{port}')
                 else:
-                    # macOS: 初始 URL 已经是主应用，无需再次加载
-                    # 页面会自动刷新或已经在等待服务器响应
                     logging.info("Server ready, macOS app already loading main URL.")
             else:
                 logging.error("Backend server did not start in time.")
-                # Show fatal error dialog on Windows
                 if sys.platform == 'win32':
                     try:
                         import ctypes
                         ctypes.windll.user32.MessageBoxW(0, "后端服务启动超时，请检查日志或移动到本地磁盘运行。", "启动失败", 0x10)
                     except: pass
-
-        # Start monitoring thread
-        monitor_thread = threading.Thread(target=redirect_when_ready, daemon=True)
+        
+        # 启动后端监控线程
+        monitor_thread = threading.Thread(target=start_backend_and_redirect, daemon=True)
         monitor_thread.start()
-
-        # Start server thread (daemon)
-        server_thread = threading.Thread(target=start_server, args=(port,), daemon=True)
-        server_thread.start()
-
-        # 5. Start WebView Main Loop
+        
+        # 9. 启动 WebView 主循环
         gui_engine = 'edgechromium' if sys.platform == 'win32' else None
-        logging.info(f"Calling webview.start(gui={gui_engine})...")
+        logging.info(f"Starting webview (gui={gui_engine})...")
         webview.start(gui=gui_engine, debug=False)
-        logging.info("Webview closed.")
+        
+        logging.info("Webview closed, cleaning up...")
         
     except Exception as e:
         logging.error(f"Application error: {e}", exc_info=True)
-        # On Windows, if we are in a non-console app, show a message box for fatal errors
-        if sys.platform == 'win32' and not sys.stdout:
+        if sys.platform == 'win32':
             try:
                 import ctypes
                 ctypes.windll.user32.MessageBoxW(0, f"Application Error: {str(e)}", "Fatal Error", 0x10)
             except:
                 pass
 
+# ============== 主函数 ==============
+def main():
+    parser = argparse.ArgumentParser(description='InvoMaster Desktop Application')
+    parser.add_argument('--backend', action='store_true', help='Run in backend server mode')
+    parser.add_argument('--port', type=int, default=8000, help='Port for backend server')
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host for backend server')
+    
+    args = parser.parse_args()
+    
+    if args.backend:
+        # 后端服务模式
+        run_backend_mode(args.port, args.host)
+    else:
+        # 前端 GUI 模式
+        run_frontend_mode()
+
 if __name__ == '__main__':
+    import multiprocessing
     multiprocessing.freeze_support()
     main()

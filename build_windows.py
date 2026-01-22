@@ -51,13 +51,18 @@ def main():
     # 4. Final Verification
     print("\n[Step 4/4] Verifying Output...")
     final_output = os.path.join(dist_dir, "InvoMaster")
-    if os.path.exists(final_output):
+    main_exe = os.path.join(final_output, 'InvoMaster.exe')
+    
+    if os.path.exists(main_exe):
         print(f"\n✅ Build Successful!")
         print(f"📍 Location: {final_output}")
-        print(f"👉 Run: {os.path.join(final_output, 'InvoMaster.exe')}")
+        print(f"👉 Run: {main_exe}")
+        print(f"\n💡 单 exe 双模式架构：")
+        print(f"   - 默认运行：前端 GUI")
+        print(f"   - --backend --port PORT：后端服务模式")
     else:
-        print("\n⚠️ Build finished but output directory was not found where expected.")
-        print(f"Checked: {final_output}")
+        print("\n❌ Build failed - output not found.")
+        print(f"Checked: {main_exe}")
 
     print("\n========================================")
 

@@ -1,4 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
+"""
+InvoMaster PyInstaller 打包配置
+
+单 exe 双模式架构：
+- 默认运行前端 GUI (pywebview)
+- --backend 参数运行后端服务 (uvicorn + FastAPI)
+
+主进程会 spawn 自己作为后端子进程，无需两个 exe 文件。
+"""
 
 import sys
 import os
@@ -9,17 +18,17 @@ block_cipher = None
 # Get absolute path to the project root
 project_root = os.path.abspath(os.curdir)
 
-# Define data inclusions with absolute paths
+# ============== 数据文件 ==============
 datas = [
     (os.path.join(project_root, 'frontend', 'dist'), 'frontend/dist'),
     (os.path.join(project_root, 'assets'), 'assets'),
     (os.path.join(project_root, 'backend', 'data', 'models'), 'models'),
 ]
 
-# Add any package metadata if needed (e.g. module versions)
+# Add any package metadata if needed
 datas += copy_metadata('rapidocr-onnxruntime')
 
-# Explicitly add rapidocr-onnxruntime package data (config.yaml, etc.)
+# Explicitly add rapidocr-onnxruntime package data
 import rapidocr_onnxruntime
 rapidocr_path = os.path.dirname(rapidocr_onnxruntime.__file__)
 datas.append((rapidocr_path, 'rapidocr_onnxruntime'))
@@ -27,9 +36,10 @@ datas.append((rapidocr_path, 'rapidocr_onnxruntime'))
 # Icon selection based on platform
 icon_file = 'assets/icon.icns' if sys.platform == 'darwin' else 'assets/icon.ico'
 
+# ============== 分析 ==============
 a = Analysis(
     ['run_desktop.py'],
-    pathex=['backend'],  # Add backend to path for analysis
+    pathex=['backend'],
     binaries=[],
     datas=datas,
     hiddenimports=[
@@ -43,8 +53,8 @@ a = Analysis(
         'numpy',
         'onnxruntime',
         'rapidocr_onnxruntime',
-        'clr',      # pythonnet support for Windows WebView2
-        'webview',  # pywebview
+        'clr',      # pythonnet for Windows WebView2
+        'webview',
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,24 +66,22 @@ a = Analysis(
     noarchive=False,
 )
 
-# --- Advanced Optimization: Remove unused torch components ---
+# ============== 优化过滤器 ==============
 def is_needless(entry):
+    """过滤不需要的大型依赖"""
     name = entry[0]
-    # Remove torch tests, distributed, headers, and other heavy unused parts
     if 'torch/test' in name or 'torch/testing' in name: return True
     if 'torch/distributed' in name: return True
     if 'torch/include' in name: return True
     if 'torch/share' in name: return True
     if 'caffe2' in name: return True
-    # Remove other typical bloat
-    if 'pydantic/v1' in name: return True # rapidocr might use v1, careful, but usually safe if v2 is used
+    if 'pydantic/v1' in name: return True
     return False
 
-# Filter the TOCs (Table of Contents)
+# 过滤 TOCs
 a.binaries = [x for x in a.binaries if not is_needless(x)]
 a.datas = [x for x in a.datas if not is_needless(x)]
 a.zipfiles = [x for x in a.zipfiles if not is_needless(x)]
-# -----------------------------------------------------------
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -89,14 +97,14 @@ exe = EXE(
     upx=True,
     console=False,  # GUI application, no console window
     disable_windowed_traceback=False,
-    argv_emulation=sys.platform == 'darwin',  # Only for macOS
+    argv_emulation=sys.platform == 'darwin',
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_file
 )
 
-# Platform specific packaging
+# ============== 平台特定打包 ==============
 if sys.platform == 'darwin':
     app = BUNDLE(
         exe,
@@ -108,7 +116,7 @@ if sys.platform == 'darwin':
         bundle_identifier='com.industrypdf.app'
     )
 else:
-    # One-Dir mode for Windows/Linux (Recommended for ML apps)
+    # Windows/Linux: One-Dir 模式
     coll = COLLECT(
         exe,
         a.binaries,
