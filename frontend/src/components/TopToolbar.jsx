@@ -76,8 +76,8 @@ const TopToolbar = ({
                     overflow: 'hidden',
                     background: isIntegrated ? 'rgba(255,255,255,0.03)' : ''
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', overflow: 'hidden', flexWrap: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             {/* Smart Dedup Toggle */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                                 <Zap size={16} color="var(--primary-color)" />
@@ -148,10 +148,13 @@ const TopToolbar = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                gap: '12px',
                 borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
-                background: isIntegrated ? 'rgba(255,255,255,0.02)' : ''
+                background: isIntegrated ? 'rgba(255,255,255,0.02)' : '',
+                overflow: 'hidden',
+                flexWrap: 'nowrap'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'fit-content' }}>
                     {/* 高精度表格微调入口 - 移至最左侧 */}
                     {!tableRefining && (
                         <>
@@ -339,7 +342,7 @@ const TopToolbar = ({
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 'fit-content', justifyContent: 'center' }}>
                     {/* Central Editing Tools */}
                     {tableRefining ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -364,7 +367,7 @@ const TopToolbar = ({
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '2px'
+                            gap: '1px'
                         }}>
                             <button
                                 onClick={() => undo && undo()}
@@ -460,8 +463,8 @@ const TopToolbar = ({
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', justifyContent: 'flex-end' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '2px 8px', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 'fit-content', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--input-bg)', padding: '2px 6px', borderRadius: '6px' }}>
                         <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Minus size={14} /></button>
                         <span style={{ fontSize: '12px', minWidth: '35px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
                         <button onClick={() => setZoom(z => Math.min(5.0, z + 0.25))} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><Plus size={14} /></button>
@@ -472,7 +475,8 @@ const TopToolbar = ({
                         }} style={{ fontSize: '10px', background: 'var(--glass-border)', border: 'none', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '4px', whiteSpace: 'nowrap', minWidth: 'fit-content' }}>自适应</button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                             onClick={() => setShowRegions(!showRegions)}
                             style={{

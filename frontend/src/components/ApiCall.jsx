@@ -797,15 +797,15 @@ fetch(url, {
                             </div>
                             {statusCounts.all > 0 && (
                                 <div style={{
-                                    width: '36px',
-                                    height: '36px',
+                                    width: '24px',
+                                    height: '24px',
                                     borderRadius: '50%',
                                     background: 'var(--accent-color)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     color: 'white',
-                                    fontSize: '12px',
+                                    fontSize: '11px',
                                     fontWeight: 'bold'
                                 }}>
                                     {statusCounts.all}
@@ -859,17 +859,17 @@ fetch(url, {
                                                 </div>
                                             </button>
                                         </label>
-                                    <div className="search-input-wrapper">
-                                        <Search size={14} color="var(--text-secondary)" />
-                                        <input
-                                            type="text"
-                                            value={filterSearch}
-                                            onChange={(e) => setFilterSearch(e.target.value)}
-                                            placeholder="搜索文件名/模板名..."
-                                            className="search-input"
-                                        />
+                                        <div className="search-input-wrapper">
+                                            <Search size={14} color="var(--text-secondary)" />
+                                            <input
+                                                type="text"
+                                                value={filterSearch}
+                                                onChange={(e) => setFilterSearch(e.target.value)}
+                                                placeholder="搜索文件名/模板名..."
+                                                className="search-input"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
                                     {/* 高级筛选面板 - 使用 CSS 类控制垂直展开 */}
                                     <div className={`expand-vertical ${isAdvancedFilterOpen ? 'expanded' : ''}`} style={{
@@ -912,22 +912,22 @@ fetch(url, {
                                     </div>
 
                                     {/* 状态筛选 */}
-                                <div className="status-filter-grid">
-                                    {[
-                                        { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
-                                        { id: 'completed', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
-                                        { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
-                                        { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
-                                    ].map(btn => (
-                                        <button
-                                            key={btn.id}
-                                            onClick={() => setFilterStatus(btn.id)}
-                                            className={`status-filter-btn ${filterStatus === btn.id ? 'active' : ''} ${filterStatus === btn.id && btn.id !== 'all' ? `active-${btn.id}` : ''}`}
-                                        >
-                                            {btn.icon} {btn.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                    <div className="status-filter-grid">
+                                        {[
+                                            { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
+                                            { id: 'completed', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
+                                            { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
+                                            { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
+                                        ].map(btn => (
+                                            <button
+                                                key={btn.id}
+                                                onClick={() => setFilterStatus(btn.id)}
+                                                className={`status-filter-btn ${filterStatus === btn.id ? 'active' : ''} ${filterStatus === btn.id && btn.id !== 'all' ? `active-${btn.id}` : ''}`}
+                                            >
+                                                {btn.icon} {btn.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* 记录列表 */}
