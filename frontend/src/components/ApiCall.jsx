@@ -811,43 +811,44 @@ fetch(url, {
                                     </span>
                                 </div>
                             </div>
-                            <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
                                 {/* 记录搜索和筛选 */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>记录搜索</label>
-                                        <button
-                                            onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                background: 'none',
-                                                border: 'none',
-                                                color: isAdvancedFilterOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                                fontSize: '11px',
-                                                cursor: 'pointer',
-                                                padding: '0'
-                                            }}
-                                        >
-                                            <Filter size={12} />
-                                            高级筛选
-                                            <ChevronDown size={12} style={{
-                                                transform: isAdvancedFilterOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.3s ease'
-                                            }} />
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                                <div className="filter-section">
+                                    <div>
+                                        <label className="filter-label">
+                                            <span>记录搜索</span>
+                                            <button
+                                                onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: isAdvancedFilterOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                    fontSize: '10px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <Filter size={10} />
+                                                高级筛选
+                                                <div style={{ transform: isAdvancedFilterOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s ease' }}>
+                                                    <ChevronDown size={10} />
+                                                </div>
+                                            </button>
+                                        </label>
+                                    <div className="search-input-wrapper">
                                         <Search size={14} color="var(--text-secondary)" />
                                         <input
                                             type="text"
                                             value={filterSearch}
                                             onChange={(e) => setFilterSearch(e.target.value)}
                                             placeholder="搜索文件名/模板名..."
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', color: 'var(--text-primary)', width: '100%' }}
+                                            className="search-input"
                                         />
                                     </div>
+                                </div>
 
                                     {/* 高级筛选面板 - 使用 CSS 类控制垂直展开 */}
                                     <div className={`expand-vertical ${isAdvancedFilterOpen ? 'expanded' : ''}`} style={{
@@ -862,20 +863,11 @@ fetch(url, {
                                         pointerEvents: isAdvancedFilterOpen ? 'all' : 'none'
                                     }}>
                                         <div>
-                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>日期范围</label>
+                                            <label className="filter-label-small">日期范围</label>
                                             <select
                                                 value={filterDateRange}
                                                 onChange={(e) => setFilterDateRange(e.target.value)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '6px',
-                                                    borderRadius: '6px',
-                                                    background: 'var(--input-bg)',
-                                                    border: '1px solid var(--glass-border)',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '11px',
-                                                    outline: 'none'
-                                                }}
+                                                className="filter-select"
                                             >
                                                 <option value="all">全部时间</option>
                                                 <option value="today">今天</option>
@@ -884,20 +876,11 @@ fetch(url, {
                                             </select>
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>关联模板</label>
+                                            <label className="filter-label-small">引用模板</label>
                                             <select
                                                 value={filterTemplate}
                                                 onChange={(e) => setFilterTemplate(e.target.value)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '6px',
-                                                    borderRadius: '6px',
-                                                    background: 'var(--input-bg)',
-                                                    border: '1px solid var(--glass-border)',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '11px',
-                                                    outline: 'none'
-                                                }}
+                                                className="filter-select"
                                             >
                                                 <option value="all">全部模板</option>
                                                 {templates.map(t => (
@@ -907,47 +890,40 @@ fetch(url, {
                                         </div>
                                     </div>
 
-                                    {/* 状态分布 - 2x2 网格布局 */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                                        {[
-                                            { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
-                                            { id: 'completed', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
-                                            { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
-                                            { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
-                                        ].map(s => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => setFilterStatus(s.id)}
-                                                style={{
-                                                    padding: '6px 8px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '10px',
-                                                    fontWeight: filterStatus === s.id ? 'bold' : 'normal',
-                                                    border: `1px solid ${filterStatus === s.id ? s.activeColor : 'var(--glass-border)'}`,
-                                                    background: filterStatus === s.id ? s.activeBg : 'var(--input-bg)',
-                                                    color: filterStatus === s.id ? s.activeColor : 'var(--text-secondary)',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '4px',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                            >
-                                                {s.icon} <span>{s.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {/* 状态筛选 */}
+                                <div className="status-filter-grid">
+                                    {[
+                                        { id: 'all', label: '全部', icon: <Package size={10} />, activeColor: 'var(--primary-color)', activeBg: 'rgba(59, 130, 246, 0.1)' },
+                                        { id: 'completed', label: '成功', icon: <CheckCircle size={10} />, activeColor: 'var(--success-color)', activeBg: 'rgba(16, 185, 129, 0.1)' },
+                                        { id: 'processing', label: '排队', icon: <Clock size={10} />, activeColor: '#fbbf24', activeBg: 'rgba(251, 191, 36, 0.1)' },
+                                        { id: 'failed', label: '失败', icon: <AlertCircle size={10} />, activeColor: '#ef4444', activeBg: 'rgba(239, 68, 68, 0.1)' }
+                                    ].map(btn => (
+                                        <button
+                                            key={btn.id}
+                                            onClick={() => setFilterStatus(btn.id)}
+                                            className={`status-filter-btn ${filterStatus === btn.id ? 'active' : ''} ${filterStatus === btn.id && btn.id !== 'all' ? `active-${btn.id}` : ''}`}
+                                        >
+                                            {btn.icon} {btn.label}
+                                        </button>
+                                    ))}
+                                </div>
                                 </div>
 
                                 {/* 记录列表 */}
                                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '10px',
+                                        minHeight: '20px'
+                                    }}>
                                         <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>
                                             记录列表
                                         </label>
-                                        {selectedRecords.size > 0 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                                        {filteredRecords.length > 0 && selectedRecords.size > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', animation: 'fadeIn 0.2s ease' }}>
                                                 <button
                                                     onClick={handleBatchDeleteRecords}
                                                     style={{
@@ -955,12 +931,13 @@ fetch(url, {
                                                         border: '1px solid rgba(239, 68, 68, 0.2)',
                                                         color: '#ef4444',
                                                         fontSize: '10px',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '4px',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '4px'
+                                                        gap: '4px',
+                                                        transition: 'all 0.2s ease'
                                                     }}
                                                 >
                                                     <Trash2 size={10} /> 删除({selectedRecords.size})
@@ -976,7 +953,8 @@ fetch(url, {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        cursor: 'pointer'
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
                                                     }}
                                                     title="全选/取消全选"
                                                 >
@@ -1024,7 +1002,8 @@ fetch(url, {
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            cursor: 'pointer'
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease'
                                                         }}
                                                     >
                                                         {selectedRecords.has(record.id) && <Check size={10} color="white" />}

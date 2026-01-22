@@ -409,3 +409,119 @@ select {
   max-height: 500px; /* 足够大的高度 */
   opacity: 1;
 }
+
+/* ========== 筛选区域通用样式 ========== */
+
+/* 筛选容器 */
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 主标签样式 */
+.filter-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 小标签样式（用于高级筛选内部） */
+.filter-label-small {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* 搜索输入框容器 */
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--input-bg);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+}
+
+/* 搜索输入框 */
+.search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+/* 下拉选择框 */
+.filter-select {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 状态筛选按钮网格 */
+.status-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+/* 状态筛选按钮 */
+.status-filter-btn {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.status-filter-btn:hover {
+  background: var(--glass-border);
+  color: var(--text-primary);
+}
+
+/* 激活状态 */
+.status-filter-btn.active {
+  font-weight: bold;
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-color);
+}
+
+/* 状态特定激活样式 */
+.status-filter-btn.active-success {
+  border-color: var(--success-color);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-filter-btn.active-processing {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+}
+
+.status-filter-btn.active-failed {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}

@@ -206,7 +206,7 @@ const LeftPanel = ({
                         style={{
                             width: '100%',
                             flex: 1,
-                            padding: '15px 12px',
+                            padding: '15px',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '12px',

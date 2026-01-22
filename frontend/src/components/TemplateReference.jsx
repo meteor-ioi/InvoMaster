@@ -1406,8 +1406,8 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                     <div style={{ padding: '30px', flex: 1, overflow: 'auto' }}>
                         {!result ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
-                                <Eye size={48} />
-                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>工作台就绪</div>
+                                <Eye size={64} style={{ opacity: 0.3, marginBottom: '25px', transition: '0.3s' }} />
+                                <h2 style={{ marginBottom: '10px' }}>工作台就绪</h2>
                                 <div style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>Inspired by babeldoc, vibe coded by icychick.</div>
                             </div>
                         ) : (
