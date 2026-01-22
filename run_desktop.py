@@ -294,23 +294,23 @@ def main():
         )
         js_api.window = window
 
-        # 4. Start Backend and Redirect when ready
+        # 4. Start Backend and Redirect when ready (Windows only needs redirect)
         start_time = time.time()
         
         def redirect_when_ready():
             if wait_for_server(port):
-                logging.info("Server is ready, checking minimum wait time...")
-                # Ensure at least 6 seconds of splash screen visibility (Windows Only)
+                logging.info("Server is ready.")
+                
+                # Windows: 需要从 Splash 页面跳转到主应用
                 if is_windows:
+                    # 确保 Splash 页面至少显示 6 秒
                     elapsed = time.time() - start_time
                     if elapsed < 6.0:
                         time.sleep(6.0 - elapsed)
-                
-                logging.info("Redirecting to main app...")
-                
-                # Windows: 使用 DPI 缩放调整窗口
-                # macOS: 直接加载，不调整窗口（避免闪烁）
-                if is_windows:
+                    
+                    logging.info("Redirecting to main app (Windows)...")
+                    
+                    # 使用 DPI 缩放调整窗口
                     try:
                         dpi_scale = window.evaluate_js('window.devicePixelRatio')
                         if dpi_scale is None: 
@@ -326,9 +326,13 @@ def main():
                     except Exception as e:
                         logging.warning(f"Failed to resize with JS DPI scaling: {e}")
                         window.resize(1420, 820)
-                
-                # 加载主应用 URL
-                window.load_url(f'http://127.0.0.1:{port}')
+                    
+                    # 加载主应用 URL (仅 Windows 需要，从 Splash 跳转)
+                    window.load_url(f'http://127.0.0.1:{port}')
+                else:
+                    # macOS: 初始 URL 已经是主应用，无需再次加载
+                    # 页面会自动刷新或已经在等待服务器响应
+                    logging.info("Server ready, macOS app already loading main URL.")
             else:
                 logging.error("Backend server did not start in time.")
                 # Show fatal error dialog on Windows
