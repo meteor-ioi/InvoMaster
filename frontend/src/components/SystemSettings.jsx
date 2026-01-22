@@ -91,6 +91,18 @@ const SystemSettings = ({ isOpen, onClose, theme }) => {
     const handleExportData = async () => {
         setLoading(true);
         try {
+            // 优先使用原生桌面接口 (适配 macOS/Windows 打包版)
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.trigger_export) {
+                const result = await window.pywebview.api.trigger_export();
+                if (result.status === 'success') {
+                    // 原生对话框已处理保存，无需前端下载
+                    console.log("Native export success:", result.path);
+                } else if (result.status === 'error') {
+                    alert(`导出失败: ${result.message}`);
+                }
+                return;
+            }
+
             const response = await fetch('/system/data/export');
             if (!response.ok) throw new Error("导出失败");
 
@@ -118,6 +130,27 @@ const SystemSettings = ({ isOpen, onClose, theme }) => {
     };
 
     const handleImportData = async () => {
+        // 1. 原生桌面导入逻辑
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.trigger_import) {
+            if (!confirm("⚠️ 警告：导入备份将覆盖当前所有数据。建议提前备份。\n\n是否打开文件选择器？")) return;
+
+            setLoading(true);
+            try {
+                const result = await window.pywebview.api.trigger_import();
+                if (result.status === 'success') {
+                    alert("✅ 数据还原成功！应用需要重启以加载新数据。");
+                    onClose();
+                } else if (result.status === 'error') {
+                    alert(`❌ 还原失败: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Native import failed:", error);
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
         if (!confirm("⚠️ 警告：导入备份将覆盖当前所有数据（模板、记录等）。建议在继续前先进行导出备份。\n\n是否确认继续？")) {
             return;
         }

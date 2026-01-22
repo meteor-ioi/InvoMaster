@@ -195,13 +195,103 @@ class JSApi:
             
             if result:
                 # result is the path string
-                with open(result, 'w', encoding='utf-8') as f:
+                mode = 'wb' if isinstance(content, (bytes, bytearray)) else 'w'
+                encoding = None if 'b' in mode else 'utf-8'
+                with open(result, mode, encoding=encoding) as f:
                     f.write(content)
                 return True
         except Exception as e:
             logging.error(f"Error saving file: {e}")
             
         return False
+
+    def trigger_export(self):
+        """原生数据导出逻辑：直接在 Python 层打包并弹出保存对话框"""
+        import zipfile
+        import tempfile
+        import datetime
+        
+        if not self.window: return {"status": "error", "message": "Window not initialized"}
+        
+        base_data_dir = os.environ.get("APP_DATA_DIR")
+        if not base_data_dir or not os.path.exists(base_data_dir):
+            return {"status": "error", "message": "Data directory not found"}
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        suggested_name = f"InvoMaster_Backup_{timestamp}.zip"
+        
+        try:
+            # 1. 弹出保存路径选择
+            dest_path = self.window.create_file_dialog(
+                webview.SAVE_DIALOG,
+                save_filename=suggested_name,
+                file_types=('ZIP files (*.zip)', 'All files (*.*)')
+            )
+            
+            if not dest_path: return {"status": "cancelled"}
+
+            # 2. 在临时目录打包
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+                tmp_path = tmp.name
+            
+            with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(base_data_dir):
+                    if any(x in root for x in ['models', 'cache', 'runs']): continue
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, base_data_dir)
+                        zipf.write(file_path, arcname)
+            
+            # 3. 移动到目标位置
+            shutil.move(tmp_path, dest_path)
+            logging.info(f"Native export successful: {dest_path}")
+            return {"status": "success", "path": dest_path}
+            
+        except Exception as e:
+            logging.error(f"Native export failed: {e}", exc_info=True)
+            return {"status": "error", "message": str(e)}
+
+    def trigger_import(self):
+        """原生数据导入逻辑：弹出文件选择对话框并直接在 Python 层解压覆盖"""
+        import zipfile
+        import tempfile
+        
+        if not self.window: return {"status": "error", "message": "Window not initialized"}
+        
+        try:
+            # 1. 弹出打开文件对话框
+            file_paths = self.window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=False,
+                file_types=('ZIP files (*.zip)', 'All files (*.*)')
+            )
+            
+            if not file_paths or len(file_paths) == 0: return {"status": "cancelled"}
+            src_zip = file_paths[0]
+
+            # 2. 验证 ZIP
+            if not zipfile.is_zipfile(src_zip):
+                return {"status": "error", "message": "Selected file is not a valid ZIP archive"}
+
+            base_data_dir = os.environ.get("APP_DATA_DIR")
+            
+            with zipfile.ZipFile(src_zip, 'r') as zipf:
+                if "metadata.db" not in zipf.namelist():
+                    return {"status": "error", "message": "Invalid backup: metadata.db missing"}
+                
+                # 3. 备份当前数据并解压覆盖
+                old_backup = base_data_dir + "_old_before_native_import"
+                if os.path.exists(old_backup): shutil.rmtree(old_backup)
+                shutil.copytree(base_data_dir, old_backup, ignore=shutil.ignore_patterns('models', 'cache', 'runs'))
+                
+                zipf.extractall(base_data_dir)
+            
+            logging.info(f"Native import successful from: {src_zip}")
+            return {"status": "success", "message": "Data restored. Please restart app."}
+            
+        except Exception as e:
+            logging.error(f"Native import failed: {e}", exc_info=True)
+            return {"status": "error", "message": str(e)}
 
 def main():
     try:
