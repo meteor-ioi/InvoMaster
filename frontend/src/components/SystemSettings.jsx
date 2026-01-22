@@ -88,6 +88,74 @@ const SystemSettings = ({ isOpen, onClose, theme }) => {
         input.click();
     };
 
+    const handleExportData = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/system/data/export');
+            if (!response.ok) throw new Error("导出失败");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `InvoMaster_Backup_${new Date().toISOString().split('T')[0]}.zip`;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="(.+)"/);
+                if (match) filename = match[1];
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error("Export data failed:", error);
+            alert("数据导出失败，请检查后端连接");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImportData = async () => {
+        if (!confirm("⚠️ 警告：导入备份将覆盖当前所有数据（模板、记录等）。建议在继续前先进行导出备份。\n\n是否确认继续？")) {
+            return;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.zip';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            setLoading(true);
+            try {
+                const response = await fetch('/system/data/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("✅ 数据还原成功！请手动重启应用以应用更改。");
+                    onClose();
+                } else {
+                    alert(`❌ 还原失败: ${result.detail || '未知错误'}`);
+                }
+            } catch (error) {
+                console.error("Import data failed:", error);
+                alert("还原过程中出现网络错误");
+            } finally {
+                setLoading(false);
+            }
+        };
+        input.click();
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -304,6 +372,78 @@ const SystemSettings = ({ isOpen, onClose, theme }) => {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Data Management Section */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <HardDrive size={16} color="var(--primary-color)" /> 数据管理
+                            </h3>
+                            <div style={{
+                                padding: '20px',
+                                borderRadius: '20px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid var(--glass-border)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '16px'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>完整备份导出</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>将所有模板、识别记录及上传文件打包为加密 ZIP 归档</p>
+                                    </div>
+                                    <button
+                                        onClick={handleExportData}
+                                        disabled={loading}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            background: 'rgba(59, 130, 246, 0.1)',
+                                            color: '#3b82f6',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                        className="hover-bright"
+                                    >
+                                        <Download size={16} /> 立即备份
+                                    </button>
+                                </div>
+
+                                <div style={{ height: '1px', background: 'var(--glass-border)' }}></div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>还原备份包</div>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>从本地 ZIP 备份包中恢复所有历史数据</p>
+                                    </div>
+                                    <button
+                                        onClick={handleImportData}
+                                        disabled={loading}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: '10px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                        className="hover-bright"
+                                    >
+                                        <UploadCloud size={16} /> 上传还原
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

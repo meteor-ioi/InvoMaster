@@ -1396,6 +1396,82 @@ async def download_model(model_id: str):
     
     return {"status": "success", "message": f"Download started for {model_id}"}
 
+# ========== Data Backup & Restore ==========
+from fastapi.responses import FileResponse
+import tempfile
+import zipfile
+
+@app.get("/system/data/export")
+async def export_data():
+    """将核心数据打包并导出为 ZIP"""
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    export_filename = f"InvoMaster_Backup_{timestamp}"
+    
+    # 创建临时 Zip 文件
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+        tmp_path = tmp.name
+        
+    try:
+        with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # 遍历数据目录
+            for root, dirs, files in os.walk(base_data_dir):
+                # 排除不需要备份的服务配置、模型目录 (体积大) 和 缓存目录
+                if 'models' in root or 'cache' in root or 'runs' in root:
+                    continue
+                
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, base_data_dir)
+                    zipf.write(file_path, arcname)
+                    
+        return FileResponse(
+            tmp_path, 
+            filename=f"{export_filename}.zip",
+            background=None # 客户端下载完成后再删除物理文件由 FileResponse 自动处理不一定可靠，这里简单返回
+        )
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@app.post("/system/data/import")
+async def import_data(file: UploadFile = File(...)):
+    """从 ZIP 包恢复数据"""
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only ZIP files are supported")
+        
+    # 保存上传的包
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+        
+    try:
+        # 验证 ZIP 包结构
+        with zipfile.ZipFile(tmp_path, 'r') as zipf:
+            file_list = zipf.namelist()
+            # 必须包含核心数据库文件
+            if "metadata.db" not in file_list:
+                raise HTTPException(status_code=400, detail="Invalid backup file: metadata.db missing")
+            
+            # 1. 备份当前数据到 data_old 目录
+            old_backup = base_data_dir + "_old_before_import"
+            if os.path.exists(old_backup):
+                shutil.rmtree(old_backup)
+            
+            # 这里我们只克隆关键文件夹（排除 models 等大的内容）
+            shutil.copytree(base_data_dir, old_backup, ignore=shutil.ignore_patterns('models', 'cache', 'runs'))
+            
+            # 2. 执行解压覆盖
+            zipf.extractall(base_data_dir)
+            
+        return {"status": "success", "message": "Data restored successfully. Please restart the application."}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
 @app.post("/system/models/import")
 async def import_model(model_id: str, file: UploadFile = File(...)):
     if model_id not in MODELS_CONFIG:
