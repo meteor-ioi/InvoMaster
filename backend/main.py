@@ -428,7 +428,7 @@ async def root():
     return {"message": "HITL Document Extraction API is running"}
 
 @app.post("/analyze")
-async def analyze_document(
+def analyze_document(
     file: Optional[UploadFile] = File(None), 
     filename: Optional[str] = Form(None),
     device: Optional[str] = None, 
@@ -608,7 +608,7 @@ async def analyze_document(
     return base_response
 
 @app.get("/templates/{template_id}/analyze")
-async def analyze_from_source(template_id: str):
+def analyze_from_source(template_id: str):
     """
     Re-analyze a document using the preserved source PDF in the library.
     """
@@ -701,7 +701,7 @@ class TableAnalysisRequest(BaseModel):
     settings: Optional[dict] = None
 
 @app.post("/table/analyze")
-async def analyze_table_structure(req: TableAnalysisRequest):
+def analyze_table_structure(req: TableAnalysisRequest):
     file_path = os.path.join(UPLOAD_DIR, req.filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
@@ -833,7 +833,7 @@ async def analyze_table_structure(req: TableAnalysisRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/regions/extract")
-async def extract_multiple_regions(
+def extract_multiple_regions(
     filename: str = Form(...),
     regions: str = Form(...) # JSON string of regions
 ):
@@ -875,7 +875,7 @@ async def list_templates(mode: Optional[str] = None, tag: Optional[str] = None):
     return db.list_templates(mode=mode, tag=tag)
 
 @app.post("/templates")
-async def save_template(template: Template):
+def save_template(template: Template):
     # 1. Determine storage path
     # Default to auto if not specified (backward compatibility)
     mode = template.mode if template.mode in ['auto', 'custom'] else 'auto'
@@ -964,7 +964,7 @@ async def delete_template(template_id: str):
     return {"status": "success", "message": f"Template {template_id} deleted"}
 
 @app.post("/templates/migrate")
-async def migrate_templates_fingerprints():
+def migrate_templates_fingerprints():
     """
     Utility to upgrade all existing templates to v2_visual fingerprints.
     It uses the preserved source PDFs in data/template_sources.
@@ -1016,7 +1016,7 @@ async def migrate_templates_fingerprints():
 
 
 @app.post("/extract/{template_id}")
-async def extract_with_custom_template(
+def extract_with_custom_template(
     template_id: str,
     file: UploadFile = File(...),
     device: Optional[str] = None
@@ -1045,7 +1045,7 @@ async def extract_with_custom_template(
 
         # --- Branch A: Auto Mode ---
         if template_id.lower() == "auto":
-            result = await analyze_document(file=file, device=device)
+            result = analyze_document(file=file, device=device)
             
             # Determine template name for record
             if result.get("template_found") and result.get("matched_template"):
@@ -1147,14 +1147,14 @@ async def extract_with_custom_template(
 
 
 @app.post("/extract")
-async def extract_from_template_legacy(
+def extract_from_template_legacy(
     template_id: str,
     file: UploadFile = File(...),
     device: Optional[str] = None
 ):
     # Deprecated or strictly Auto-mode compatible
     # Forward to new handler for now
-    return await extract_with_custom_template(template_id, file, device=device)
+    return extract_with_custom_template(template_id, file, device=device)
 
 @app.get("/history")
 async def get_history():
@@ -1185,7 +1185,7 @@ async def batch_delete_history(req: BatchDeleteRequest):
 # ========== API Task Management Endpoints ==========
 
 @app.post("/api/tasks")
-async def create_extraction_task(
+def create_extraction_task(
     file: UploadFile = File(...),
     template_id: str = Form("auto")
 ):

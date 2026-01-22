@@ -37,22 +37,26 @@ class LayoutEngine:
     def __init__(self, model_path=None, device=None):
         if model_path is None:
             base_data = os.environ.get("APP_DATA_DIR", "data")
+            is_windows = sys.platform.startswith('win')
             
-            # Candidates for model discovery
-            candidates = [
-                # 1. User Data Directory (Highest Priority for overrides)
-                os.path.join(base_data, "models", "yolov10-doclayout.onnx"),
-            ]
+            # Model filename candidates based on platform
+            # Windows prefers INT8 for speed, others prefer FP32/16 for accuracy/accel
+            model_filenames = ["yolov10-doclayout_int8.onnx", "yolov10-doclayout.onnx"] if is_windows else ["yolov10-doclayout.onnx"]
             
-            # 2. Bundled Resources (App bundle)
-            if getattr(sys, 'frozen', False):
-                candidates.append(os.path.join(sys._MEIPASS, "models", "yolov10-doclayout.onnx"))
-            
-            # 3. Development / CWD locations
-            candidates.extend([
-                os.path.join("data", "models", "yolov10-doclayout.onnx"),
-                os.path.join("models", "yolov10-doclayout.onnx"),
-            ])
+            candidates = []
+            for filename in model_filenames:
+                # 1. User Data Directory
+                candidates.append(os.path.join(base_data, "models", filename))
+                
+                # 2. Bundled Resources
+                if getattr(sys, 'frozen', False):
+                    candidates.append(os.path.join(sys._MEIPASS, "models", filename))
+                
+                # 3. Development / CWD locations
+                candidates.extend([
+                    os.path.join("data", "models", filename),
+                    os.path.join("models", filename),
+                ])
             
             # Find the first existing path
             for path in candidates:
@@ -60,9 +64,9 @@ class LayoutEngine:
                     model_path = path
                     break
             
-            # Fallback for error message
+            # Fallback for error message if nothing found
             if model_path is None:
-                model_path = candidates[0]
+                model_path = os.path.join(base_data, "models", "yolov10-doclayout.onnx")
         
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"MODEL_MISSING: {os.path.basename(model_path)}")

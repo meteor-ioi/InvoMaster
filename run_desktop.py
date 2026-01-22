@@ -145,7 +145,7 @@ def start_server(port):
     except Exception as e:
         logging.error(f"Uvicorn error: {e}", exc_info=True)
 
-def wait_for_server(port, timeout=60):
+def wait_for_server(port, timeout=120):
     """Wait for the server to start listening on the given port."""
     start_time = time.time()
     attempts = 0
@@ -324,10 +324,10 @@ def main():
                 
                 # Windows: 需要从 Splash 页面跳转到主应用
                 if is_windows:
-                    # 确保 Splash 页面至少显示 6 秒
+                    # 确保 Splash 页面至少显示 20 秒
                     elapsed = time.time() - start_time
-                    if elapsed < 6.0:
-                        time.sleep(6.0 - elapsed)
+                    if elapsed < 20.0:
+                        time.sleep(20.0 - elapsed)
                     
                     logging.info("Redirecting to main app (Windows)...")
                     

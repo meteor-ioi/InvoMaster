@@ -19,4 +19,11 @@ dependencies = [
     "uvicorn>=0.40.0",
     "pywebview>=5.0",
     "pyinstaller>=6.0",
+    "onnx>=1.20.1",
+    "onnxruntime-extensions>=0.14.0",
+]
+
+[project.optional-dependencies]
+cpu = [
+    "torch>=2.10.0",
 ]
