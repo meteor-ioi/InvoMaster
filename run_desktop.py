@@ -78,18 +78,39 @@ def bootstrap_assets(dest_root):
 
 # Configure App Data Directory
 app_name = "IndustryPDF"
-if sys.platform == 'win32':
-    base_path = os.path.join(os.getenv('APPDATA'), app_name)
-elif sys.platform == 'darwin':
-    base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
+
+# Determine application root (where the executable or script is)
+if getattr(sys, 'frozen', False):
+    app_root = os.path.dirname(sys.executable)
 else:
-    base_path = os.path.join(os.path.expanduser('~'), '.local', 'share', app_name)
+    app_root = os.path.dirname(os.path.abspath(__file__))
+
+# 1. Check for Portable Mode (local 'data' folder or '.portable' flag)
+portable_data_path = os.path.join(app_root, 'data')
+is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
+
+if is_portable:
+    base_path = portable_data_path
+    mode_str = "PORTABLE"
+else:
+    # 2. Use System Standard Path
+    if sys.platform == 'win32':
+        base_path = os.path.join(os.getenv('APPDATA'), app_name)
+    elif sys.platform == 'darwin':
+        base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
+    else:
+        base_path = os.path.join(os.path.expanduser('~'), '.local', 'share', app_name)
+    mode_str = "SYSTEM"
 
 if not os.path.exists(base_path):
-    os.makedirs(base_path)
+    try:
+        os.makedirs(base_path, exist_ok=True)
+    except Exception as e:
+        logging.error(f"Failed to create data directory {base_path}: {e}")
+        # Fallback to a temp dir if both fail? For now, let it fail or use what we have.
 
 os.environ["APP_DATA_DIR"] = base_path
-logging.info(f"Data Directory set to: {base_path}")
+logging.info(f"Data Directory set to ({mode_str}): {base_path}")
 
 try:
     logging.info("Attempting to import backend 'main' module...")
