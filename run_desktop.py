@@ -492,47 +492,8 @@ def run_frontend_mode():
                 initial_url = f'file:///{splash_path_url}'
         
         if not initial_url:
-            # macOS/Linux: 使用内联 data-uri HTML 作为加载页面
-            loader_html = f'''<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: {bg_color};
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}}
-.spinner {{
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(59, 130, 246, 0.2);
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}}
-@keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-.text {{
-    margin-top: 20px;
-    font-size: 14px;
-    color: {'#94a3b8' if system_theme == 'dark' else '#64748b'};
-}}
-</style>
-</head>
-<body>
-<div class="spinner"></div>
-<div class="text">正在加载应用...</div>
-</body>
-</html>'''
-            import base64
-            encoded = base64.b64encode(loader_html.encode('utf-8')).decode('utf-8')
-            initial_url = f'data:text/html;base64,{encoded}'
+            # macOS/Linux: 使用 about:blank 作为初始页面，避免 data-uri 兼容性问题
+            initial_url = 'about:blank'
         
         # 6. 创建 JS API
         js_api = JSApi()
