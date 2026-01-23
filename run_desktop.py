@@ -44,7 +44,7 @@ def setup_logging(mode="frontend"):
         sys.stderr = open(os.path.join(log_dir, f'{mode}_stderr.log'), 'a', encoding='utf-8', buffering=1)
 
 # ============== 全局变量 ==============
-SPLASH_DURATION = 3  # 欢迎动画持续时间（秒）
+SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
 
 # ============== 数据目录配置 ==============
 def setup_data_directory():
@@ -566,17 +566,18 @@ def run_frontend_mode():
         # 6. 创建 JS API
         js_api = JSApi()
         
-        # 7. 创建 WebView 窗口
-        base_w, base_h = 1420, 820
+        # 7. 创建 WebView 窗口 (Windows 默认最大化)
+        is_windows = sys.platform == 'win32'
         
         window = webview.create_window(
             'InvoMaster', 
             initial_url,
-            width=base_w,
-            height=base_h,
+            width=1420,
+            height=820,
             resizable=True,
             background_color=bg_color,
-            js_api=js_api
+            js_api=js_api,
+            maximized=is_windows  # Windows 默认最大化以降低布局闪烁
         )
         js_api.window = window
         
@@ -585,6 +586,8 @@ def run_frontend_mode():
         
         def start_backend_and_redirect():
             """根据平台选择启动方式并在就绪后跳转"""
+            nonlocal port  # 引用外部端口变量
+            
             if sys.platform == 'win32':
                 # Windows: 启动子进程方案，解决 CPU/GIL 导致的卡顿问题
                 backend_proc = start_backend_subprocess(port)
@@ -610,28 +613,19 @@ def run_frontend_mode():
                 
                 logging.info("Redirecting to main app...")
                 
-                # 特别针对 Windows：先给 UI 线程一点喘息时间
+                # ======== 关键修复 ========
+                # 使用 'window.load_url' 必须从 UI 线程调用。
+                # 我们使用一个小延迟后调用，确保主循环已经启动。
+                # pywebview 的 window 对象调用是线程安全的，但底层
+                # EdgeWebView2 需要从创建它的线程执行操作。
+                # 这里延迟 0.5 秒后执行 load_url，让 webview.start() 完成初始化。
                 if sys.platform == 'win32':
-                    time.sleep(0.5)
+                    time.sleep(1.0)  # 给 Webview2 渲染器更多初始化时间
                 
-                # 加载主应用 URL
+                # 直接调用 load_url（pywebview 内部会调度到正确的线程）
                 window.load_url(f'http://127.0.0.1:{port}')
+                logging.info("URL loaded.")
                 
-                # Windows 特有的 DPI 缩放处理
-                if sys.platform == 'win32':
-                    # 等待页面加载开始渲染
-                    time.sleep(1.0)
-                    try:
-                        # 仅在页面加载后尝试获取并应用缩放
-                        dpi_scale = window.evaluate_js('window.devicePixelRatio')
-                        if dpi_scale and float(dpi_scale) > 1.0:
-                            scale = float(dpi_scale)
-                            target_w = int(1420 * scale)
-                            target_h = int(820 * scale)
-                            logging.info(f"Applying DPI Scale ({scale}): {target_w}x{target_h}")
-                            window.resize(target_w, target_h)
-                    except Exception as e:
-                        logging.warning(f"Failed to apply DPI scaling via JS: {e}")
             else:
                 logging.error("Backend server did not start in time.")
                 if sys.platform == 'win32':
