@@ -44,7 +44,6 @@ def setup_logging(mode="frontend"):
         sys.stderr = open(os.path.join(log_dir, f'{mode}_stderr.log'), 'a', encoding='utf-8', buffering=1)
 
 # ============== 全局变量 ==============
-backend_process = None
 SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
 
 # ============== 数据目录配置 ==============
@@ -91,69 +90,93 @@ def get_free_port():
     sock.close()
     return port
 
-# ============== 后端进程管理 ==============
-def start_backend_process(port):
-    """启动后端子进程（使用自己作为后端）"""
-    global backend_process
+# ============== 后端线程管理 ==============
+uvicorn_server = None  # 全局 uvicorn 服务器实例，用于优雅关闭
+
+def start_backend_in_thread(port, host="127.0.0.1"):
+    """在后台线程中启动后端服务器（替代子进程方案）"""
+    global uvicorn_server
+    import uvicorn
+    
+    logging.info("="*50)
+    logging.info("Starting backend in thread...")
+    
+    # 配置路径
+    if getattr(sys, 'frozen', False):
+        bundle_root = sys._MEIPASS
+        backend_dir = bundle_root
+    else:
+        bundle_root = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.join(bundle_root, 'backend')
+
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    
+    # 配置数据目录
+    base_path = setup_data_directory()
+    
+    # 资源引导
+    bootstrap_assets(base_path)
+    
+    # 导入后端应用
+    try:
+        logging.info("Importing backend 'main' module...")
+        from main import app
+        logging.info("Backend 'main' module imported successfully.")
+    except Exception as e:
+        logging.error(f"Error importing backend: {e}", exc_info=True)
+        return
+    
+    # 挂载前端路由
+    from fastapi.staticfiles import StaticFiles
+    from starlette.responses import FileResponse
     
     if getattr(sys, 'frozen', False):
-        # 打包环境：使用自己，加上 --backend 参数
-        cmd = [sys.executable, '--backend', '--port', str(port)]
-        cwd = os.path.dirname(sys.executable)
+        dist_dir = os.path.join(sys._MEIPASS, 'frontend', 'dist')
     else:
-        # 开发环境：使用 python 运行自己
-        script_path = os.path.abspath(__file__)
-        cmd = [sys.executable, script_path, '--backend', '--port', str(port)]
-        cwd = os.path.dirname(os.path.abspath(__file__))
+        dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend', 'dist')
     
-    logging.info(f"Starting backend process: {' '.join(cmd)}")
-    logging.info(f"Working directory: {cwd}")
+    if os.path.exists(dist_dir):
+        logging.info(f"Found frontend at {dist_dir}, mounting routes...")
+        app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+        
+        @app.get("/")
+        async def serve_spa_root():
+            return FileResponse(os.path.join(dist_dir, "index.html"))
+
+        @app.get("/{full_path:path}")
+        async def serve_react_app(full_path: str):
+            potential_path = os.path.join(dist_dir, full_path)
+            if os.path.isfile(potential_path):
+                return FileResponse(potential_path)
+            return FileResponse(os.path.join(dist_dir, "index.html"))
+    else:
+        logging.warning(f"Frontend dist not found at {dist_dir}")
     
-    # Windows 下使用 CREATE_NO_WINDOW 避免弹出控制台
-    creation_flags = 0
-    if sys.platform == 'win32':
-        creation_flags = subprocess.CREATE_NO_WINDOW
+    # 配置并启动 uvicorn
+    logging.info(f"Starting uvicorn on {host}:{port}...")
+    
+    config = uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="warning",  # 减少日志噪音
+        workers=1,
+        loop="asyncio"
+    )
+    uvicorn_server = uvicorn.Server(config)
     
     try:
-        backend_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=creation_flags,
-            cwd=cwd
-        )
-        logging.info(f"Backend process started with PID: {backend_process.pid}")
-        return backend_process
+        uvicorn_server.run()
     except Exception as e:
-        logging.error(f"Failed to start backend process: {e}", exc_info=True)
-        return None
+        logging.error(f"Uvicorn error: {e}", exc_info=True)
 
 def cleanup_backend():
-    """确保后端进程退出"""
-    global backend_process
-    if backend_process and backend_process.poll() is None:
-        logging.info(f"Terminating backend process (PID: {backend_process.pid})...")
-        try:
-            if sys.platform == 'win32':
-                # Windows: 使用 taskkill /T 确保子进程树也被终止
-                subprocess.call(
-                    ['taskkill', '/F', '/T', '/PID', str(backend_process.pid)],
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-            else:
-                backend_process.terminate()
-            
-            # 等待最多 5 秒
-            backend_process.wait(timeout=5)
-            logging.info("Backend process terminated gracefully.")
-        except subprocess.TimeoutExpired:
-            logging.warning("Backend did not terminate gracefully, killing...")
-            backend_process.kill()
-            backend_process.wait()
-        except Exception as e:
-            logging.error(f"Error cleaning up backend: {e}")
+    """关闭后端服务器"""
+    global uvicorn_server
+    if uvicorn_server:
+        logging.info("Shutting down uvicorn server...")
+        uvicorn_server.should_exit = True
 
 def wait_for_backend(port, timeout=120):
     """等待后端服务就绪"""
@@ -163,11 +186,6 @@ def wait_for_backend(port, timeout=120):
     
     while time.time() - start < timeout:
         attempts += 1
-        
-        # 检查后端进程是否还活着
-        if backend_process and backend_process.poll() is not None:
-            logging.error(f"Backend process died unexpectedly with code: {backend_process.returncode}")
-            return False
         
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
@@ -324,6 +342,16 @@ def run_backend_mode(port, host="127.0.0.1"):
     logging.info("Starting in BACKEND mode...")
     logging.info(f"Python: {sys.version}")
     logging.info(f"Platform: {sys.platform}")
+    
+    # macOS: 隐藏后端进程的 Dock 图标
+    if sys.platform == 'darwin':
+        try:
+            from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+            app = NSApplication.sharedApplication()
+            app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+            logging.info("Set backend as accessory app (hidden from Dock)")
+        except Exception as e:
+            logging.warning(f"Failed to hide Dock icon: {e}")
     
     # 配置路径
     if getattr(sys, 'frozen', False):
@@ -516,17 +544,15 @@ def run_frontend_mode():
         start_time = time.time()
         
         def start_backend_and_redirect():
-            """启动后端并在就绪后跳转"""
-            # 启动后端子进程
-            backend_proc = start_backend_process(port)
-            if not backend_proc:
-                logging.error("Failed to start backend process")
-                if sys.platform == 'win32':
-                    try:
-                        import ctypes
-                        ctypes.windll.user32.MessageBoxW(0, "后端服务启动失败，请查看日志文件。", "启动失败", 0x10)
-                    except: pass
-                return
+            """启动后端线程并在就绪后跳转"""
+            # 启动后端线程（替代子进程方案，解决 macOS 双 Dock 图标问题）
+            backend_thread = threading.Thread(
+                target=start_backend_in_thread, 
+                args=(port,), 
+                daemon=True
+            )
+            backend_thread.start()
+            logging.info("Backend thread started")
             
             # 等待后端就绪
             if wait_for_backend(port):
