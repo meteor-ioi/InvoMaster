@@ -44,7 +44,7 @@ def setup_logging(mode="frontend"):
         sys.stderr = open(os.path.join(log_dir, f'{mode}_stderr.log'), 'a', encoding='utf-8', buffering=1)
 
 # ============== 全局变量 ==============
-SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
+SPLASH_DURATION = 3  # 欢迎动画持续时间（秒）
 
 # ============== 数据目录配置 ==============
 def setup_data_directory():
@@ -226,19 +226,29 @@ def wait_for_backend(port, timeout=120):
     logging.error(f"Timeout waiting for backend on port {port}")
     return False
 
-# ============== Windows 主题检测 ==============
-def get_windows_theme():
-    """检查 Windows 注册表获取主题偏好"""
-    if sys.platform != 'win32':
-        return 'dark'
-    try:
-        import winreg
-        registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
-        key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
-        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-        return 'light' if value == 1 else 'dark'
-    except Exception:
-        return 'dark'
+# ============== 系统主题检测 ==============
+def get_system_theme():
+    """检测系统主题偏好"""
+    if sys.platform == 'win32':
+        try:
+            import winreg
+            registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+            key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return 'light' if value == 1 else 'dark'
+        except Exception:
+            return 'dark'
+    elif sys.platform == 'darwin':
+        try:
+            # 使用 defaults 命令检测 macOS 主题
+            result = subprocess.run(['defaults', 'read', '-g', 'AppleInterfaceStyle'], 
+                                   capture_output=True, text=True)
+            if result.returncode == 0 and 'Dark' in result.stdout:
+                return 'dark'
+            return 'light'
+        except Exception:
+            return 'light'
+    return 'dark'
 
 # ============== JS API ==============
 import webview
@@ -524,25 +534,26 @@ def run_frontend_mode():
         logging.info(f"Using port: {port}")
         
         # 4. 获取系统主题
-        system_theme = get_windows_theme()
+        system_theme = get_system_theme()
         bg_color = '#ffffff' if system_theme == 'light' else '#0f172a'
         
         # 5. 准备初始加载页面
-        is_windows = sys.platform == 'win32'
         splash_url = None
         
-        if is_windows:
-            if getattr(sys, 'frozen', False):
-                splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
-            else:
-                splash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'splash.html')
-            
-            if os.path.exists(splash_path):
+        if getattr(sys, 'frozen', False):
+            splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
+        else:
+            splash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'splash.html')
+        
+        if os.path.exists(splash_path):
+            if sys.platform == 'win32':
                 splash_path_url = splash_path.replace("\\", "/")
                 splash_url = f'file:///{splash_path_url}'
-                logging.info(f"Splash screen found: {splash_url}")
+            else:
+                splash_url = f'file://{splash_path}'
+            logging.info(f"Splash screen found: {splash_url}")
         
-        initial_url = splash_url if (is_windows and splash_url) else 'about:blank'
+        initial_url = splash_url if splash_url else 'about:blank'
         
         # 6. 创建 JS API
         js_api = JSApi()
@@ -582,23 +593,22 @@ def run_frontend_mode():
             if wait_for_backend(port):
                 logging.info("Backend is ready.")
                 
-                # Windows: 处理 Splash 等待和 DPI 缩放
+                # 无论什么平台，确保 Splash 界面至少显示指定时间
+                elapsed = time.time() - start_time
+                remaining = SPLASH_DURATION - elapsed
+                if remaining > 0:
+                    logging.info(f"Waiting for remaining splash time: {remaining:.1f}s")
+                    time.sleep(remaining)
+                
+                logging.info("Redirecting to main app...")
+                
+                # 加载主应用 URL
+                window.load_url(f'http://127.0.0.1:{port}')
+                
+                # Windows 特有的 DPI 缩放处理
                 if sys.platform == 'win32':
-                    # 确保 Splash 界面至少显示指定时间
-                    elapsed = time.time() - start_time
-                    remaining = SPLASH_DURATION - elapsed
-                    if remaining > 0:
-                        logging.info(f"Waiting for remaining splash time: {remaining:.1f}s")
-                        time.sleep(remaining)
-                    
-                    logging.info("Redirecting to main app and adjusting DPI scale...")
-                    
-                    # 加载主应用 URL
-                    window.load_url(f'http://127.0.0.1:{port}')
-                    
                     # 给一点时间让浏览器引擎更新 DPI 信息
                     time.sleep(0.5)
-                    
                     try:
                         dpi_scale = window.evaluate_js('window.devicePixelRatio')
                         if dpi_scale and float(dpi_scale) > 1.0:
@@ -609,9 +619,6 @@ def run_frontend_mode():
                             window.resize(target_w, target_h)
                     except Exception as e:
                         logging.warning(f"Failed to apply DPI scaling via JS: {e}")
-                else:
-                    # macOS: 直接加载
-                    window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")
                 if sys.platform == 'win32':
