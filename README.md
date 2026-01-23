@@ -128,11 +128,20 @@ InvoMaster 设计了智能的数据存储逻辑，确保在软件更新或移动
 python build_app.py
 ```
 
+
+
+
 ---
 
 ## 📄 开源协议
 
 本项目基于 **MIT License** 开源。
+
+除此外，希望你在使用代码时已经了解以下额外说明：
+
+打包、二次分发 请保留代码出处：https://github.com/meteor-ioi/InvoMaster
+请不要用于商业用途，合法合规使用代码
+如果开源协议变更，将在此 Github 仓库更新，不另行通知。
 
 ---
 
