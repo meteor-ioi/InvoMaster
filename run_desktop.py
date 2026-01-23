@@ -90,16 +90,17 @@ def get_free_port():
     sock.close()
     return port
 
-# ============== 后端线程管理 ==============
-uvicorn_server = None  # 全局 uvicorn 服务器实例，用于优雅关闭
+# ============== 后端进程/线程管理 ==============
+uvicorn_server = None  # 用于线程模式 (macOS)
+backend_process = None  # 用于子进程模式 (Windows)
 
 def start_backend_in_thread(port, host="127.0.0.1"):
-    """在后台线程中启动后端服务器（替代子进程方案）"""
+    """在后台线程中启动后端服务器 (用于 macOS，避免双 Dock 图标)"""
     global uvicorn_server
     import uvicorn
     
     logging.info("="*50)
-    logging.info("Starting backend in thread...")
+    logging.info("Starting backend in thread (macOS mode)...")
     
     # 配置路径
     if getattr(sys, 'frozen', False):
@@ -114,69 +115,91 @@ def start_backend_in_thread(port, host="127.0.0.1"):
     
     # 配置数据目录
     base_path = setup_data_directory()
-    
-    # 资源引导
     bootstrap_assets(base_path)
     
-    # 导入后端应用
     try:
-        logging.info("Importing backend 'main' module...")
         from main import app
-        logging.info("Backend 'main' module imported successfully.")
-    except Exception as e:
-        logging.error(f"Error importing backend: {e}", exc_info=True)
-        return
-    
-    # 挂载前端路由
-    from fastapi.staticfiles import StaticFiles
-    from starlette.responses import FileResponse
-    
-    if getattr(sys, 'frozen', False):
-        dist_dir = os.path.join(sys._MEIPASS, 'frontend', 'dist')
-    else:
-        dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend', 'dist')
-    
-    if os.path.exists(dist_dir):
-        logging.info(f"Found frontend at {dist_dir}, mounting routes...")
-        app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+        # 挂载前端路由
+        from fastapi.staticfiles import StaticFiles
+        from starlette.responses import FileResponse
         
-        @app.get("/")
-        async def serve_spa_root():
-            return FileResponse(os.path.join(dist_dir, "index.html"))
+        dist_dir = os.path.join(sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), 'frontend', 'dist')
+        if os.path.exists(dist_dir):
+            app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+            @app.get("/")
+            async def serve_spa_root(): return FileResponse(os.path.join(dist_dir, "index.html"))
+            @app.get("/{full_path:path}")
+            async def serve_react_app(full_path: str):
+                potential_path = os.path.join(dist_dir, full_path)
+                return FileResponse(potential_path) if os.path.isfile(potential_path) else FileResponse(os.path.join(dist_dir, "index.html"))
 
-        @app.get("/{full_path:path}")
-        async def serve_react_app(full_path: str):
-            potential_path = os.path.join(dist_dir, full_path)
-            if os.path.isfile(potential_path):
-                return FileResponse(potential_path)
-            return FileResponse(os.path.join(dist_dir, "index.html"))
-    else:
-        logging.warning(f"Frontend dist not found at {dist_dir}")
-    
-    # 配置并启动 uvicorn
-    logging.info(f"Starting uvicorn on {host}:{port}...")
-    
-    config = uvicorn.Config(
-        app,
-        host=host,
-        port=port,
-        log_level="warning",  # 减少日志噪音
-        workers=1,
-        loop="asyncio"
-    )
-    uvicorn_server = uvicorn.Server(config)
-    
-    try:
+        config = uvicorn.Config(app, host=host, port=port, log_level="warning", workers=1, loop="asyncio")
+        uvicorn_server = uvicorn.Server(config)
         uvicorn_server.run()
     except Exception as e:
-        logging.error(f"Uvicorn error: {e}", exc_info=True)
+        logging.error(f"Thread backend error: {e}", exc_info=True)
+
+def start_backend_subprocess(port):
+    """启动后端子进程 (用于 Windows，解决卡顿问题)"""
+    global backend_process
+    
+    if getattr(sys, 'frozen', False):
+        # 打包环境：使用同目录下的 _invo_backend.exe
+        backend_exe = os.path.join(os.path.dirname(sys.executable), '_invo_backend.exe')
+        # 如果在 _internal 中也检查一下 (兼容某些打包配置)
+        if not os.path.exists(backend_exe):
+            backend_exe = os.path.join(os.path.dirname(sys.executable), '_internal', '_invo_backend.exe')
+        
+        cmd = [backend_exe, '--port', str(port)]
+        cwd = os.path.dirname(sys.executable)
+    else:
+        # 开发环境
+        backend_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend_server.py')
+        cmd = [sys.executable, backend_script, '--port', str(port)]
+        cwd = os.path.dirname(os.path.abspath(__file__))
+    
+    logging.info(f"Starting backend subprocess: {' '.join(cmd)}")
+    
+    creation_flags = 0
+    if sys.platform == 'win32':
+        creation_flags = subprocess.CREATE_NO_WINDOW
+    
+    try:
+        backend_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=creation_flags,
+            cwd=cwd
+        )
+        logging.info(f"Backend process started with PID: {backend_process.pid}")
+        return backend_process
+    except Exception as e:
+        logging.error(f"Failed to start backend process: {e}", exc_info=True)
+        return None
 
 def cleanup_backend():
-    """关闭后端服务器"""
-    global uvicorn_server
+    """清理后端资源 (支持进程和线程两种清理方式)"""
+    global uvicorn_server, backend_process
+    
+    # 1. 清理线程服务器 (macOS)
     if uvicorn_server:
-        logging.info("Shutting down uvicorn server...")
+        logging.info("Shutting down uvicorn server (thread)...")
         uvicorn_server.should_exit = True
+        
+    # 2. 清理子进程 (Windows)
+    if backend_process and backend_process.poll() is None:
+        logging.info(f"Terminating backend process (PID: {backend_process.pid})...")
+        try:
+            if sys.platform == 'win32':
+                subprocess.call(['taskkill', '/F', '/T', '/PID', str(backend_process.pid)], 
+                              creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                backend_process.terminate()
+            backend_process.wait(timeout=5)
+        except Exception as e:
+            logging.error(f"Error cleaning up backend process: {e}")
+            if backend_process: backend_process.kill()
 
 def wait_for_backend(port, timeout=120):
     """等待后端服务就绪"""
@@ -506,10 +529,9 @@ def run_frontend_mode():
         
         # 5. 准备初始加载页面
         is_windows = sys.platform == 'win32'
-        initial_url = None
+        splash_url = None
         
         if is_windows:
-            # Windows: 使用 splash.html 文件
             if getattr(sys, 'frozen', False):
                 splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
             else:
@@ -517,11 +539,10 @@ def run_frontend_mode():
             
             if os.path.exists(splash_path):
                 splash_path_url = splash_path.replace("\\", "/")
-                initial_url = f'file:///{splash_path_url}'
+                splash_url = f'file:///{splash_path_url}'
+                logging.info(f"Splash screen found: {splash_url}")
         
-        if not initial_url:
-            # macOS/Linux: 使用 about:blank 作为初始页面，避免 data-uri 兼容性问题
-            initial_url = 'about:blank'
+        initial_url = splash_url if (is_windows and splash_url) else 'about:blank'
         
         # 6. 创建 JS API
         js_api = JSApi()
@@ -544,52 +565,52 @@ def run_frontend_mode():
         start_time = time.time()
         
         def start_backend_and_redirect():
-            """启动后端线程并在就绪后跳转"""
-            # 启动后端线程（替代子进程方案，解决 macOS 双 Dock 图标问题）
-            backend_thread = threading.Thread(
-                target=start_backend_in_thread, 
-                args=(port,), 
-                daemon=True
-            )
-            backend_thread.start()
-            logging.info("Backend thread started")
+            """根据平台选择启动方式并在就绪后跳转"""
+            if sys.platform == 'win32':
+                # Windows: 启动子进程方案，解决 CPU/GIL 导致的卡顿问题
+                backend_proc = start_backend_subprocess(port)
+                if not backend_proc:
+                    logging.error("Failed to start backend subprocess")
+                    return
+            else:
+                # macOS: 启动后端线程，解决单 BUNDLE 架构下的双 Dock 图标问题
+                backend_thread = threading.Thread(target=start_backend_in_thread, args=(port,), daemon=True)
+                backend_thread.start()
+                logging.info("Backend thread started (macOS mode)")
             
             # 等待后端就绪
             if wait_for_backend(port):
                 logging.info("Backend is ready.")
                 
-                if is_windows:
-                    # 确保 Splash 页面至少显示指定时间
+                # Windows: 处理 Splash 等待和 DPI 缩放
+                if sys.platform == 'win32':
+                    # 确保 Splash 界面至少显示指定时间
                     elapsed = time.time() - start_time
                     remaining = SPLASH_DURATION - elapsed
                     if remaining > 0:
-                        logging.info(f"Splash screen showing for {remaining:.1f}s more...")
+                        logging.info(f"Waiting for remaining splash time: {remaining:.1f}s")
                         time.sleep(remaining)
                     
-                    logging.info("Redirecting to main app (Windows)...")
-                    
-                    # DPI 缩放调整窗口
-                    try:
-                        dpi_scale = window.evaluate_js('window.devicePixelRatio')
-                        if dpi_scale is None: 
-                            dpi_scale = 1.0
-                        else:
-                            dpi_scale = float(dpi_scale)
-                        
-                        target_w = int(1420 * dpi_scale)
-                        target_h = int(820 * dpi_scale)
-                        
-                        logging.info(f"JS DPI Scale: {dpi_scale} -> Resizing to {target_w}x{target_h}")
-                        window.resize(target_w, target_h)
-                    except Exception as e:
-                        logging.warning(f"Failed to resize with JS DPI scaling: {e}")
-                        window.resize(1420, 820)
+                    logging.info("Redirecting to main app and adjusting DPI scale...")
                     
                     # 加载主应用 URL
                     window.load_url(f'http://127.0.0.1:{port}')
+                    
+                    # 给一点时间让浏览器引擎更新 DPI 信息
+                    time.sleep(0.5)
+                    
+                    try:
+                        dpi_scale = window.evaluate_js('window.devicePixelRatio')
+                        if dpi_scale and float(dpi_scale) > 1.0:
+                            scale = float(dpi_scale)
+                            target_w = int(1420 * scale)
+                            target_h = int(820 * scale)
+                            logging.info(f"Applying DPI Scale ({scale}): {target_w}x{target_h}")
+                            window.resize(target_w, target_h)
+                    except Exception as e:
+                        logging.warning(f"Failed to apply DPI scaling via JS: {e}")
                 else:
-                    # macOS/Linux: 后端就绪后加载主 URL
-                    logging.info("Backend ready, redirecting to main app (macOS/Linux)...")
+                    # macOS: 直接加载
                     window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")

@@ -52,14 +52,16 @@ def main():
     print("\n[Step 4/4] Verifying Output...")
     final_output = os.path.join(dist_dir, "InvoMaster")
     main_exe = os.path.join(final_output, 'InvoMaster.exe')
+    backend_exe = os.path.join(final_output, '_invo_backend.exe')
     
-    if os.path.exists(main_exe):
+    if os.path.exists(main_exe) and os.path.exists(backend_exe):
         print(f"\n✅ Build Successful!")
         print(f"📍 Location: {final_output}")
+        print(f"👉 Frontend: {main_exe} (With App Icon)")
+        print(f"👉 Backend:  {backend_exe} (Internal Service, Standard Icon)")
+    elif os.path.exists(main_exe):
+        print(f"\n⚠️ Build partially successful (backend_server.exe missing)")
         print(f"👉 Run: {main_exe}")
-        print(f"\n💡 单 exe 双模式架构：")
-        print(f"   - 默认运行：前端 GUI")
-        print(f"   - --backend --port PORT：后端服务模式")
     else:
         print("\n❌ Build failed - output not found.")
         print(f"Checked: {main_exe}")
