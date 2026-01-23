@@ -164,15 +164,23 @@ def start_backend_subprocess(port):
     if sys.platform == 'win32':
         creation_flags = subprocess.CREATE_NO_WINDOW
     
+    # 配置子进程管道（打包环境下重定向至 DEVNULL 防止死锁）
+    stdout_dest = subprocess.PIPE
+    stderr_dest = subprocess.PIPE
+    
+    if getattr(sys, 'frozen', False):
+        stdout_dest = subprocess.DEVNULL
+        stderr_dest = subprocess.DEVNULL
+    
     try:
         backend_process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=stdout_dest,
+            stderr=stderr_dest,
             creationflags=creation_flags,
             cwd=cwd
         )
-        logging.info(f"Backend process started with PID: {backend_process.pid}")
+        logging.info(f"Backend process started (PID: {backend_process.pid}, pipes={'PIPE' if not getattr(sys, 'frozen', False) else 'DEVNULL'})")
         return backend_process
     except Exception as e:
         logging.error(f"Failed to start backend process: {e}", exc_info=True)
@@ -602,14 +610,19 @@ def run_frontend_mode():
                 
                 logging.info("Redirecting to main app...")
                 
+                # 特别针对 Windows：先给 UI 线程一点喘息时间
+                if sys.platform == 'win32':
+                    time.sleep(0.5)
+                
                 # 加载主应用 URL
                 window.load_url(f'http://127.0.0.1:{port}')
                 
                 # Windows 特有的 DPI 缩放处理
                 if sys.platform == 'win32':
-                    # 给一点时间让浏览器引擎更新 DPI 信息
-                    time.sleep(0.5)
+                    # 等待页面加载开始渲染
+                    time.sleep(1.0)
                     try:
+                        # 仅在页面加载后尝试获取并应用缩放
                         dpi_scale = window.evaluate_js('window.devicePixelRatio')
                         if dpi_scale and float(dpi_scale) > 1.0:
                             scale = float(dpi_scale)

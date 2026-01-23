@@ -38,10 +38,14 @@ icon_file = 'assets/icon.icns' if sys.platform == 'darwin' else 'assets/icon.ico
 # ============== 共享隐藏导入 ==============
 shared_hiddenimports = [
     'uvicorn', 
+    'uvicorn.protocols.http.auto_impl',
+    'uvicorn.protocols.http.httptools_impl',
+    'uvicorn.protocols.websockets.auto_impl',
+    'uvicorn.lifespan.on',
     'fastapi', 
     'starlette',
     'pydantic', 
-    'python-multipart',
+    'multipart',
     'PIL', 
     'cv2', 
     'numpy',
