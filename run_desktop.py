@@ -476,11 +476,12 @@ def run_frontend_mode():
         system_theme = get_windows_theme()
         bg_color = '#ffffff' if system_theme == 'light' else '#0f172a'
         
-        # 5. 准备 Splash 页面 URL (仅 Windows)
+        # 5. 准备初始加载页面
         is_windows = sys.platform == 'win32'
-        splash_url = None
+        initial_url = None
         
         if is_windows:
+            # Windows: 使用 splash.html 文件
             if getattr(sys, 'frozen', False):
                 splash_path = os.path.join(sys._MEIPASS, 'assets', 'splash.html')
             else:
@@ -488,9 +489,50 @@ def run_frontend_mode():
             
             if os.path.exists(splash_path):
                 splash_path_url = splash_path.replace("\\", "/")
-                splash_url = f'file:///{splash_path_url}'
+                initial_url = f'file:///{splash_path_url}'
         
-        initial_url = splash_url if (is_windows and splash_url) else f'http://127.0.0.1:{port}'
+        if not initial_url:
+            # macOS/Linux: 使用内联 data-uri HTML 作为加载页面
+            loader_html = f'''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: {bg_color};
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}}
+.spinner {{
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(59, 130, 246, 0.2);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}}
+@keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+.text {{
+    margin-top: 20px;
+    font-size: 14px;
+    color: {'#94a3b8' if system_theme == 'dark' else '#64748b'};
+}}
+</style>
+</head>
+<body>
+<div class="spinner"></div>
+<div class="text">正在加载应用...</div>
+</body>
+</html>'''
+            import base64
+            encoded = base64.b64encode(loader_html.encode('utf-8')).decode('utf-8')
+            initial_url = f'data:text/html;base64,{encoded}'
         
         # 6. 创建 JS API
         js_api = JSApi()
@@ -559,7 +601,9 @@ def run_frontend_mode():
                     # 加载主应用 URL
                     window.load_url(f'http://127.0.0.1:{port}')
                 else:
-                    logging.info("Server ready, macOS app already loading main URL.")
+                    # macOS/Linux: 后端就绪后加载主 URL
+                    logging.info("Backend ready, redirecting to main app (macOS/Linux)...")
+                    window.load_url(f'http://127.0.0.1:{port}')
             else:
                 logging.error("Backend server did not start in time.")
                 if sys.platform == 'win32':
