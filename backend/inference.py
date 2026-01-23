@@ -40,8 +40,13 @@ class LayoutEngine:
             is_windows = sys.platform.startswith('win')
             
             # Model filename candidates based on platform
-            # Windows prefers INT8 for speed, others prefer FP32/16 for accuracy/accel
-            model_filenames = ["yolov10-doclayout_int8.onnx", "yolov10-doclayout.onnx"] if is_windows else ["yolov10-doclayout.onnx"]
+            # Priority: Nano INT8 > Small INT8 > FP32
+            # Nano versions (yolov10n) are significantly faster on CPU
+            model_filenames = [
+                "yolov10n-doclayout_int8.onnx", 
+                "yolov10-doclayout_int8.onnx", 
+                "yolov10-doclayout.onnx"
+            ] if is_windows else ["yolov10-doclayout.onnx"]
             
             candidates = []
             for filename in model_filenames:
@@ -85,6 +90,21 @@ class LayoutEngine:
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
+        # CPU 性能优化：根据核心数设置线程
+        import multiprocessing
+        cpus = multiprocessing.cpu_count()
+        
+        # 优化策略：
+        # 1. 核心数 <= 4: 使用 cpus - 1, 留 1 核给 UI
+        # 2. 核心数 > 4: 使用 cpus // 2, 保持系统整体响应
+        if cpus <= 4:
+            threads = max(1, cpus - 1)
+        else:
+            threads = cpus // 2
+            
+        sess_options.intra_op_num_threads = threads
+        print(f"CPU threads optimized: {threads} threads for {cpus} cores")
+        
         self.session = ort.InferenceSession(
             model_path,
             sess_options=sess_options,
@@ -120,7 +140,7 @@ class LayoutEngine:
         
         return img
 
-    def preprocess_image(self, image: Union[str, Image.Image], imgsz: int = 1024):
+    def preprocess_image(self, image: Union[str, Image.Image], imgsz: int = 1024, fast_mode: bool = False):
         """
         预处理图像为 ONNX 模型输入格式
         """
@@ -130,20 +150,28 @@ class LayoutEngine:
         else:
             img = image.convert('RGB')
         
-        # 应用图像增强策略 B
-        img = self.enhance_image(img)
+        # 应用图像增强策略 (fast_mode 时跳过以提升速度)
+        if not fast_mode:
+            img = self.enhance_image(img)
         
         # 保存原始尺寸
         orig_width, orig_height = img.size
         
-        # Resize 到模型输入尺寸 (保持宽高比)
+        # Resize 到模型输入尺寸 (强制 1024，因为现有模型不支持动态尺寸或 640)
+        # 即使未来支持 640，此处的 imgsz 也应由模型输入决定
+        model_h, model_w = self.session.get_inputs()[0].shape[2:]
+        imgsz = model_h # Typically 1024
+        
         scale = min(imgsz / orig_width, imgsz / orig_height)
         new_width = int(orig_width * scale)
         new_height = int(orig_height * scale)
         
-        img_resized = img.resize((new_width, new_height), Image.BILINEAR)
+        # 使用更高效的插值方式 (fast_mode 下使用 BILINEAR, 正常模式使用 LANCZOS 提升精度)
+        # 注意：PIL.Image.BILINEAR 已经足够快，如果 fast_mode 开启，我们坚持使用它
+        resample_mode = Image.BILINEAR if fast_mode else Image.LANCZOS
+        img_resized = img.resize((new_width, new_height), resample_mode)
         
-        # Pad 到正方形
+        # Pad 到正方形 (114, 114, 114) 是 YOLO 惯用填充色
         img_padded = Image.new('RGB', (imgsz, imgsz), (114, 114, 114))
         img_padded.paste(img_resized, (0, 0))
         
@@ -214,14 +242,17 @@ class LayoutEngine:
         # NMS (简化版本，ONNX 模型通常已内置 NMS)
         return boxes
 
-    def predict(self, image_path, device=None, conf=0.25, imgsz=1280, iou=0.45, agnostic_nms=False):
+    def predict(self, image_path, device=None, conf=0.25, imgsz=1024, iou=0.45, agnostic_nms=False, fast_mode=False):
         """
         预测布局区域
         """
-        print(f"Running ONNX prediction (conf={conf}, imgsz={imgsz})")
+        if fast_mode:
+            print(f"Running ONNX prediction in FAST MODE (conf={conf})")
+        else:
+            print(f"Running ONNX prediction (conf={conf}, imgsz={imgsz})")
         
         # 预处理 (Use updated imgsz)
-        input_data, scale, orig_size, resized_size = self.preprocess_image(image_path, imgsz)
+        input_data, scale, orig_size, resized_size = self.preprocess_image(image_path, imgsz, fast_mode=fast_mode)
         
         # 推理
         outputs = self.session.run(None, {self.input_name: input_data})

@@ -56,9 +56,9 @@ class FingerprintEngine:
                     # 只处理第一页
                     first_page_img = image_paths[0]
                     
-                    # 执行推理 - 使用较低的置信度 (0.1) 以捕获不稳定的布局特征，提高模板匹配的通用性
-                    # 较低的阈值能捕获到 3-1.PDF 这种置信度偏低的表格区域
-                    regions = engine_instance.predict(first_page_img, conf=0.1, imgsz=1024)
+                    # === OPTIMIZATION: Fingerprint sequence depends on layout blocks, not fine pixels ===
+                    # Use fast_mode=True to skip expensive image enhancement filters
+                    regions = engine_instance.predict(first_page_img, conf=0.1, imgsz=1024, fast_mode=True)
                     
                     layout_data = []
                     # 遍历识别出的区块
