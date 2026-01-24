@@ -44,7 +44,7 @@ def setup_logging(mode="frontend"):
         sys.stderr = open(os.path.join(log_dir, f'{mode}_stderr.log'), 'a', encoding='utf-8', buffering=1)
 
 # ============== 全局变量 ==============
-SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
+SPLASH_DURATION = 2 if sys.platform == 'darwin' else 15  # 欢迎动画持续时间（macOS 2s, Windows 15s）
 
 # ============== 数据目录配置 ==============
 app_root = os.path.dirname(os.path.abspath(__file__))

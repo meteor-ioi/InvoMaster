@@ -87,6 +87,9 @@ class FingerprintEngine:
                             round(region['height'], 4)
                         ])
                     
+                    # Apply Smart Deduplication (Moderate Mode)
+                    layout_data = self.merge_overlapping_regions(layout_data, mode='moderate')
+                    
                     # 按 Y 轴中心点排序，确保指纹序列的一致性
                     layout_data.sort(key=lambda x: x[2])
                     features["layout_boxes"] = layout_data
@@ -95,6 +98,98 @@ class FingerprintEngine:
             print(f"Error extracting visual features: {e}")
             
         return features
+
+    def merge_overlapping_regions(self, regions: List[List], mode: str = 'moderate') -> List[List]:
+        """
+        Smart Deduplication: Merge overlapping regions of the same class.
+        Logic ported from frontend TemplateCreator.jsx.
+        """
+        if mode == 'off' or not regions:
+            return regions
+            
+        # IoU Threshold: moderate=0.5, aggressive=0.3
+        iou_threshold = 0.3 if mode == 'aggressive' else 0.5
+        
+        # Region format: [cls_id, x_center, y_center, width, height]
+        # Convert to: [cls_id, x, y, width, height] for easier calc
+        # Actually we need x, y (top-left) to calc intersection
+        
+        def get_rect(r):
+            w = r[3]
+            h = r[4]
+            x = r[1] - w / 2
+            y = r[2] - h / 2
+            return {'x': x, 'y': y, 'w': w, 'h': h, 'cls': r[0]}
+            
+        rects = [get_rect(r) for r in regions]
+        
+        merged_indices = set()
+        final_rects = []
+        
+        for i in range(len(rects)):
+            if i in merged_indices:
+                continue
+                
+            current = rects[i].copy()
+            merged_indices.add(i)
+            
+            for j in range(i + 1, len(rects)):
+                if j in merged_indices:
+                    continue
+                    
+                other = rects[j]
+                
+                # Only merge same type
+                if current['cls'] != other['cls']:
+                    continue
+                    
+                # Calculate IoU
+                x1 = max(current['x'], other['x'])
+                y1 = max(current['y'], other['y'])
+                x2 = min(current['x'] + current['w'], other['x'] + other['w'])
+                y2 = min(current['y'] + current['h'], other['y'] + other['h'])
+                
+                if x2 <= x1 or y2 <= y1:
+                    intersection = 0
+                else:
+                    intersection = (x2 - x1) * (y2 - y1)
+                    
+                areaA = current['w'] * current['h']
+                areaB = other['w'] * other['h']
+                union = areaA + areaB - intersection
+                
+                if union <= 0: iou = 0
+                else: iou = intersection / union
+                
+                if iou >= iou_threshold:
+                    # Merge: take bounding box of both
+                    new_x = min(current['x'], other['x'])
+                    new_y = min(current['y'], other['y'])
+                    new_x2 = max(current['x'] + current['w'], other['x'] + other['w'])
+                    new_y2 = max(current['y'] + current['h'], other['y'] + other['h'])
+                    
+                    current['x'] = new_x
+                    current['y'] = new_y
+                    current['w'] = new_x2 - new_x
+                    current['h'] = new_y2 - new_y
+                    
+                    merged_indices.add(j)
+            
+            final_rects.append(current)
+
+        # Convert back to center format [cls_id, x_center, y_center, width, height]
+        result = []
+        for r in final_rects:
+            result.append([
+                r['cls'],
+                round(r['x'] + r['w'] / 2, 4),
+                round(r['y'] + r['h'] / 2, 4),
+                round(r['w'], 4),
+                round(r['h'], 4)
+            ])
+            
+        print(f"Smart Deduplication ({mode}): {len(regions)} -> {len(result)} regions")
+        return result
 
     def _get_layout_signature(self, boxes: List[List]) -> str:
         # Group similar classes to improve robustness:
@@ -135,18 +230,99 @@ class FingerprintEngine:
         it = iter(s2)
         return all(c in it for c in s1)
 
+    def calculate_spatial_similarity(self, t_boxes: List[List], c_boxes: List[List], matcher: SequenceMatcher) -> float:
+        """
+        Calculates spatial similarity based on matched blocks.
+        Only considers Y-coordinates (vertical layout) and Height.
+        """
+        matches = matcher.get_matching_blocks()
+        total_weight = 0.0
+        total_score = 0.0
+        
+        # Filter source boxes to match the signature construction logic (remove small boxes, etc)
+        # Note: self._get_layout_signature filters boxes < 0.2% area. 
+        # We need to apply the same filtering to get correct indices, OR rely on the fact that
+        # the signature was built from these boxes.
+        # Actually, _get_layout_signature returns a string, but doesn't return the indices of original boxes used.
+        # This is a bit tricky. The signature indices correspond to the FILTERED and COLLAPSED boxes.
+        # To do this correctly without refactoring _get_layout_signature to return mapping, 
+        # we have to re-simulate the filtering and collapsing.
+        
+        # Let's simplify: 
+        # 1. Get filtered lists first
+        t_filtered = [b for b in t_boxes if (b[3] * b[4]) >= 0.002 and b[0] in [0,1,3,4,5,6,7,8,9]]
+        c_filtered = [b for b in c_boxes if (b[3] * b[4]) >= 0.002 and b[0] in [0,1,3,4,5,6,7,8,9]]
+        
+        # 2. Get collapsed lists (keeping track of original boxes is hard with simple collapse)
+        # For now, let's assume specific "Key Elements" like Tables/Figures are not collapsed often 
+        # or are the most important ones.
+        # Alternative: Don't use the collapsed signature indices for spatial extraction directly 
+        # if we can't map them back.
+        
+        # STRATEGY: 
+        # Instead of complex mapping, let's compare the raw filtered lists using the same SequenceMatcher
+        # taking just the class ID for matching, then checking spatial for matches.
+        
+        group_map = {
+            0: 'T', 1: 'T',
+            3: 'S', 5: 'S',
+            4: 'C', 6: 'C', 7: 'C',
+            8: 'F', 9: 'F'
+        }
+        
+        t_seq = [group_map.get(b[0], 'X') for b in t_filtered]
+        c_seq = [group_map.get(b[0], 'X') for b in c_filtered]
+        
+        # Re-run matcher on uncollapsed sequence for spatial alignment
+        spatial_matcher = SequenceMatcher(None, t_seq, c_seq)
+        
+        for match in spatial_matcher.get_matching_blocks():
+            i, j, n = match
+            if n == 0: continue
+            
+            for k in range(n):
+                tb = t_filtered[i+k]
+                cb = c_filtered[j+k]
+                
+                # Compare Y Center (Vertical Position) - Important
+                # Tolerance: 0.05 (5% of page height)
+                dy = abs(tb[2] - cb[2])
+                y_score = max(0, 1.0 - dy / 0.1) # Linear drop off, 0 at 10% diff
+                
+                # Compare Height - Less important but useful
+                dh = abs(tb[4] - cb[4])
+                h_score = max(0, 1.0 - dh / 0.2) # Linear drop off, 0 at 20% diff
+                
+                # Compare Width - Optional (cols might change)
+                dw = abs(tb[3] - cb[3])
+                w_score = max(0, 1.0 - dw / 0.2)
+                
+                # Weighted Item Score
+                item_score = 0.6 * y_score + 0.2 * h_score + 0.2 * w_score
+                
+                # Weight by area (larger elements matter more)
+                weight = max(tb[3]*tb[4], 0.01)
+                
+                total_score += item_score * weight
+                total_weight += weight
+                
+        if total_weight == 0:
+            return 0.0
+            
+        return total_score / total_weight
+
     def calculate_score(self, target: Dict, candidate_features: Dict) -> float:
         """
         Calculates similarity using visual layout alignment.
         1. Aspect Ratio (Hard gate) - Relaxed to 0.05
-        2. Layout Category Sequence (70%)
-        3. Spatial Position Correlation (30%) - Sequence aligned
+        2. Layout Category Sequence (60%)
+        3. Spatial Position Correlation (40%)
         """
-        # 0. 版本兼容性检查 (如果候选是旧版，返回 0)
+        # 0. Check version
         if candidate_features.get("version") != "v2_visual":
             return 0.0
 
-        # 1. 宽高比硬过滤 (容差从 0.03 放宽到 0.05)
+        # 1. Aspect Ratio
         t_ar = target.get("aspect_ratio", 0)
         c_ar = candidate_features.get("aspect_ratio", 0)
         if abs(t_ar - c_ar) > 0.05:
@@ -158,45 +334,49 @@ class FingerprintEngine:
         if not t_boxes or not c_boxes:
             return 0.0
             
-        # 2. 类别序列相似度 (Sequence Similarity)
+        # 2. Sequence Similarity
         t_sig = self._get_layout_signature(t_boxes)
         c_sig = self._get_layout_signature(c_boxes)
         
         matcher = SequenceMatcher(None, t_sig, c_sig)
         seq_sim = matcher.ratio()
         
-        # 3. Subsequence Boost (子序列增强)
-        # 解决"填满的表格" vs "空表格"导致的指纹长度不一致问题
-        # 如果一者是另一者的子序列，且长度占比不低于 30%，则给予保底高分
+        # 3. Subsequence Boost (with limits)
         if seq_sim < 0.85:
             len_t = len(t_sig)
             len_c = len(c_sig)
             if len_t > 0 and len_c > 0:
-                is_sub = False
-                if len_t < len_c:
-                    is_sub = self.is_subsequence(t_sig, c_sig)
-                else:
-                    is_sub = self.is_subsequence(c_sig, t_sig)
+                min_len = min(len_t, len_c)
+                max_len = max(len_t, len_c)
                 
-                if is_sub:
-                    # 长度差异惩罚：差异越大，置信度越低，但给予保底
-                    # Example: T vs TSTS. Len 1 vs 4. Ratio 0.25. 
-                    # We want to boost this, but not to 1.0. Maybe 0.8?
-                    min_len = min(len_t, len_c)
-                    max_len = max(len_t, len_c)
-                    
-                    if min_len / max_len > 0.3: 
-                        seq_sim = max(seq_sim, 0.85)
+                # Only check subsequence if length ratio is reasonable (> 30%)
+                # to avoid matching "T" with "TVTVTVTV"
+                if min_len / max_len > 0.3:
+                    is_sub = False
+                    if len_t < len_c:
+                        is_sub = self.is_subsequence(t_sig, c_sig)
                     else:
-                        seq_sim = max(seq_sim, 0.65) # 极短子序列给 0.65
+                        is_sub = self.is_subsequence(c_sig, t_sig)
+                    
+                    if is_sub:
+                        # Boost, but cap based on length diff
+                        # If I am 30% of you, I can only get max 0.7 score (example)
+                        # Let's simple boost: average of original and 1.0, scaled by length ratio
+                        boost_factor = min_len / max_len
+                        seq_sim = max(seq_sim, 0.6 + 0.3 * boost_factor)
 
-        # 4. 空间检查 (Spatial Check) - 简化逻辑
-        # 由于引入了塌缩和子序列逻辑，严格的空间对齐已不可行。
-        # 仅当序列相似度极高时 (>0.85)，我们才认为它们是"同一个模板"，此时空间偏移通常也很小。
-        # 如果是"同类型但不完全一致"，我们主要通过 Seq Sim 来判定。
-        # 因此，直接返回优化后的序列得分。
+        # 4. Spatial Similarity
+        # If sequence is completely off, spatial doesn't matter much.
+        # But if sequence is good, spatial discriminates same-structure different-layout.
+        spatial_sim = 0.0
+        if seq_sim > 0.3: # Only calculate if there's some structural resemblance
+            spatial_sim = self.calculate_spatial_similarity(t_boxes, c_boxes, matcher)
         
-        return seq_sim
+        # Final Score Mix
+        # Sequence is foundation (0.6), Spatial is refinement (0.4)
+        final_score = seq_sim * 0.6 + spatial_sim * 0.4
+        
+        return final_score
 
     def find_best_match(self, 
                         target_file: str, 

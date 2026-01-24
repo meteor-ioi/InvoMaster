@@ -32,7 +32,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
     // --- 版面识别增强状态 ---
     const [layoutSettings, setLayoutSettings] = useState({
-        dedup: 'off', // 'off', 'moderate', 'aggressive'
+        dedup: 'moderate', // 'off', 'moderate', 'aggressive'
         imgsz: 1024, // Fixed for ONNX model
         iou: 0.45,
         agnostic_nms: false
