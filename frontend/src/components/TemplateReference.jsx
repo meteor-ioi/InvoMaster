@@ -962,7 +962,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                 {/* 标题栏 */}
                                 <div style={{
                                     padding: '12px 15px',
-                                    background: 'rgba(255,255,255,0.02)',
+                                    background: 'transparent',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
@@ -1359,7 +1359,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                     <div style={{
                         padding: '15px 24px',
                         borderBottom: '1px solid var(--glass-border)',
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'transparent',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
@@ -1707,7 +1707,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                             {/* 标题栏 */}
                             <div style={{
                                 padding: '12px 15px',
-                                background: 'rgba(255,255,255,0.02)',
+                                background: 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between'

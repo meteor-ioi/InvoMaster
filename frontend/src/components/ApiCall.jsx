@@ -262,9 +262,8 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
         }
     };
 
-    // 查看记录详情
     const handleViewRecord = (record) => {
-        if (record.status !== 'completed') return; // 只有已完成的记录可以预览
+        if (record.status !== 'completed' && record.status !== 'failed') return; // 只有已完成或失败的记录可以预览
         setSelectedRecordId(record.id);
         setRightPanelMode('preview');
     };
@@ -372,10 +371,9 @@ fetch(url, {
         return matchSearch;
     });
 
-    // 渲染数据预览面板
     const renderPreviewPanel = () => {
         const record = getSelectedRecord();
-        if (!record || !record.result) {
+        if (!record || (!record.result && record.status !== 'failed')) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4, gap: '15px' }}>
                     <Eye size={48} />
@@ -395,51 +393,55 @@ fetch(url, {
                         </span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            onClick={() => handleCopy(JSON.stringify(record.result.data, null, 2), 'preview-json')}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                background: 'var(--input-bg)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '6px',
-                                padding: '6px 12px',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                color: 'var(--text-primary)'
-                            }}
-                        >
-                            {copied === 'preview-json' ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制</>}
-                        </button>
-                        <button
-                            onClick={() => handleDownload(record.result.data, record.filename)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                background: 'var(--input-bg)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '6px',
-                                padding: '6px 12px',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                color: 'var(--text-primary)'
-                            }}
-                        >
-                            <Download size={12} /> 下载
-                        </button>
+                        {record.result && (
+                            <>
+                                <button
+                                    onClick={() => handleCopy(JSON.stringify(record.result.data, null, 2), 'preview-json')}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'var(--input-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                >
+                                    {copied === 'preview-json' ? <><Check size={12} /> 已复制</> : <><Copy size={12} /> 复制</>}
+                                </button>
+                                <button
+                                    onClick={() => handleDownload(record.result.data, record.filename)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'var(--input-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        color: 'var(--text-primary)'
+                                    }}
+                                >
+                                    <Download size={12} /> 下载
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
                 {/* MODIFIED: Show specific feedback if task failed or no data matched */}
-                {(record.status === 'failed' || (Object.keys(record.result.data || {}).length === 0 &&
+                {(record.status === 'failed' || (record.result && Object.keys(record.result.data || {}).length === 0 &&
                     (record.result.message === '未匹配到模板' || record.templateName === '未匹配到模板'))) && (
                         <div style={{
-                            padding: '40px 24px',
                             background: 'rgba(239, 68, 68, 0.05)',
                             border: '1px solid rgba(239, 68, 68, 0.1)',
                             borderRadius: '16px',
+                            padding: '50px 24px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -447,40 +449,62 @@ fetch(url, {
                             gap: '16px',
                             marginBottom: '20px',
                             textAlign: 'center',
-                            animation: 'slideUp 0.3s ease-out'
+                            animation: 'slideUp 0.4s ease-out'
                         }}>
                             <div style={{
-                                width: '48px',
-                                height: '48px',
+                                width: '60px',
+                                height: '60px',
                                 borderRadius: '50%',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                color: '#ef4444'
+                                color: '#ef4444',
+                                marginBottom: '8px'
                             }}>
-                                <XCircle size={24} />
+                                <XCircle size={32} />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ef4444', margin: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', margin: 0 }}>
                                     {record.templateName === '未匹配到模板' ? '该文件未匹配到任何模板' : '任务提取失败'}
                                 </h3>
                                 <p style={{
-                                    fontSize: '12px',
+                                    fontSize: '14px',
                                     color: 'var(--text-secondary)',
-                                    maxWidth: '300px',
-                                    lineHeight: '1.5',
-                                    margin: 0,
-                                    opacity: 0.8
+                                    maxWidth: '420px',
+                                    lineHeight: '1.6',
+                                    margin: 0
                                 }}>
-                                    {record.error || record.result.message || '建议检查文件格式或手动创建模板。'}
+                                    {record.error || (record.result && record.result.message) || '可能是由于版面布局复杂或文件格式特殊，导致自动识别匹配失败。请检查文件或尝试手动定义模板。'}
                                 </p>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setSelectedRecordId(null);
+                                    setRightPanelMode('code');
+                                }}
+                                style={{
+                                    marginTop: '15px',
+                                    padding: '10px 24px',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    background: 'transparent',
+                                    color: '#ef4444',
+                                    fontSize: '13px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                                关闭预览
+                            </button>
                         </div>
                     )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {Object.entries(record.result.data).map(([key, item]) => (
+                    {(record.result && record.result.data) && Object.entries(record.result.data).map(([key, item]) => (
                         <div
                             key={key}
                             style={{
@@ -615,7 +639,7 @@ fetch(url, {
                         </div>
                     ) : (
                         <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-                            <div style={{ padding: '12px 15px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ padding: '12px 15px', background: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Package size={16} color="var(--primary-color)" />
                                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>模板调用</span>
                             </div>
@@ -697,23 +721,27 @@ fetch(url, {
                 }}>
                     <div style={{
                         padding: '15px 24px',
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'transparent',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        {/* 左侧区域 */}
+                        {/* 左侧区域：显示模式标签 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '100px' }}>
-                            {rightPanelMode === 'code' && (
+                            {rightPanelMode === 'code' ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--primary-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
                                     <Terminal size={12} /> 代码示例
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--primary-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
+                                    <FileJson size={12} /> 数据预览
                                 </div>
                             )}
                         </div>
 
-                        {/* 右侧区域 */}
+                        {/* 右侧区域：操作按钮 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {rightPanelMode === 'code' ? (
+                            {rightPanelMode === 'code' && (
                                 <>
                                     <div style={{ position: 'relative' }}>
                                         <select
@@ -739,21 +767,19 @@ fetch(url, {
                                     >
                                         {copied === 'code' ? <><Check size={14} /> 已复制</> : <><Copy size={14} /> 复制代码</>}
                                     </button>
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', border: 'none',
-                                            cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
-                                        }}
-                                    >
-                                        <Upload size={14} /> 接口测试
-                                    </button>
                                 </>
-                            ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', background: 'var(--accent-color)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>
-                                    <FileJson size={12} /> 数据预览
-                                </div>
                             )}
+
+                            {/* 接口测试按钮始终显示在右侧 */}
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', border: 'none',
+                                    cursor: 'pointer', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '0 12px', height: '28px', borderRadius: '6px'
+                                }}
+                            >
+                                <Upload size={14} /> 接口测试
+                            </button>
                         </div>
                     </div>
 
@@ -842,7 +868,7 @@ fetch(url, {
                         </div>
                     ) : (
                         <div className="glass-card" style={{ flex: 1, padding: '0', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-                            <div style={{ padding: '12px 15px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                            <div style={{ padding: '12px 15px', background: 'transparent', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Clock size={16} color="var(--accent-color)" />
                                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>调用记录</span>
@@ -1030,7 +1056,7 @@ fetch(url, {
                                                         borderRadius: '10px',
                                                         background: selectedRecordId === record.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
                                                         border: selectedRecords.has(record.id) ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
-                                                        cursor: record.status === 'completed' ? 'pointer' : 'default',
+                                                        cursor: (record.status === 'completed' || record.status === 'failed') ? 'pointer' : 'default',
                                                         transition: 'all 0.2s',
                                                         display: 'flex',
                                                         gap: '8px',

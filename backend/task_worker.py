@@ -162,10 +162,11 @@ class TaskWorker:
                     )
                     matched_template = match_cand
         
-        # 如果没有匹配，使用 AI 识别
+        # 如果没有匹配，抛出异常，不再回退到 AI 识别
         if not matched_template:
-            engine = self.main_module.get_layout_engine()
-            matching_regions = engine.predict(image_paths[0])
+            # MODIFIED: Strict matching policy - fail if no template found
+            print("No template matched in API task auto mode. Aborting as per strict policy.")
+            raise ValueError("未匹配到模板")
         
         # 构建结果
         # Sort spatially
@@ -185,7 +186,7 @@ class TaskWorker:
         
         return {
             "filename": filename,
-            "template_name": matched_template.get('name') if matched_template else "AI识别",
+            "template_name": matched_template.get('name'),
             "mode": "auto",
             "data": result_map
         }
