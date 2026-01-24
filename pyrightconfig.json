@@ -1,14 +1,29 @@
 {
+    "include": [
+        "backend_server.py",
+        "run_desktop.py",
+        "backend",
+        "scripts"
+    ],
     "exclude": [
         "**/node_modules",
         "**/__pycache__",
         "**/.venv",
-        ".git",
+        "**/.git",
+        "**/dist",
+        "**/build",
         "backend/data",
-        "backend/backend",
-        "build",
-        "dist"
+        "backend/runs",
+        "frontend",
+        "assets"
+    ],
+    "ignore": [
+        "backend/data",
+        "backend/runs"
     ],
     "venvPath": ".",
-    "venv": ".venv"
+    "venv": ".venv",
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": false,
+    "pythonPlatform": "Darwin"
 }

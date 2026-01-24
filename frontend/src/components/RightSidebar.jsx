@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -149,33 +149,65 @@ const RightSidebar = ({
                             {tableRefining ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            垂直策略 (列)：
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>垂直策略 (列)：</span>
+                                            <button
+                                                onClick={() => {
+                                                    const newSettings = { ...tableSettings, vertical_locked: !tableSettings.vertical_locked };
+                                                    setTableSettings(newSettings);
+                                                    if (tableRefining) {
+                                                        setTableRefining({ ...tableRefining, settings: newSettings });
+                                                    }
+                                                }}
+                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: tableSettings.vertical_locked ? 'var(--accent-color)' : 'var(--text-tertiary)' }}
+                                                title={tableSettings.vertical_locked ? "解锁列策略" : "锁定列策略"}
+                                            >
+                                                {tableSettings.vertical_locked ? <Lock size={12} /> : <Unlock size={12} />}
+                                            </button>
                                         </p>
-                                        <StrategySelect
-                                            value={tableSettings.vertical_strategy}
-                                            onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
-                                            options={[
-                                                { value: "lines", label: "基于线条", icon: AlignJustify },
-                                                { value: "text", label: "基于文字", icon: Type },
-                                                { value: "rects", label: "基于色块", icon: Box },
-                                                { value: "explicit", label: "手动模式", icon: MousePointer2 }
-                                            ]}
-                                        />
+                                        <div style={{ pointerEvents: tableSettings.vertical_locked ? 'none' : 'auto', opacity: tableSettings.vertical_locked ? 0.6 : 1 }}>
+                                            <StrategySelect
+                                                value={tableSettings.vertical_strategy}
+                                                onChange={(e) => setTableSettings({ ...tableSettings, vertical_strategy: e.target.value })}
+                                                options={[
+                                                    { value: "lines", label: "基于线条", icon: AlignJustify },
+                                                    { value: "text", label: "基于文字", icon: Type },
+                                                    { value: "rects", label: "基于色块", icon: Box },
+                                                    { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                                ]}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>水平策略 (行)：</p>
-                                        <StrategySelect
-                                            value={tableSettings.horizontal_strategy}
-                                            onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
-                                            options={[
-                                                { value: "lines", label: "基于线条", icon: AlignJustify },
-                                                { value: "text", label: "基于文字", icon: Type },
-                                                { value: "rects", label: "基于色块", icon: Box },
-                                                { value: "explicit", label: "手动模式", icon: MousePointer2 }
-                                            ]}
-                                        />
+                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span>水平策略 (行)：</span>
+                                            <button
+                                                onClick={() => {
+                                                    const newSettings = { ...tableSettings, horizontal_locked: !tableSettings.horizontal_locked };
+                                                    setTableSettings(newSettings);
+                                                    if (tableRefining) {
+                                                        setTableRefining({ ...tableRefining, settings: newSettings });
+                                                    }
+                                                }}
+                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: tableSettings.horizontal_locked ? 'var(--accent-color)' : 'var(--text-tertiary)' }}
+                                                title={tableSettings.horizontal_locked ? "锁定行策略" : "解锁行策略"}
+                                            >
+                                                {tableSettings.horizontal_locked ? <Lock size={12} /> : <Unlock size={12} />}
+                                            </button>
+                                        </p>
+                                        <div style={{ pointerEvents: tableSettings.horizontal_locked ? 'none' : 'auto', opacity: tableSettings.horizontal_locked ? 0.6 : 1 }}>
+                                            <StrategySelect
+                                                value={tableSettings.horizontal_strategy}
+                                                onChange={(e) => setTableSettings({ ...tableSettings, horizontal_strategy: e.target.value })}
+                                                options={[
+                                                    { value: "lines", label: "基于线条", icon: AlignJustify },
+                                                    { value: "text", label: "基于文字", icon: Type },
+                                                    { value: "rects", label: "基于色块", icon: Box },
+                                                    { value: "explicit", label: "手动模式", icon: MousePointer2 }
+                                                ]}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>

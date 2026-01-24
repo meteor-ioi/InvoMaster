@@ -351,6 +351,9 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
                 
                 # Convert explicit relative lines to absolute if present
                 s_copy = s.copy()
+                s_copy.pop('vertical_locked', None)
+                s_copy.pop('horizontal_locked', None)
+
                 if s_copy.get("vertical_strategy") == "explicit":
                     rel_cols = s_copy.get("explicit_vertical_lines", [])
                     s_copy["explicit_vertical_lines"] = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
@@ -760,19 +763,38 @@ def analyze_table_structure(req: TableAnalysisRequest):
                 "snap_tolerance": 3,
                 "join_tolerance": 3,
             }
+            
+            # Remove frontend-only keys that might confuse pdfplumber
+            s.pop('vertical_locked', None)
+            s.pop('horizontal_locked', None)
 
             # Handle explicit lines conversion (Front-end sends 0-1 relative coords)
             # pdfplumber expects explicit lines in absolute page coordinates
             if s.get("vertical_strategy") == "explicit":
                 # Convert relative X to absolute Page X
                 rel_cols = s.get("explicit_vertical_lines", [])
-                abs_cols = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
+                abs_cols = sorted(list(set([bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols])))
+                
+                # Safety: Ensure at least 2 lines (left and right edges) to prevent crash
+                # pdfplumber requires at least 2 distinct values to form a valid explicit grid
+                if len(abs_cols) < 2:
+                    logger.warning(f"Explicit vertical lines insufficient ({len(abs_cols)}), injecting bbox edges.")
+                    if not abs_cols or abs_cols[0] > bbox[0] + 0.1: abs_cols.insert(0, bbox[0])
+                    if abs_cols[-1] < bbox[2] - 0.1: abs_cols.append(bbox[2])
+                    
                 s["explicit_vertical_lines"] = abs_cols
             
             if s.get("horizontal_strategy") == "explicit":
                 # Convert relative Y to absolute Page Y
                 rel_rows = s.get("explicit_horizontal_lines", [])
-                abs_rows = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
+                abs_rows = sorted(list(set([bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows])))
+
+                # Safety: Ensure at least 2 lines (top and bottom edges)
+                if len(abs_rows) < 2:
+                    logger.warning(f"Explicit horizontal lines insufficient ({len(abs_rows)}), injecting bbox edges.")
+                    if not abs_rows or abs_rows[0] > bbox[1] + 0.1: abs_rows.insert(0, bbox[1])
+                    if abs_rows[-1] < bbox[3] - 0.1: abs_rows.append(bbox[3])
+
                 s["explicit_horizontal_lines"] = abs_rows
             
             # Find table using the requested strategy

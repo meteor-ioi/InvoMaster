@@ -543,11 +543,24 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
     const handleApplyTableSettings = () => {
         if (selectedRegion) {
+            // 当切换到“手动模式”时，将当前已存在的线条作为 explicit lines 传入
+            // 防止后端因缺失 explicit lines 导致分析失败或重置为 0 线条
+            const finalSettings = { ...tableSettings };
+
+            if (tableRefining) {
+                if (finalSettings.vertical_strategy === 'explicit') {
+                    finalSettings.explicit_vertical_lines = tableRefining.cols || [];
+                }
+                if (finalSettings.horizontal_strategy === 'explicit') {
+                    finalSettings.explicit_horizontal_lines = tableRefining.rows || [];
+                }
+            }
+
             setRegions(prev => prev.map(r => r.id === selectedRegion.id ? {
                 ...r,
-                table_settings: tableSettings
+                table_settings: finalSettings
             } : r));
-            handleEnterTableRefine(selectedRegion, tableSettings);
+            handleEnterTableRefine(selectedRegion, finalSettings);
         }
     };
 

@@ -175,8 +175,11 @@ const DocumentEditor = ({
     const startTableLineMove = (e, type, index, val) => {
         e.stopPropagation();
         e.preventDefault();
-        if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
-        if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
+
+        // Locking Check
+        const settings = tableRefining?.settings || {};
+        if (type === 'col' && (settings.vertical_locked || index === 0 || index === tableRefining.cols.length - 1)) return;
+        if (type === 'row' && (settings.horizontal_locked || index === 0 || index === tableRefining.rows.length - 1)) return;
 
         const handleDocMouseMove = (moveE) => {
             if (!containerRef.current) return;
@@ -211,15 +214,23 @@ const DocumentEditor = ({
 
             const finalRefining = tableRefiningRef.current;
             if (finalRefining && onAnalyze) {
+                const currentSettings = finalRefining.settings || {};
                 const newSettings = {
-                    ...finalRefining.settings,
-                    vertical_strategy: "explicit",
-                    horizontal_strategy: "explicit",
+                    ...currentSettings,
                     explicit_vertical_lines: finalRefining.cols,
                     explicit_horizontal_lines: finalRefining.rows
                 };
+
+                // Decoupled Strategy Switching
+                if (type === 'col') {
+                    newSettings.vertical_strategy = "explicit";
+                    if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit' });
+                } else {
+                    newSettings.horizontal_strategy = "explicit";
+                    if (onSettingsChange) onSettingsChange({ horizontal_strategy: 'explicit' });
+                }
+
                 onAnalyze(newSettings);
-                if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
             }
         };
 
@@ -233,26 +244,32 @@ const DocumentEditor = ({
         e.stopPropagation();
         if (!tableRefining || !onAnalyze) return;
 
+        // Locking Check
+        const settings = tableRefining.settings || {};
+        if (type === 'col' && settings.vertical_locked) return;
+        if (type === 'row' && settings.horizontal_locked) return;
+
         let newSettings = {
-            ...tableRefining.settings,
-            vertical_strategy: "explicit",
-            horizontal_strategy: "explicit"
+            ...settings,
+            explicit_vertical_lines: tableRefining.cols, // Default to current
+            explicit_horizontal_lines: tableRefining.rows // Default to current
         };
 
         if (type === 'col') {
             const newCols = [...tableRefining.cols, val].sort((a, b) => a - b);
             setTableRefining({ ...tableRefining, cols: newCols });
             newSettings.explicit_vertical_lines = newCols;
-            newSettings.explicit_horizontal_lines = tableRefining.rows;
+            newSettings.vertical_strategy = "explicit";
+            if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit' });
         } else {
             const newRows = [...tableRefining.rows, val].sort((a, b) => a - b);
             setTableRefining({ ...tableRefining, rows: newRows });
             newSettings.explicit_horizontal_lines = newRows;
-            newSettings.explicit_vertical_lines = tableRefining.cols;
+            newSettings.horizontal_strategy = "explicit";
+            if (onSettingsChange) onSettingsChange({ horizontal_strategy: 'explicit' });
         }
 
         onAnalyze(newSettings);
-        if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
         setAddLineHover(null);
     };
 
@@ -342,29 +359,33 @@ const DocumentEditor = ({
     const deleteTableLine = (e, type, index) => {
         e.stopPropagation();
         if (!tableRefining || !onAnalyze) return;
-        if (type === 'col' && (index === 0 || index === tableRefining.cols.length - 1)) return;
-        if (type === 'row' && (index === 0 || index === tableRefining.rows.length - 1)) return;
+
+        // Locking Check
+        const settings = tableRefining.settings || {};
+        if (type === 'col' && (settings.vertical_locked || index === 0 || index === tableRefining.cols.length - 1)) return;
+        if (type === 'row' && (settings.horizontal_locked || index === 0 || index === tableRefining.rows.length - 1)) return;
 
         let newSettings = {
-            ...tableRefining.settings,
-            vertical_strategy: "explicit",
-            horizontal_strategy: "explicit"
+            ...settings,
+            explicit_vertical_lines: tableRefining.cols,
+            explicit_horizontal_lines: tableRefining.rows
         };
 
         if (type === 'col') {
             const newCols = tableRefining.cols.filter((_, i) => i !== index);
             setTableRefining({ ...tableRefining, cols: newCols });
             newSettings.explicit_vertical_lines = newCols;
-            newSettings.explicit_horizontal_lines = tableRefining.rows;
+            newSettings.vertical_strategy = "explicit";
+            if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit' });
         } else {
             const newRows = tableRefining.rows.filter((_, i) => i !== index);
             setTableRefining({ ...tableRefining, rows: newRows });
             newSettings.explicit_horizontal_lines = newRows;
-            newSettings.explicit_vertical_lines = tableRefining.cols;
+            newSettings.horizontal_strategy = "explicit";
+            if (onSettingsChange) onSettingsChange({ horizontal_strategy: 'explicit' });
         }
 
         onAnalyze(newSettings);
-        if (onSettingsChange) onSettingsChange({ vertical_strategy: 'explicit', horizontal_strategy: 'explicit' });
     };
 
     const handleMouseUp = useCallback(() => {
@@ -605,6 +626,7 @@ const DocumentEditor = ({
                                         ))}
                                         {tableRefining.cols.map((colX, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                            const isLocked = tableRefining.settings?.vertical_locked;
                                             return (
                                                 <line
                                                     key={`col-hit-${idx}`}
@@ -614,13 +636,14 @@ const DocumentEditor = ({
                                                     y2={`${(reg.y + reg.height) * 100}%`}
                                                     stroke="transparent"
                                                     strokeWidth={12}
-                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'col-resize' }}
+                                                    style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'col-resize' }}
                                                     onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
                                                 />
                                             );
                                         })}
                                         {tableRefining.rows.map((rowY, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                            const isLocked = tableRefining.settings?.horizontal_locked;
                                             return (
                                                 <line
                                                     key={`row-hit-${idx}`}
@@ -630,14 +653,15 @@ const DocumentEditor = ({
                                                     y2={`${(reg.y + rowY * reg.height) * 100}%`}
                                                     stroke="transparent"
                                                     strokeWidth={12}
-                                                    style={{ pointerEvents: 'auto', cursor: isBorder ? 'default' : 'row-resize' }}
+                                                    style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'row-resize' }}
                                                     onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
                                                 />
                                             );
                                         })}
                                         {tableRefining.cols.map((colX, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
-                                            if (isBorder) return null;
+                                            const isLocked = tableRefining.settings?.vertical_locked;
+                                            if (isBorder || isLocked) return null;
                                             return (
                                                 <g
                                                     key={`col-del-${idx}`}
@@ -670,7 +694,8 @@ const DocumentEditor = ({
                                         })}
                                         {tableRefining.rows.map((rowY, idx) => {
                                             const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
-                                            if (isBorder) return null;
+                                            const isLocked = tableRefining.settings?.horizontal_locked;
+                                            if (isBorder || isLocked) return null;
                                             return (
                                                 <g
                                                     key={`row-del-${idx}`}
