@@ -1,0 +1,14 @@
+{
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.venv",
+        ".git",
+        "backend/data",
+        "backend/backend",
+        "build",
+        "dist"
+    ],
+    "venvPath": ".",
+    "venv": ".venv"
+}

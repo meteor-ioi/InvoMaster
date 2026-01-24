@@ -47,6 +47,10 @@ def setup_logging(mode="frontend"):
 SPLASH_DURATION = 15  # 欢迎动画持续时间（秒）
 
 # ============== 数据目录配置 ==============
+app_root = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    app_root = sys._MEIPASS
+
 def setup_data_directory():
     """配置应用数据目录"""
     app_name = "IndustryPDF"

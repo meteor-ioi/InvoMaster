@@ -375,28 +375,37 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
                 logger.info(f"Region {reg.id} ({reg.type}) extraction is empty, falling back to direct OCR crop...")
                 try:
                     from ocr_utils import run_ocr_on_image
-                    import cv2
-                    import numpy as np
+                    from PIL import Image
                     
                     # 1. Load the page image
-                    page_img = cv2.imread(image_path)
-                    if page_img is not None:
-                        h_px, w_px = page_img.shape[:2]
+                    with Image.open(image_path) as img:
+                        img_w, img_h = img.size
                         # 2. Map normalized coords to pixel coords
-                        px_x0 = int(reg.x * w_px)
-                        px_y0 = int(reg.y * h_px)
-                        px_w = int(reg.width * w_px)
-                        px_h = int(reg.height * h_px)
+                        px_x0 = int(reg.x * img_w)
+                        px_y0 = int(reg.y * img_h)
+                        px_w = int(reg.width * img_w)
+                        px_h = int(reg.height * img_h)
+                        
                         # 3. Crop region from image
-                        crop_img = page_img[max(0, px_y0):min(h_px, px_y0+px_h), max(0, px_x0):min(w_px, px_x0+px_w)]
-                        if crop_img.size > 0:
-                            # 4. Save temp crop and run OCR or pass directly if supported
+                        # Pillow crop bbox is (left, top, right, bottom)
+                        bbox_crop = (
+                            max(0, px_x0),
+                            max(0, px_y0),
+                            min(img_w, px_x0 + px_w),
+                            min(img_h, px_y0 + px_h)
+                        )
+                        
+                        if (bbox_crop[2] > bbox_crop[0]) and (bbox_crop[3] > bbox_crop[1]):
+                            # 4. Save temp crop and run OCR
+                            crop_img = img.crop(bbox_crop)
                             temp_crop_path = os.path.join(UPLOAD_DIR, f"temp_ocr_{reg.id}.png")
-                            cv2.imwrite(temp_crop_path, crop_img)
+                            crop_img.save(temp_crop_path)
+                            
                             ocr_results = run_ocr_on_image(temp_crop_path)
                             if ocr_results:
                                 content = " ".join([res[1] for res in ocr_results])
                                 logger.info(f"Fallback OCR success for {reg.id}: {content[:30]}...")
+                            
                             if os.path.exists(temp_crop_path):
                                 os.remove(temp_crop_path)
                 except Exception as ex:
