@@ -63,8 +63,18 @@ else:
     app_root = os.path.dirname(os.path.abspath(__file__))
 
 # 检查便携模式
-portable_data_path = os.path.join(app_root, 'data')
-is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
+if getattr(sys, 'frozen', False):
+    portable_data_path = os.path.join(app_root, 'data')
+    is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
+else:
+    # 开发环境下，优先检查 backend/data
+    dev_data_path = os.path.join(app_root, 'backend', 'data')
+    if os.path.exists(dev_data_path):
+        portable_data_path = dev_data_path
+        is_portable = True
+    else:
+        portable_data_path = os.path.join(app_root, 'data')
+        is_portable = os.path.exists(portable_data_path) or os.path.exists(os.path.join(app_root, '.portable'))
 
 if is_portable:
     base_path = portable_data_path

@@ -190,15 +190,46 @@ class LayoutEngine:
         """
         后处理 ONNX 模型输出
         """
-        # YOLOv10 输出格式: [batch, num_boxes, 6] -> [x1, y1, x2, y2, confidence, class]
-        predictions = outputs[0][0]  # 取第一个 batch
-        resized_w, resized_h = resized_size  # 实际缩放后的图像尺寸
+        # YOLOv10 输出格式处理
+        # 兼容两种格式：
+        # 1. 已内置 NMS: [1, 300, 6] -> [x1, y1, x2, y2, confidence, class]
+        # 2. 原始输出: [1, 14, 21504] -> [x, y, w, h, class0, ..., class9] (需转置且手动处理)
         
+        raw_output = outputs[0]
+        if raw_output.shape[1] == 14:
+            # 格式 2: 需要转置 [1, 14, 21504] -> [21504, 14]
+            predictions = raw_output[0].transpose(1, 0)
+            print(f"Detected raw output format: {raw_output.shape}, transposed to {predictions.shape}")
+        else:
+            predictions = raw_output[0]
+            print(f"Detected standard output format: {raw_output.shape}")
+
+        resized_w, resized_h = resized_size
         boxes = []
+        
         for pred in predictions:
-            x1, y1, x2, y2, confidence, cls_id = pred
+            if len(pred) == 6:
+                # 已经过 NMS 的格式
+                x1, y1, x2, y2, confidence, cls_id = pred
+            elif len(pred) == 14:
+                # 未过 NMS 的原始格式 [x_center, y_center, w, h, score0...score9]
+                # 注意：YOLOv10 原始输出每个 anchor 只有一个最高分类别，或者需要我们计算
+                # 这里假设前 4 位是 box，后 10 位是类别置信度
+                box = pred[:4]
+                scores = pred[4:]
+                cls_id = np.argmax(scores)
+                confidence = scores[cls_id]
+                
+                if confidence < conf:
+                    continue
+                
+                # xywh 转 x1y1x2y2
+                xc, yc, w, h = box
+                x1, y1, x2, y2 = xc - w/2, yc - h/2, xc + w/2, yc + h/2
+            else:
+                continue
             
-            # 置信度过滤
+            # 置信度过滤 (如果上面没过滤)
             if confidence < conf:
                 continue
             

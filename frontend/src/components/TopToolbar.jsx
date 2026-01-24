@@ -73,10 +73,10 @@ const TopToolbar = ({
                 <div className={isIntegrated ? "" : "glass-card"} style={{
                     padding: '12px 20px',
                     borderBottom: '1px solid var(--glass-border)',
-                    overflow: 'hidden',
+                    overflow: 'visible',
                     background: isIntegrated ? 'rgba(255,255,255,0.03)' : ''
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', overflow: 'hidden', flexWrap: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', overflow: 'visible', flexWrap: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             {/* Smart Dedup Toggle */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>

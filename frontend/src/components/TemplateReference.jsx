@@ -896,14 +896,11 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                         <div style={{
                             width: '20px',
                             height: '48px',
-                            background: 'var(--glass-bg)',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '12px',
+                            background: 'transparent',
+                            border: 'none',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                             color: 'var(--text-primary)'
                         }}>
                             {leftPanelCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -1581,14 +1578,11 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                         <div style={{
                             width: '20px',
                             height: '48px',
-                            background: 'var(--glass-bg)',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '12px',
+                            background: 'transparent',
+                            border: 'none',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                             color: 'var(--text-primary)'
                         }}>
                             {rightPanelCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}

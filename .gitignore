@@ -16,6 +16,7 @@ PDF测试汇总/
 test_docs/
 uploads/
 storage/
+YOLO10 Models/
 
 # Logs
 *.log

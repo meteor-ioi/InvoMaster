@@ -463,14 +463,11 @@ function App() {
                     <div style={{
                         width: '48px',
                         height: '20px',
-                        background: 'var(--glass-bg)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: '12px',
+                        background: 'transparent',
+                        border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                         color: 'var(--text-primary)'
                     }}>
                         {isHeaderCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
