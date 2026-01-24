@@ -291,8 +291,8 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
 
                 // MODIFIED: Prioritize backend message for no-match scenario
                 let templateName;
-                if (res.data.message === "未匹配到模板") {
-                    templateName = "未匹配到模板";
+                if (res.data.status === "error" || res.data.message === "未匹配到模板") {
+                    templateName = res.data.message || "未匹配到模板";
                 } else if (res.data.template_found && res.data.matched_template) {
                     templateName = res.data.matched_template.name;
                 } else {
@@ -300,9 +300,10 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                 }
 
                 resultObj = {
-                    status: 'success',
+                    status: res.data.status === 'success' ? (res.data.template_found ? 'success' : 'error') : 'error',
                     filename: res.data.filename,
                     template_name: templateName,
+                    message: res.data.message,
                     mode: 'auto',
                     data: dataMap,
                     raw_regions: res.data.regions,
@@ -332,7 +333,15 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                     window.dispatchEvent(new CustomEvent('open-system-settings'));
                 }
             } else {
-                alert("执行失败: " + (err.response?.data?.detail || err.message));
+                const errorResult = {
+                    status: 'error',
+                    filename: file.name,
+                    template_name: '提取失败',
+                    message: err.response?.data?.detail || err.message,
+                    data: {},
+                    timestamp: new Date().toISOString()
+                };
+                setResult(errorResult);
             }
         } finally {
             setLoading(false);
@@ -1440,7 +1449,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                             padding: '6px 16px',
                                             borderRadius: '8px',
                                             background: 'rgba(239, 68, 68, 0.1)',
-                                            color: 'var(--error-color, #ef4444)',
+                                            color: '#ef4444',
                                             fontSize: '11px',
                                             fontWeight: 'bold',
                                             border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -1449,7 +1458,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                             gap: '8px'
                                         }}>
                                             <AlertCircle size={14} />
-                                            <span>解析失败</span>
+                                            <span>提取异常</span>
                                         </div>
                                     ) : (
                                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -1497,50 +1506,121 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                     )}
                                 </div>
 
-                                {outputFormat === 'markdown' && (
-                                    <pre className="custom-scrollbar" style={{
-                                        background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
-                                        padding: '24px',
+                                {/* Main Results / Error Area */}
+                                {(result.status === 'error' || result.template_name === '未匹配到模板') ? (
+                                    <div style={{
+                                        background: 'rgba(239, 68, 68, 0.05)',
+                                        border: '1px solid rgba(239, 68, 68, 0.1)',
                                         borderRadius: '16px',
-                                        overflow: 'auto',
-                                        fontSize: '13px',
-                                        lineHeight: '1.6',
-                                        border: '1px solid var(--glass-border)',
-                                        animation: 'slideUp 0.3s ease',
-                                        maxHeight: '600px',
-                                        color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
-                                        fontFamily: 'monospace',
-                                        whiteSpace: 'pre-wrap'
+                                        padding: '50px 24px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '16px',
+                                        textAlign: 'center',
+                                        animation: 'slideUp 0.4s ease-out',
+                                        marginTop: '20px'
                                     }}>
-                                        {getMarkdown()}
-                                    </pre>
-                                )}
-
-                                {outputFormat === 'json' && (
-                                    <div style={{ animation: 'slideUp 0.3s ease' }}>
-                                        {renderJsonWithHighlight(getJson())}
+                                        <div style={{
+                                            width: '60px',
+                                            height: '60px',
+                                            borderRadius: '50%',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#ef4444',
+                                            marginBottom: '8px'
+                                        }}>
+                                            <XCircle size={32} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', margin: 0 }}>
+                                                {result.template_name === '未匹配到模板' ? '该文件未匹配到任何模板' : '数据提取任务执行失败'}
+                                            </h3>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                color: 'var(--text-secondary)',
+                                                maxWidth: '420px',
+                                                lineHeight: '1.6',
+                                                margin: 0
+                                            }}>
+                                                {result.message || result.error || '可能是由于版面布局复杂或文件格式特殊，导致自动识别匹配失败。请检查文件或尝试手动定义模板。'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setResult(null);
+                                                setFile(null);
+                                                fetchHistory();
+                                            }}
+                                            style={{
+                                                marginTop: '15px',
+                                                padding: '10px 24px',
+                                                borderRadius: '10px',
+                                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                background: 'transparent',
+                                                color: '#ef4444',
+                                                fontSize: '13px',
+                                                fontWeight: 'bold',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            重置并重新上传
+                                        </button>
                                     </div>
-                                )}
+                                ) : (
+                                    <>
+                                        {outputFormat === 'markdown' && (
+                                            <pre className="custom-scrollbar" style={{
+                                                background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
+                                                padding: '24px',
+                                                borderRadius: '16px',
+                                                overflow: 'auto',
+                                                fontSize: '13px',
+                                                lineHeight: '1.6',
+                                                border: '1px solid var(--glass-border)',
+                                                animation: 'slideUp 0.3s ease',
+                                                maxHeight: '600px',
+                                                color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
+                                                fontFamily: 'monospace',
+                                                whiteSpace: 'pre-wrap'
+                                            }}>
+                                                {getMarkdown()}
+                                            </pre>
+                                        )}
 
-                                {outputFormat === 'xml' && renderXmlWithHighlight()}
+                                        {outputFormat === 'json' && (
+                                            <div style={{ animation: 'slideUp 0.3s ease' }}>
+                                                {renderJsonWithHighlight(getJson())}
+                                            </div>
+                                        )}
 
-                                {outputFormat === 'csv' && (
-                                    <pre className="custom-scrollbar" style={{
-                                        background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
-                                        padding: '24px',
-                                        borderRadius: '16px',
-                                        overflow: 'auto',
-                                        fontSize: '13px',
-                                        lineHeight: '1.6',
-                                        border: '1px solid var(--glass-border)',
-                                        animation: 'slideUp 0.3s ease',
-                                        maxHeight: '600px',
-                                        color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
-                                        fontFamily: 'monospace',
-                                        whiteSpace: 'pre'
-                                    }}>
-                                        {getCsv().replace(/^\uFEFF/, '')}
-                                    </pre>
+                                        {outputFormat === 'xml' && renderXmlWithHighlight()}
+
+                                        {outputFormat === 'csv' && (
+                                            <pre className="custom-scrollbar" style={{
+                                                background: theme === 'light' ? 'var(--input-bg)' : 'rgba(15, 23, 42, 0.9)',
+                                                padding: '24px',
+                                                borderRadius: '16px',
+                                                overflow: 'auto',
+                                                fontSize: '13px',
+                                                lineHeight: '1.6',
+                                                border: '1px solid var(--glass-border)',
+                                                animation: 'slideUp 0.3s ease',
+                                                maxHeight: '600px',
+                                                color: theme === 'light' ? 'var(--text-primary)' : '#cbd5e1',
+                                                fontFamily: 'monospace',
+                                                whiteSpace: 'pre'
+                                            }}>
+                                                {getCsv().replace(/^\uFEFF/, '')}
+                                            </pre>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}
@@ -1896,7 +1976,11 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                                             <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{h.filename}</span>
-                                                            <CheckCircle size={12} color="var(--success-color)" />
+                                                            {getRecordStatus(h) === 'failed' ? (
+                                                                <AlertCircle size={12} color="#ef4444" title={h.error || "提取记录显示: 处理异常"} />
+                                                            ) : (
+                                                                <CheckCircle size={12} color="var(--success-color)" title="提取成功" />
+                                                            )}
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                             <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{h.template_name}</span>

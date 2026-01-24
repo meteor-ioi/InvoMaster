@@ -151,7 +151,7 @@ const TopToolbar = ({
                 gap: '12px',
                 borderBottom: isIntegrated ? '1px solid var(--glass-border)' : 'none',
                 background: isIntegrated ? 'rgba(255,255,255,0.02)' : '',
-                overflow: 'hidden',
+                overflow: 'visible',
                 flexWrap: 'nowrap'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'fit-content' }}>

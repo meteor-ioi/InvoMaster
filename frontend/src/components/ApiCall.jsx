@@ -275,18 +275,19 @@ export default function ApiCall({ theme, device, headerCollapsed = false }) {
     };
 
     // 获取状态图标
-    const getStatusIcon = (status) => {
+    const getStatusIcon = (record) => {
+        const { status, error } = record;
         switch (status) {
             case 'pending':
-                return <Clock size={12} color="var(--text-secondary)" style={{ opacity: 0.5 }} />;
+                return <Clock size={12} color="var(--text-secondary)" style={{ opacity: 0.5 }} title="待处理" />;
             case 'processing':
-                return <Clock size={12} color="#fbbf24" />;
+                return <RefreshCw size={12} className="animate-spin" color="#fbbf24" title="排队处理中..." />;
             case 'completed':
-                return <CheckCircle size={12} color="var(--success-color)" />;
+                return <CheckCircle size={12} color="var(--success-color)" title="执行成功" />;
             case 'failed':
-                return <AlertCircle size={12} color="#ef4444" />;
+                return <AlertCircle size={12} color="#ef4444" title={error || "执行失败"} />;
             default:
-                return <Clock size={12} color="var(--text-secondary)" />;
+                return <Clock size={12} color="var(--text-secondary)" title="未知状态" />;
         }
     };
 
@@ -431,21 +432,50 @@ fetch(url, {
                     </div>
                 </div>
 
-                {/* MODIFIED: Show specific feedback if no data matched */}
-                {(Object.keys(record.result.data || {}).length === 0 &&
-                    (record.result.message === '未匹配到模板' || record.templateName === '未匹配到模板')) && (
+                {/* MODIFIED: Show specific feedback if task failed or no data matched */}
+                {(record.status === 'failed' || (Object.keys(record.result.data || {}).length === 0 &&
+                    (record.result.message === '未匹配到模板' || record.templateName === '未匹配到模板'))) && (
                         <div style={{
-                            padding: '16px',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            borderRadius: '10px',
+                            padding: '40px 24px',
+                            background: 'rgba(239, 68, 68, 0.05)',
+                            border: '1px solid rgba(239, 68, 68, 0.1)',
+                            borderRadius: '16px',
                             display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '20px'
+                            justifyContent: 'center',
+                            gap: '16px',
+                            marginBottom: '20px',
+                            textAlign: 'center',
+                            animation: 'slideUp 0.3s ease-out'
                         }}>
-                            <AlertCircle size={20} color="#ef4444" />
-                            <span style={{ color: '#ef4444', fontSize: '13px', fontWeight: 'bold' }}>未匹配到模板</span>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '50%',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#ef4444'
+                            }}>
+                                <XCircle size={24} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ef4444', margin: 0 }}>
+                                    {record.templateName === '未匹配到模板' ? '该文件未匹配到任何模板' : '任务提取失败'}
+                                </h3>
+                                <p style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    maxWidth: '300px',
+                                    lineHeight: '1.5',
+                                    margin: 0,
+                                    opacity: 0.8
+                                }}>
+                                    {record.error || record.result.message || '建议检查文件格式或手动创建模板。'}
+                                </p>
+                            </div>
                         </div>
                     )}
 
@@ -1030,7 +1060,7 @@ fetch(url, {
                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                                             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{record.filename}</div>
-                                                            {getStatusIcon(record.status)}
+                                                            {getStatusIcon(record)}
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                             <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{record.templateName || record.templateId}</span>

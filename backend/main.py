@@ -449,7 +449,8 @@ def analyze_document(
     iou: float = 0.45,
     agnostic_nms: bool = False,
     refresh: bool = False,
-    skip_history: bool = False  # 模板制作时跳过历史记录
+    skip_history: bool = False,  # 模板制作时跳过历史记录
+    require_template: bool = False  # 如果开启，则未匹配到模板时直接报错
 ):
     if device and device.lower() == "auto":
         device = None
@@ -519,6 +520,12 @@ def analyze_document(
     relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
 
     # 4. Use AI (Apply frontend params)
+    # 4. Use AI (Apply frontend params)
+    # MODIFIED: Removed early abort to ensure history is recorded
+    if require_template and not template_found:
+        logger.warning(f"Template mismatch for {actual_filename} in strict mode.")
+        # We will handle this as a failed result below instead of raising exception
+
     engine = get_layout_engine()
     device_used = device or engine.device
     start_time = time.time()
@@ -547,49 +554,48 @@ def analyze_document(
             ai_regions = []
     else:
         # Auto mode failed to match, and we are not forcing refresh/AI
-        # FIXED: If no template found and not refreshing, we SHOULD trigger AI inference
-        # unless user explicitly wants to skip it. But here we usually want result.
-        # However, to avoid redundancy, we check if we already have regions.
-        if not matching_regions:
-            print("No template matched, triggering AI layout inference...")
-            try:
-                ai_regions = engine.predict(
-                    image_paths[0], 
-                    device=device, 
-                    conf=conf,
-                    imgsz=imgsz,
-                    iou=iou,
-                    agnostic_nms=agnostic_nms
-                )
-                inference_time = time.time() - start_time
-                matching_regions = ai_regions
-            except Exception as e:
-                print(f"Inference error during fallback: {e}")
-                matching_regions = []
-        else:
-            print("Using matched template regions, skipping redundant AI inference.")
-            inference_time = 0
-            ai_regions = []
+        # MODIFIED: As per user request, do NOT fallback to AI inference if template not found
+        # We want to return a specific "No template matched" result
+        print("No template matched, skipping AI fallback to ensure strict template matching.")
+        matching_regions = []
+        ai_regions = []
+        inference_time = 0
 
     
     # 5. 构建结果数据 (始终需要用于响应)
     # Sort matching_regions spatially before building the map
     matching_regions = sort_regions_spatially(matching_regions)
     result_map = {}
-    for r in matching_regions:
-        # Normalize region data (might be Region object or dict)
-        r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
-        rid = r_dict.get('id', 'unknown')
-        result_map[rid] = {
-            "type": r_dict.get('type'),
-            "label": r_dict.get('label') or rid,
-            "remarks": r_dict.get('remarks') or '',
-            "content": r_dict.get('content', r_dict.get('text', ''))
-        }
+    
+    # MODIFIED: Handle no-match case explicitly with a single data value
+    extraction_status = "success"
+    error_message = None
+    
+    if not matching_regions and not template_found and not refresh:
+         result_map = {
+             "status_info": {
+                 "type": "text", 
+                 "label": "系统提示", 
+                 "content": "未匹配到模板"
+             }
+         }
+         extraction_status = "failed"
+         error_message = "未匹配到模板"
+    else:
+        for r in matching_regions:
+            # Normalize region data (might be Region object or dict)
+            r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
+            rid = r_dict.get('id', 'unknown')
+            result_map[rid] = {
+                "type": r_dict.get('type'),
+                "label": r_dict.get('label') or rid,
+                "remarks": r_dict.get('remarks') or '',
+                "content": r_dict.get('content', r_dict.get('text', ''))
+            }
     
     # 6. Log History (Auto Mode) - 仅在非模板制作测试时记录
     if not skip_history:
-        template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "AI识别")
+        template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "未匹配到模板")
         
         import datetime
         append_history({
@@ -597,12 +603,14 @@ def analyze_document(
             "filename": actual_filename,
             "template_name": template_name,
             "mode": "auto",
+            "status": extraction_status, # ADDED: Explicit status for frontend icons
+            "error": error_message,      # ADDED: Error details
             "result_summary": result_map
         })
 
     base_response = {
-        "status": "success",
-        "message": "success" if template_found else "未匹配到模板",  # ADDED: Explicit feedback message
+        "status": "error" if extraction_status == "failed" else "success", # Return error status so frontend handles it
+        "message": error_message if error_message else ("success" if template_found else "未匹配到模板"), 
         "id": fingerprint[:12],
         "fingerprint": fingerprint,
         "filename": actual_filename,
@@ -1076,7 +1084,8 @@ def extract_with_custom_template(
 
         # --- Branch A: Auto Mode ---
         if template_id.lower() == "auto":
-            result = analyze_document(file=file, device=device)
+            # Pass require_template=True to stop if no match found
+            result = analyze_document(file=file, device=device, require_template=True)
             
             # Determine template name for record
             if result.get("template_found") and result.get("matched_template"):
