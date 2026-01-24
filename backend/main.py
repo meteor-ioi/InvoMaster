@@ -331,7 +331,7 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
 
             # Crop region
             try:
-                cropped = first_page.within_bbox(bbox)
+                cropped = first_page.crop(bbox)
             except Exception as e:
                 print(f"Error cropping region {reg.id}: {e}")
                 reg_dict = reg.dict()
@@ -1100,7 +1100,7 @@ def extract_with_custom_template(
         image_paths = pdf_to_images(file_path, img_save_path)
         
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-        extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None)
+        extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
         
         # 4. Format Output
         # Sort extracted_regions spatially

@@ -233,7 +233,7 @@ class TaskWorker:
         for r in extracted_regions:
             key = r.get("id")
             meta = {k: v for k, v in r.items()
-                   if k not in ["x", "y", "width", "height", "content", "text", "id", "table_settings"]}
+                   if k not in ["x", "y", "width", "height", "content", "text", "id"]}
             result_map[key] = {
                 "content": r.get("content", ""),
                 **meta
