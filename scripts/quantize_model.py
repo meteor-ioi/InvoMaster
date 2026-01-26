@@ -9,14 +9,30 @@ def quantize_model(input_model_path, output_model_path):
         print(f"Error: Input model {input_model_path} not found.")
         return
 
+    # 预处理：解决 "Expected to be an initializer" 等图结构问题
+    print("Starting pre-processing...")
+    pre_processed_path = input_model_path.replace(".onnx", "_pre.onnx")
+    from onnxruntime.quantization import quant_pre_process
+    try:
+        quant_pre_process(input_model_path, pre_processed_path)
+        actual_input = pre_processed_path
+        print(f"Pre-processing finished. Using {pre_processed_path} for quantization.")
+    except Exception as e:
+        print(f"Pre-processing skipped or failed: {e}. Falling back to original model.")
+        actual_input = input_model_path
+
     # 动态量化
     # 适合 YOLO 这种推理密集的模型
     print("Starting dynamic quantization to INT8...")
     quantize_dynamic(
-        input_model_path,
+        actual_input,
         output_model_path,
         weight_type=QuantType.QUInt8
     )
+    
+    # 清理预处理产生的临时文件
+    if actual_input != input_model_path and os.path.exists(actual_input):
+        os.remove(actual_input)
     
     print(f"Quantization finished. Output saved to {output_model_path}")
     
