@@ -9,21 +9,43 @@ def quantize_model(input_model_path, output_model_path):
         print(f"Error: Input model {input_model_path} not found.")
         return
 
-    # 预处理：解决 "Expected to be an initializer" 等图结构问题
-    print("Starting pre-processing...")
-    pre_processed_path = input_model_path.replace(".onnx", "_pre.onnx")
+    # 预处理第一步：使用 onnxsim 简化模型（解决 Windows 下常见的 Initializer 错误）
+    print("Starting pre-processing with onnxsim...")
+    simplified_path = input_model_path.replace(".onnx", "_sim.onnx")
+    try:
+        import onnxsim
+        model = onnx.load(input_model_path)
+        model_simp, check = onnxsim.simplify(model)
+        if check:
+            onnx.save(model_simp, simplified_path)
+            actual_input = simplified_path
+            print(f"onnxsim simplification finished. Using {simplified_path} for next steps.")
+        else:
+            print("onnxsim check failed, skipping simplification.")
+            actual_input = input_model_path
+    except Exception as e:
+        print(f"onnxsim failed: {e}. Falling back to original model.")
+        actual_input = input_model_path
+
+    # 预处理第二步：ONNX Runtime 官方预处理
+    print("Starting pre-processing with quant_pre_process...")
+    pre_processed_path = actual_input.replace(".onnx", "_pre.onnx")
     from onnxruntime.quantization import quant_pre_process
     try:
-        quant_pre_process(input_model_path, pre_processed_path)
-        actual_input = pre_processed_path
-        print(f"Pre-processing finished. Using {pre_processed_path} for quantization.")
+        quant_pre_process(actual_input, pre_processed_path)
+        # 如果生成了新文件且不等于 input_model_path
+        if os.path.exists(pre_processed_path):
+            # 如果之前有 simp 文件，可以清理它（除非它就是 input_model）
+            if actual_input != input_model_path and os.path.exists(actual_input):
+                os.remove(actual_input)
+            actual_input = pre_processed_path
+            print(f"quant_pre_process finished. Using {pre_processed_path} for quantization.")
     except Exception as e:
-        print(f"Pre-processing skipped or failed: {e}. Falling back to original model.")
-        actual_input = input_model_path
+        print(f"quant_pre_process skipped or failed: {e}. Using current actual_input.")
 
     # 动态量化
     # 适合 YOLO 这种推理密集的模型
-    print("Starting dynamic quantization to INT8...")
+    print(f"Starting dynamic quantization to INT8 using input: {actual_input}")
     quantize_dynamic(
         actual_input,
         output_model_path,
