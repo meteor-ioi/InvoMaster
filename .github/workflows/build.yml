@@ -39,7 +39,6 @@ jobs:
           node-version: '20'
       
       - name: Install uv
-        if: runner.os == 'Windows'
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -48,13 +47,8 @@ jobs:
       - name: Install Python dependencies
         shell: bash
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            cd backend
-            uv sync
-          else
-            python -m pip install --upgrade pip
-            pip install fastapi huggingface-hub numpy onnxruntime opencv-python-headless pdfplumber pillow pydantic-settings pymupdf python-multipart rapidocr-onnxruntime uvicorn pywebview pyinstaller
-          fi
+          cd backend
+          uv sync
       
       - name: Build Frontend
         working-directory: frontend
@@ -78,29 +72,23 @@ jobs:
         env:
           HF_ENDPOINT: https://hf-mirror.com
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            uv run --project backend python backend/scripts/download_models.py
-          else
-            python backend/scripts/download_models.py
-          fi
+          uv run --project backend python backend/scripts/download_models.py
+
+      - name: Quantize Models (Windows Only)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          uv run --project backend python scripts/quantize_model.py
 
       - name: Convert Icons
         shell: bash
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            uv run --project backend python backend/scripts/convert_icons.py
-          else
-            python backend/scripts/convert_icons.py
-          fi
+          uv run --project backend python backend/scripts/convert_icons.py
 
       - name: Build Desktop App
         shell: bash
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            uv run --project backend pyinstaller industry_pdf.spec --clean --noconfirm
-          else
-            python -m PyInstaller industry_pdf.spec --clean --noconfirm
-          fi
+          uv run --project backend pyinstaller industry_pdf.spec --clean --noconfirm
       
       - name: Compress App Bundle (macOS)
         if: runner.os == 'macOS'
