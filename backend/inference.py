@@ -39,14 +39,9 @@ class LayoutEngine:
             base_data = os.environ.get("APP_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
             is_windows = sys.platform.startswith('win')
             
-            # Model filename candidates based on platform
-            # Priority: Nano INT8 > Small INT8 > FP32
-            # Nano versions (yolov10n) are significantly faster on CPU
-            model_filenames = [
-                "yolov10n-doclayout_int8.onnx", 
-                "yolov10-doclayout_int8.onnx", 
-                "yolov10-doclayout.onnx"
-            ] if is_windows else ["yolov10-doclayout.onnx"]
+            # Model filename candidates
+            # Reverting back to original FP32 model as INT8 failed on Windows
+            model_filenames = ["yolov10-doclayout.onnx"]
             
             candidates = []
             for filename in model_filenames:

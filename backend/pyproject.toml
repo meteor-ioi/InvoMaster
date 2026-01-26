@@ -21,7 +21,6 @@ dependencies = [
     "pyinstaller>=6.0",
     "onnx>=1.20.1",
     "onnxruntime-extensions>=0.14.0",
-    "onnxsim>=0.4.36",
 ]
 
 [project.optional-dependencies]
