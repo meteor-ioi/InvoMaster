@@ -362,7 +362,9 @@ const RightSidebar = ({
                                                 minHeight: '60px',
                                                 resize: 'vertical',
                                                 opacity: !selectedRegion ? 0.4 : (selectedRegion.locked ? 0.7 : 1),
-                                                cursor: !selectedRegion ? 'not-allowed' : 'text'
+                                                cursor: !selectedRegion ? 'not-allowed' : 'text',
+                                                outline: 'none',
+                                                boxShadow: 'none'
                                             }}
                                         />
                                     </div>
