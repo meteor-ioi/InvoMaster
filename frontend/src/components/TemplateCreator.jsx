@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload, Hash, Zap } from 'lucide-react';
+import { CheckCircle, ChevronLeft, Sun, Moon, Grid, Upload, Hash, Zap, Sparkles } from 'lucide-react';
 import DocumentEditor, { TYPE_CONFIG } from './DocumentEditor';
 import TopToolbar from './TopToolbar';
 import LeftPanel from './LeftPanel';
@@ -374,6 +374,21 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             setTemplateName(res.data.template_found ? (res.data.matched_template?.name || `识别_${res.data.filename}`) : `模型_${res.data.filename}`);
             // If template found, use its mode, otherwise default to auto
             setTemplateMode(res.data.matched_template?.mode || 'auto');
+
+            // --- 提示气泡逻辑 ---
+            if (res.data.template_found) {
+                setToast({
+                    type: 'success',
+                    text: `已匹配到模板: ${res.data.matched_template?.name || '未知模板'}`
+                });
+            } else {
+                setToast({
+                    type: 'info',
+                    text: '未匹配到模板，已进入自动识别模式'
+                });
+            }
+            setTimeout(() => setToast(null), 3000);
+
             setStep('review');
             setEditorMode('select');
             setTableRefining(null);
@@ -1039,7 +1054,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     animation: 'slideDown 0.3s ease-out'
                 }}>
                     <div style={{
-                        background: 'var(--success-color)',
+                        background: toast.type === 'success' ? 'var(--success-color)' : (toast.type === 'error' ? 'var(--error-color)' : 'var(--primary-color)'),
                         color: 'white',
                         padding: '10px 24px',
                         borderRadius: '12px',
@@ -1049,7 +1064,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                         boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
                         fontWeight: 'bold'
                     }}>
-                        <CheckCircle size={18} />
+                        {toast.type === 'success' ? <CheckCircle size={18} /> : (toast.type === 'error' ? <Zap size={18} /> : <Sparkles size={18} />)}
                         {toast.text}
                     </div>
                 </div>
