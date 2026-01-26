@@ -9,7 +9,7 @@ import hashlib
 import json
 import time
 import pdfplumber
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
 
 # Local imports
 from utils import pdf_to_images
@@ -17,6 +17,8 @@ from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
 from ocr_utils import get_ocr_chars_for_page, inject_ocr_chars_to_page, is_page_scanned
+from anchor_capture import router as anchor_router, init_anchor_capture
+from positioning import resolve_region_bounds # [NEW]
 from task_worker import TaskWorker
 import logging
 
@@ -60,6 +62,79 @@ app.add_middleware(
 # Mount static files to serve images
 app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="static")
 
+# Initialize and include anchor capture router
+init_anchor_capture(UPLOAD_DIR)
+app.include_router(anchor_router, tags=["anchors"])
+
+class AnchorLocator(BaseModel):
+    """锚点/角定位器"""
+    method: Literal["fixed", "text", "image", "relative"]
+    
+    # === 公共属性 ===
+    # 搜索范围限制 (ROI): [x, y, w, h] 归一化坐标，仅在此范围内寻找锚点
+    search_area: Optional[List[float]] = None 
+    
+    # 固定模式：使用归一化坐标
+    fixed_x: Optional[float] = None
+    fixed_y: Optional[float] = None
+    
+    # 文本模式：搜索文本内容
+    text_query: Optional[str] = None
+    is_regex: bool = False
+    text_match_index: int = 0
+    text_position: Literal["start", "end", "center"] = "start"
+    text_offset_x: float = 0
+    text_offset_y: float = 0
+    
+    # 图像模式：OpenCV 模板匹配
+    image_ref: Optional[str] = None
+    image_width_ratio: Optional[float] = None
+    image_height_ratio: Optional[float] = None
+    match_threshold: float = 0.8
+    
+    # 相对模式：相对页面的百分比位置
+    relative_x: Optional[float] = None
+    relative_y: Optional[float] = None
+
+class BoundaryLocator(BaseModel):
+    """边界定位器（确定宽度或高度的终点）"""
+    method: Literal["fixed", "relative", "text", "image"]
+    
+    # 搜索范围限制
+    search_area: Optional[List[float]] = None 
+    
+    # 固定长度（归一化）
+    fixed_length: Optional[float] = None
+    
+    # 相对页面的比例
+    relative_length: Optional[float] = None
+    
+    # 文本结束位置
+    text_query: Optional[str] = None
+    is_regex: bool = False
+    text_edge: Literal["left", "right", "top", "bottom"] = "right"
+    
+    # 图像结束位置
+    image_ref: Optional[str] = None
+
+class PositioningConfig(BaseModel):
+    """动态定位配置"""
+    enabled: bool = False
+    
+    # A. 锚点配置
+    anchor: Literal["top_left", "top_right", "bottom_left", "bottom_right"] = "top_left"
+    anchor_locator: Optional[AnchorLocator] = None
+    
+    # B. 边界定位器
+    boundary_mode: Literal["adjacent", "diagonal"] = "adjacent"
+    
+    # 相邻模式
+    width_locator: Optional[BoundaryLocator] = None
+    height_locator: Optional[BoundaryLocator] = None
+    
+    # 对角模式
+    diagonal_locator: Optional[AnchorLocator] = None
+
 class Region(BaseModel):
     id: str
     type: str
@@ -67,6 +142,10 @@ class Region(BaseModel):
     y: float
     width: float
     height: float
+    
+    # === 动态定位配置 ===
+    positioning: Optional[PositioningConfig] = None
+    
     label: Optional[str] = None
     remarks: Optional[str] = None # Added: User notes
     text: Optional[str] = None # Deprecated: Use content instead
@@ -282,6 +361,36 @@ def get_file_fingerprint(file_path):
         buf = f.read()
         hasher.update(buf)
     return hasher.hexdigest()
+def get_page_words(file_path, page_idx=0, image_path=None, p_fp=None):
+    """
+    Extract words from a PDF page (native or OCR) and return normalized coordinates.
+    """
+    words_data = []
+    try:
+        with pdfplumber.open(file_path) as pdf:
+            if page_idx >= len(pdf.pages):
+                return []
+            page = pdf.pages[page_idx]
+            p_width, p_height = page.width, page.height
+            
+            # Use OCR if page is scanned
+            if is_page_scanned(page):
+                if image_path and os.path.exists(image_path):
+                    ocr_chars = get_ocr_chars_for_page(image_path, p_width, p_height, page.bbox, fingerprint=p_fp, page_idx=page_idx+1)
+                    inject_ocr_chars_to_page(page, ocr_chars)
+            
+            extracted_words = page.extract_words()
+            for w in extracted_words:
+                words_data.append({
+                    "text": w["text"],
+                    "x0": w["x0"] / p_width,
+                    "y0": w["top"] / p_height,
+                    "x1": w["x1"] / p_width,
+                    "y1": w["bottom"] / p_height
+                })
+    except Exception as e:
+        logger.error(f"Error extracting words: {e}")
+    return words_data
 
 def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optional[str] = None, fingerprint: Optional[str] = None):
     """
@@ -311,14 +420,18 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
                 logger.warning(f"No image path provided for OCR, extraction may fail for scanned PDF")
         
         for reg in regions:
+            # === DYNAMIC POSITIONING INTEGRATION ===
+            # Resolve actual coordinates before mapping to physical PDF space
+            curr_x, curr_y, curr_w, curr_h = resolve_region_bounds(reg, first_page, image_path=image_path)
+            
             # Convert normalized to physical coordinates (x1, y1, x2, y2)
             # Use page.bbox offset for robust mapping
             x0_off, y0_off = page_bbox[0], page_bbox[1]
             bbox = (
-                x0_off + reg.x * width,
-                y0_off + reg.y * height,
-                x0_off + (reg.x + reg.width) * width,
-                y0_off + (reg.y + reg.height) * height
+                x0_off + curr_x * width,
+                y0_off + curr_y * height,
+                x0_off + (curr_x + curr_w) * width,
+                x0_off + (curr_y + curr_h) * height
             )
             
             # Skip zero-area regions to avoid pdfplumber ValueError
@@ -616,7 +729,10 @@ def analyze_document(
                     "content": r_dict.get('content', r_dict.get('text', ''))
                 }
         
-        # 6. Log History (Auto Mode) - 仅在非模板制作测试时记录
+        # 6. Extract Words for Dynamic Positioning UI
+        words_data = get_page_words(file_path, page_idx=0, image_path=image_paths[0] if image_paths else None, p_fp=fingerprint)
+
+        # 7. Log History (Auto Mode) - 仅在非模板制作测试时记录
         if not skip_history:
             template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "未匹配到模板")
             
@@ -644,6 +760,7 @@ def analyze_document(
             "matched_template": matched_template_info,
             "is_source": False,
             "data": result_map,
+            "words": words_data, # NEW: Return words for interactive UI
             "device_used": device_used,
             "inference_time": round(inference_time, 3) if 'inference_time' in locals() else 0
         }
@@ -726,12 +843,16 @@ def analyze_from_source(template_id: str):
             except Exception as e:
                 print(f"Failed to cache template results: {e}")
 
+    # 5. Extract Words for Dynamic Positioning UI
+    words_data = get_page_words(source_path, page_idx=0, image_path=image_paths[0] if image_paths else None, p_fp=fingerprint)
+
     return {
         "id": template_id,
         "fingerprint": fingerprint,
         "filename": t_data.get("filename", f"{template_id}.pdf"),
         "images": relative_images,
         "regions": matching_regions,
+        "words": words_data, # ADDED: words support for existing templates
         "template_found": True,
         "is_source": True,
         "mode": t_record['mode'] if t_record else 'unknown'

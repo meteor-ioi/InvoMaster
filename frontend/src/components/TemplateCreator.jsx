@@ -144,6 +144,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const [tableHistory, setTableHistory] = useState([]);
     const [tableHistoryIndex, setTableHistoryIndex] = useState(-1);
 
+    // --- 动态定位重构状态 ---
+    const [positioningMode, setPositioningMode] = useState(false);
+
     const recordTableHistory = (newTableRefining) => {
         if (!newTableRefining) return;
         const newHistory = tableHistory.slice(0, tableHistoryIndex + 1);
@@ -671,6 +674,24 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
         recordHistory(newRegions);
     };
 
+    const updateRegionPositioning = (id, config) => {
+        // Initialize with defaults if empty
+        const defaultConfig = {
+            enabled: false,
+            anchor: 'top_left',
+            anchor_locator: { method: 'fixed' },
+            boundary_mode: 'adjacent',
+            width_locator: { method: 'fixed' },
+            height_locator: { method: 'fixed' }
+        };
+        const newRegions = regions.map(r => r.id === id ? {
+            ...r,
+            positioning: { ...(r.positioning || defaultConfig), ...config }
+        } : r);
+        setRegions(newRegions);
+        recordHistory(newRegions);
+    };
+
     const clearAllRegions = () => {
         const visibleIds = filteredRegions.map(r => r.id);
         if (visibleIds.length === 0) return;
@@ -769,6 +790,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                     tableRedo={tableRedo}
                                     tableHistoryIndex={tableHistoryIndex}
                                     tableHistoryLength={tableHistory.length}
+                                    positioningMode={positioningMode}
+                                    setPositioningMode={setPositioningMode}
                                 />
 
                                 <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
@@ -873,10 +896,14 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                         onAnalyze={(newSettings) => handleAnalyzeTable(tableRefining.id, newSettings)}
                                                         onSettingsChange={(newSettings) => setTableSettings(prev => ({ ...prev, ...newSettings }))}
                                                         zoom={zoom}
+                                                        setZoom={setZoom}
                                                         showRegions={showRegions}
                                                         onDelete={deleteRegion}
                                                         onToggleLock={toggleRegionLock}
                                                         onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
+                                                        positioningMode={positioningMode}
+                                                        setPositioningMode={setPositioningMode}
+                                                        words={analysis?.words || []}
                                                     />
                                                 </div>
 
@@ -1040,6 +1067,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     theme={theme}
                     selectedIds={selectedIds}
                     regions={regions}
+                    updateRegionPositioning={updateRegionPositioning}
                 />
             </main>
 

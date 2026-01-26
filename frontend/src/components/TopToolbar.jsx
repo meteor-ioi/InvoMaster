@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw, Scan } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw, Scan, Target } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -41,7 +41,9 @@ const TopToolbar = ({
     tableUndo,
     tableRedo,
     tableHistoryIndex,
-    tableHistoryLength
+    tableHistoryLength,
+    positioningMode,
+    setPositioningMode
 }) => {
     const isTableSelected = selectedRegion?.type === 'table';
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -442,6 +444,23 @@ const TopToolbar = ({
                             >
                                 <BoxSelect size={16} />
                             </button>
+
+                            <button
+                                onClick={() => setPositioningMode(!positioningMode)}
+                                disabled={!selectedRegion || selectedIds?.length > 1}
+                                title={!selectedRegion ? "请先选择一个区块以开启动态定位" : "动态定位配置"}
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: positioningMode ? 'var(--accent-color)' : 'transparent',
+                                    color: positioningMode ? '#fff' : ((!selectedRegion || selectedIds?.length > 1) ? 'var(--text-secondary)' : 'var(--accent-color)'),
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: (!selectedRegion || selectedIds?.length > 1) ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    opacity: (!selectedRegion || selectedIds?.length > 1) ? 0.4 : 1
+                                }}
+                            >
+                                <Target size={16} />
+                            </button>
                             <button
                                 disabled={!selectedRegion && selectedIds?.length === 0}
                                 onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
@@ -491,8 +510,8 @@ const TopToolbar = ({
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
