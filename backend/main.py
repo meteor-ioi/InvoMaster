@@ -36,7 +36,7 @@ logger.info("Backend starting...")
 app = FastAPI(title="HITL Document Extraction API")
 
 # Storage paths configuration
-base_data_dir = os.environ.get("APP_DATA_DIR", "data")
+base_data_dir = os.environ.get("APP_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
 UPLOAD_DIR = os.path.join(base_data_dir, "uploads")
 TEMPLATES_DIR = os.path.join(base_data_dir, "templates") # Root dir
 TEMPLATES_AUTO_DIR = os.path.join(base_data_dir, "templates", "auto")

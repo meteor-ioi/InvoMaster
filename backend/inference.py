@@ -36,7 +36,7 @@ def get_device_providers():
 class LayoutEngine:
     def __init__(self, model_path=None, device=None):
         if model_path is None:
-            base_data = os.environ.get("APP_DATA_DIR", "data")
+            base_data = os.environ.get("APP_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
             is_windows = sys.platform.startswith('win')
             
             # Model filename candidates based on platform
