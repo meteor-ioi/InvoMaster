@@ -36,8 +36,6 @@ def main():
     print("\n[Step 2/4] Preparing Resources...")
     run_command("uv run python scripts/convert_icons.py", cwd=backend_dir)
     
-    print("\n[Step 2.5/4] Quantizing YOLO Model for Windows Performance...")
-    run_command("uv run --project backend python scripts/quantize_model.py", cwd=project_root)
 
     # 3. Package with PyInstaller via uv
     print("\n[Step 3/4] Packaging Python App with PyInstaller...")
