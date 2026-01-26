@@ -118,8 +118,12 @@ class LayoutEngine:
         print(f"Model loaded successfully. Input: {self.input_name}")
         print(f"Active providers: {self.session.get_providers()}")
         
+        
         # 类别名称映射
         self.names = DOCLAYOUT_CLASSES
+        
+        # Store device info
+        self.device = 'cuda' if 'CUDAExecutionProvider' in providers else ('mps' if 'CoreMLExecutionProvider' in providers else 'cpu')
 
     def enhance_image(self, img: Image.Image) -> Image.Image:
         """

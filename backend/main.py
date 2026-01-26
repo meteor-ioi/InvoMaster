@@ -356,11 +356,27 @@ def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optio
 
                 if s_copy.get("vertical_strategy") == "explicit":
                     rel_cols = s_copy.get("explicit_vertical_lines", [])
-                    s_copy["explicit_vertical_lines"] = [bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols]
+                    abs_cols = sorted(list(set([bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols])))
+                    
+                    # Ensure outer bounds are included to capture full width
+                    if not abs_cols or abs_cols[0] > bbox[0] + 0.5:
+                        abs_cols.insert(0, bbox[0])
+                    if not abs_cols or abs_cols[-1] < bbox[2] - 0.5:
+                        abs_cols.append(bbox[2])
+                        
+                    s_copy["explicit_vertical_lines"] = abs_cols
                 
                 if s_copy.get("horizontal_strategy") == "explicit":
                     rel_rows = s_copy.get("explicit_horizontal_lines", [])
-                    s_copy["explicit_horizontal_lines"] = [bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows]
+                    abs_rows = sorted(list(set([bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows])))
+                    
+                    # Ensure outer bounds are included
+                    if not abs_rows or abs_rows[0] > bbox[1] + 0.5:
+                        abs_rows.insert(0, bbox[1])
+                    if not abs_rows or abs_rows[-1] < bbox[3] - 0.5:
+                        abs_rows.append(bbox[3])
+                        
+                    s_copy["explicit_horizontal_lines"] = abs_rows
                 
                 # Extract structured table as 2D array
                 table_data = cropped.extract_table(s_copy)
@@ -450,182 +466,193 @@ def analyze_document(
     agnostic_nms: bool = False,
     refresh: bool = False,
     skip_history: bool = False,  # 模板制作时跳过历史记录
-    require_template: bool = False  # 如果开启，则未匹配到模板时直接报错
+    require_template: bool = False,  # 如果开启，则未匹配到模板时直接报错
+    fallback_to_layout: bool = False # 如果开启，未匹配到模板时自动进行版面分析
 ):
-    if device and device.lower() == "auto":
-        device = None
-    
-    # Determine input file path
-    if file:
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        actual_filename = file.filename
-    elif filename:
-        actual_filename = filename
-        # Check uploads
-        file_path = os.path.join(UPLOAD_DIR, filename)
-        if not os.path.exists(file_path):
-            # Check template sources
-            source_path = os.path.join(TEMPLATES_SOURCE_DIR, filename)
-            if os.path.exists(source_path):
-                file_path = source_path
-            else:
-                 # Try to assume filename might differ in source dir (search by ID?) 
-                 # For now, simplistic check. If failed:
-                 raise HTTPException(status_code=400, detail=f"File {filename} not found on server")
-    else:
-        raise HTTPException(status_code=400, detail="No file provided")
-    
-    # 1. Calculate Fingerprint
-    fingerprint = get_file_fingerprint(file_path)
-    
-    # 2. Check for existing template (ENHANCED MATCH - AUTO MODE ONLY)
-    template_found = False
-    matching_regions = []
-    matched_template_info = None
-    
-    if not refresh:
-        # Get all candidates
-        candidates = db.get_all_auto_templates()
-        if candidates:
-            # Match using engine (Threshold tuned for DocLayout-YOLO: 0.7)
-            match_cand, score = fp_engine.find_best_match(file_path, candidates, threshold=0.7)
-            
-            if match_cand:
-                print(f"Matched template {match_cand['id']} with score {score}")
-                t_path = os.path.join(TEMPLATES_AUTO_DIR, f"{match_cand['id']}.json")
-                if os.path.exists(t_path):
-                     try:
-                        with open(t_path, "r", encoding="utf-8") as f:
-                            t_data = json.load(f)
-                            # Ensure images are generated before extraction if needed for OCR
-                            img_subdir = f"images_{fingerprint[:8]}"
-                            img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-                            image_paths = pdf_to_images(file_path, img_save_path)
-                            
-                            regions_objs = [Region(**r) for r in t_data.get("regions", [])]
-                            matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
-                            template_found = True
-                            matched_template_info = match_cand
-                     except Exception as e:
-                         print(f"Error loading matched template {match_cand['id']}: {e}")
-            else:
-                print("No template matched (score too low)")
-    
-    # 3. Convert to images
-    img_subdir = f"images_{fingerprint[:8]}"
-    img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-    image_paths = pdf_to_images(file_path, img_save_path)
-    relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
-
-    # 4. Use AI (Apply frontend params)
-    # 4. Use AI (Apply frontend params)
-    # MODIFIED: Removed early abort to ensure history is recorded
-    if require_template and not template_found:
-        logger.warning(f"Template mismatch for {actual_filename} in strict mode.")
-        # We will handle this as a failed result below instead of raising exception
-
-    engine = get_layout_engine()
-    device_used = device or engine.device
-    start_time = time.time()
-    
-    # MODIFIED: Skip AI inference if no template matched in auto mode (unless refreshing)
-    if refresh or template_found:
-        try:
-            # Override with layout inference even if template exists if we want to "re-identify"
-            ai_regions = engine.predict(
-                image_paths[0], 
-                device=device, 
-                conf=conf,
-                imgsz=imgsz,
-                iou=iou,
-                agnostic_nms=agnostic_nms
-            )
-            inference_time = time.time() - start_time
-            # If refreshing (forcing AI), use AI results
-            if refresh:
-                matching_regions = ai_regions
-                template_found = False # Reset flag for UI feedback
-        except Exception as e:
-            print(f"Inference error: {e}")
-            if not template_found:
-                matching_regions = []
-            ai_regions = []
-    else:
-        # Auto mode failed to match, and we are not forcing refresh/AI
-        # MODIFIED: As per user request, do NOT fallback to AI inference if template not found
-        # We want to return a specific "No template matched" result
-        print("No template matched, skipping AI fallback to ensure strict template matching.")
-        matching_regions = []
-        ai_regions = []
-        inference_time = 0
-
-    
-    # 5. 构建结果数据 (始终需要用于响应)
-    # Sort matching_regions spatially before building the map
-    matching_regions = sort_regions_spatially(matching_regions)
-    result_map = {}
-    
-    # MODIFIED: Handle no-match case explicitly with a single data value
-    extraction_status = "success"
-    error_message = None
-    
-    if not matching_regions and not template_found and not refresh:
-         result_map = {
-             "status_info": {
-                 "type": "text", 
-                 "label": "系统提示", 
-                 "content": "未匹配到模板"
-             }
-         }
-         extraction_status = "failed"
-         error_message = "未匹配到模板"
-    else:
-        for r in matching_regions:
-            # Normalize region data (might be Region object or dict)
-            r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
-            rid = r_dict.get('id', 'unknown')
-            result_map[rid] = {
-                "type": r_dict.get('type'),
-                "label": r_dict.get('label') or rid,
-                "remarks": r_dict.get('remarks') or '',
-                "content": r_dict.get('content', r_dict.get('text', ''))
-            }
-    
-    # 6. Log History (Auto Mode) - 仅在非模板制作测试时记录
-    if not skip_history:
-        template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "未匹配到模板")
+    import traceback
+    try:
+        if device and device.lower() == "auto":
+            device = None
         
-        import datetime
-        append_history({
-            "timestamp": datetime.datetime.now().isoformat(),
+        # Determine input file path
+        if file:
+            file_path = os.path.join(UPLOAD_DIR, file.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            actual_filename = file.filename
+        elif filename:
+            actual_filename = filename
+            # Check uploads
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            if not os.path.exists(file_path):
+                # Check template sources
+                source_path = os.path.join(TEMPLATES_SOURCE_DIR, filename)
+                if os.path.exists(source_path):
+                    file_path = source_path
+                else:
+                     # Try to assume filename might differ in source dir (search by ID?) 
+                     # For now, simplistic check. If failed:
+                     raise HTTPException(status_code=400, detail=f"File {filename} not found on server")
+        else:
+            raise HTTPException(status_code=400, detail="No file provided")
+        
+        # 1. Calculate Fingerprint
+        fingerprint = get_file_fingerprint(file_path)
+        
+        # 2. Check for existing template (ENHANCED MATCH - AUTO MODE ONLY)
+        template_found = False
+        matching_regions = []
+        matched_template_info = None
+        
+        if not refresh:
+            # Get all candidates
+            candidates = db.get_all_auto_templates()
+            if candidates:
+                # Match using engine (Threshold tuned for DocLayout-YOLO: 0.7)
+                match_cand, score = fp_engine.find_best_match(file_path, candidates, threshold=0.7)
+                
+                if match_cand:
+                    print(f"Matched template {match_cand['id']} with score {score}")
+                    t_path = os.path.join(TEMPLATES_AUTO_DIR, f"{match_cand['id']}.json")
+                    if os.path.exists(t_path):
+                         try:
+                            with open(t_path, "r", encoding="utf-8") as f:
+                                t_data = json.load(f)
+                                # Ensure images are generated before extraction if needed for OCR
+                                img_subdir = f"images_{fingerprint[:8]}"
+                                img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
+                                image_paths = pdf_to_images(file_path, img_save_path)
+                                
+                                regions_objs = [Region(**r) for r in t_data.get("regions", [])]
+                                matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
+                                template_found = True
+                                matched_template_info = match_cand
+                         except Exception as e:
+                             print(f"Error loading matched template {match_cand['id']}: {e}")
+                else:
+                    print("No template matched (score too low)")
+        
+        # 3. Convert to images
+        img_subdir = f"images_{fingerprint[:8]}"
+        img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
+        image_paths = pdf_to_images(file_path, img_save_path)
+        relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
+
+        # 4. Use AI (Apply frontend params)
+        # MODIFIED: Removed early abort to ensure history is recorded
+        if require_template and not template_found:
+            logger.warning(f"Template mismatch for {actual_filename} in strict mode.")
+            # We will handle this as a failed result below instead of raising exception
+            
+        engine = get_layout_engine()
+        device_used = device or engine.device
+        start_time = time.time()
+        
+        # MODIFIED: Skip AI inference if no template matched in auto mode (unless refreshing or fallback requested)
+        if refresh or template_found or fallback_to_layout:
+            try:
+                # Override with layout inference even if template exists if we want to "re-identify"
+                ai_regions = engine.predict(
+                    image_paths[0], 
+                    device=device, 
+                    conf=conf,
+                    imgsz=imgsz,
+                    iou=iou,
+                    agnostic_nms=agnostic_nms
+                )
+                inference_time = time.time() - start_time
+                # If refreshing or fallback triggered, use AI results
+                if refresh or (fallback_to_layout and not template_found):
+                    matching_regions = ai_regions
+                    template_found = False # Reset flag for UI feedback
+            except Exception as e:
+                print(f"Inference error: {e}")
+                if not template_found:
+                    matching_regions = []
+                ai_regions = []
+        else:
+            # Auto mode failed to match, and we are not forcing refresh/AI
+            # MODIFIED: As per user request, do NOT fallback to AI inference if template not found
+            # We want to return a specific "No template matched" result
+            print("No template matched, skipping AI fallback to ensure strict template matching.")
+            matching_regions = []
+            ai_regions = []
+            inference_time = 0
+
+        
+        # 5. 构建结果数据 (始终需要用于响应)
+        # Sort matching_regions spatially before building the map
+        matching_regions = sort_regions_spatially(matching_regions)
+        result_map = {}
+        
+        # MODIFIED: Handle no-match case explicitly with a single data value
+        extraction_status = "success"
+        error_message = None
+        
+        if not matching_regions and not template_found and not refresh and not fallback_to_layout:
+             result_map = {
+                 "status_info": {
+                     "type": "text", 
+                     "label": "系统提示", 
+                     "content": "未匹配到模板"
+                 }
+             }
+             extraction_status = "failed"
+             error_message = "未匹配到模板"
+        elif fallback_to_layout and not matching_regions and not template_found:
+            # Fallback executed but no regions found - technically a success in running, but empty result
+            # We permit empty regions here to avoid "Template Mismatch" error which hides the preview
+            extraction_status = "success"
+            error_message = None
+        else:
+            for r in matching_regions:
+                # Normalize region data (might be Region object or dict)
+                r_dict = r if isinstance(r, dict) else (r.to_dict() if hasattr(r, 'to_dict') else vars(r))
+                rid = r_dict.get('id', 'unknown')
+                result_map[rid] = {
+                    "type": r_dict.get('type'),
+                    "label": r_dict.get('label') or rid,
+                    "remarks": r_dict.get('remarks') or '',
+                    "content": r_dict.get('content', r_dict.get('text', ''))
+                }
+        
+        # 6. Log History (Auto Mode) - 仅在非模板制作测试时记录
+        if not skip_history:
+            template_name = matched_template_info.get("name") if matched_template_info else ("自动匹配" if template_found else "未匹配到模板")
+            
+            import datetime
+            append_history({
+                "timestamp": datetime.datetime.now().isoformat(),
+                "filename": actual_filename,
+                "template_name": template_name,
+                "mode": "auto",
+                "status": extraction_status, # ADDED: Explicit status for frontend icons
+                "error": error_message,      # ADDED: Error details
+                "result_summary": result_map
+            })
+
+        base_response = {
+            "status": "error" if extraction_status == "failed" else "success", # Return error status so frontend handles it
+            "message": error_message if error_message else ("success" if template_found else "未匹配到模板"), 
+            "id": fingerprint[:12],
+            "fingerprint": fingerprint,
             "filename": actual_filename,
-            "template_name": template_name,
-            "mode": "auto",
-            "status": extraction_status, # ADDED: Explicit status for frontend icons
-            "error": error_message,      # ADDED: Error details
-            "result_summary": result_map
-        })
+            "images": relative_images,
+            "regions": matching_regions,
+            "ai_regions": ai_regions if template_found else [], 
+            "template_found": template_found,
+            "matched_template": matched_template_info,
+            "is_source": False,
+            "data": result_map,
+            "device_used": device_used,
+            "inference_time": round(inference_time, 3) if 'inference_time' in locals() else 0
+        }
+        return base_response
 
-    base_response = {
-        "status": "error" if extraction_status == "failed" else "success", # Return error status so frontend handles it
-        "message": error_message if error_message else ("success" if template_found else "未匹配到模板"), 
-        "id": fingerprint[:12],
-        "fingerprint": fingerprint,
-        "filename": actual_filename,
-        "images": relative_images,
-        "regions": matching_regions,
-        "ai_regions": ai_regions if template_found else [], 
-        "template_found": template_found,
-        "matched_template": matched_template_info,
-        "is_source": False,
-        "data": result_map,
-        "device_used": device_used,
-        "inference_time": round(inference_time, 3) if 'inference_time' in locals() else 0
-    }
-
-    return base_response
+    except Exception as e:
+        logger.error(f"CRITICAL ERROR in /analyze: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/templates/{template_id}/analyze")
 def analyze_from_source(template_id: str):
@@ -783,12 +810,12 @@ def analyze_table_structure(req: TableAnalysisRequest):
                 rel_cols = s.get("explicit_vertical_lines", [])
                 abs_cols = sorted(list(set([bbox[0] + (c * (bbox[2] - bbox[0])) for c in rel_cols])))
                 
-                # Safety: Ensure at least 2 lines (left and right edges) to prevent crash
-                # pdfplumber requires at least 2 distinct values to form a valid explicit grid
-                if len(abs_cols) < 2:
-                    logger.warning(f"Explicit vertical lines insufficient ({len(abs_cols)}), injecting bbox edges.")
-                    if not abs_cols or abs_cols[0] > bbox[0] + 0.1: abs_cols.insert(0, bbox[0])
-                    if abs_cols[-1] < bbox[2] - 0.1: abs_cols.append(bbox[2])
+                # Ensure outer bounds are included to capture full width
+                # This fixes the issue where the rightmost column data is missed if the line is not drawn
+                if not abs_cols or abs_cols[0] > bbox[0] + 0.5: 
+                    abs_cols.insert(0, bbox[0])
+                if not abs_cols or abs_cols[-1] < bbox[2] - 0.5: 
+                    abs_cols.append(bbox[2])
                     
                 s["explicit_vertical_lines"] = abs_cols
             
@@ -797,7 +824,13 @@ def analyze_table_structure(req: TableAnalysisRequest):
                 rel_rows = s.get("explicit_horizontal_lines", [])
                 abs_rows = sorted(list(set([bbox[1] + (r * (bbox[3] - bbox[1])) for r in rel_rows])))
 
-                # Safety: Ensure at least 2 lines (top and bottom edges)
+                # Ensure outer bounds
+                if not abs_rows or abs_rows[0] > bbox[1] + 0.5:
+                    abs_rows.insert(0, bbox[1])
+                if not abs_rows or abs_rows[-1] < bbox[3] - 0.5:
+                    abs_rows.append(bbox[3])
+                    
+                s["explicit_horizontal_lines"] = abs_rows
                 if len(abs_rows) < 2:
                     logger.warning(f"Explicit horizontal lines insufficient ({len(abs_rows)}), injecting bbox edges.")
                     if not abs_rows or abs_rows[0] > bbox[1] + 0.1: abs_rows.insert(0, bbox[1])

@@ -357,7 +357,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     iou: layoutSettings.iou,
                     agnostic_nms: layoutSettings.agnostic_nms,
                     refresh: isRefresh,
-                    skip_history: true  // 模板制作不记录历史
+                    skip_history: true,  // 模板制作不记录历史
+                    fallback_to_layout: true // 开启自动版面分析 fallback
                 }
             });
             setAnalysis(res.data);
