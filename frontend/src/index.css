@@ -75,6 +75,7 @@ body,
 }
 
 /* 恢复内部指定区域的滚动条 */
+/* 恢复内部指定区域的滚动条 */
 .custom-scrollbar::-webkit-scrollbar {
   display: block !important;
   width: 6px !important;
@@ -85,8 +86,14 @@ body,
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--glass-border) !important;
+  background: transparent !important; /* 默认隐藏 */
   border-radius: 10px !important;
+  transition: background-color 0.3s; /* 添加平滑过渡 */
+}
+
+/* 只有当鼠标悬停在容器上时才显示滚动条滑块 */
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--glass-border) !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {

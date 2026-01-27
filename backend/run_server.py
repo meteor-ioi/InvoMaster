@@ -11,7 +11,7 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(data_dir, "uploads"), exist_ok=True)
     os.makedirs(os.path.join(data_dir, "templates"), exist_ok=True)
     
-    print(f"Starting HITL Backend on http://0.0.0.0:8291")
+    print(f"Starting InvoMaster Backend on http://0.0.0.0:8291")
     print(f"Data directory: {data_dir}")
     
     uvicorn.run("main:app", host="0.0.0.0", port=8291, reload=True)

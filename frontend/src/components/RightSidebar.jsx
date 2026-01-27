@@ -137,24 +137,24 @@ const RightSidebar = ({
                         className="glass-card"
                         style={{
                             width: '100%',
-                            height: 'auto',
-                            padding: '15px',
+                            flex: 1,
+                            padding: '15px 0 15px 15px',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '12px',
-                            overflow: 'visible',
+                            overflow: 'hidden',
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', paddingRight: '15px' }}>
                             <Edit3 size={16} color="var(--primary-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8, paddingRight: '15px' }}>
                             {tableRefining ? '数据抽取策略配置' : '区块类型'}
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '12px' }} className="custom-scrollbar">
                             {tableRefining ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div>
@@ -181,7 +181,6 @@ const RightSidebar = ({
                                                 options={[
                                                     { value: "lines", label: "基于线条", icon: AlignJustify },
                                                     { value: "text", label: "基于文字", icon: Type },
-                                                    { value: "rects", label: "基于色块", icon: Box },
                                                     { value: "explicit", label: "手动模式", icon: MousePointer2 }
                                                 ]}
                                             />
@@ -212,7 +211,6 @@ const RightSidebar = ({
                                                 options={[
                                                     { value: "lines", label: "基于线条", icon: AlignJustify },
                                                     { value: "text", label: "基于文字", icon: Type },
-                                                    { value: "rects", label: "基于色块", icon: Box },
                                                     { value: "explicit", label: "手动模式", icon: MousePointer2 }
                                                 ]}
                                             />
@@ -381,8 +379,8 @@ const RightSidebar = ({
                             )}
 
                             {/* Dynamic Positioning Settings - Anchor Card List */}
-                            {selectedRegion && !tableRefining && (() => {
-                                const anchors = selectedRegion.positioning?.anchors || {};
+                            {!tableRefining && (() => {
+                                const anchors = selectedRegion?.positioning?.anchors || {};
                                 const anchorEntries = Object.entries(anchors).filter(([_, a]) => a.type === 'text');
                                 const cornerLabels = { tl: '左上角', tr: '右上角', bl: '左下角', br: '右下角' };
 
@@ -544,7 +542,7 @@ const RightSidebar = ({
                                                             fontWeight: 'bold',
                                                             color: searchAreaEditMode ? '#f97316' : 'var(--text-secondary)'
                                                         }}>
-                                                            限制搜索范围
+                                                            设置搜索范围
                                                         </span>
                                                     </div>
 

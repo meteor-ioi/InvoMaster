@@ -431,6 +431,22 @@ const TopToolbar = ({
                                 <PlusSquare size={16} />
                             </button>
                             <button
+                                disabled={!selectedRegion && selectedIds?.length === 0}
+                                onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
+                                title={selectedIds?.length > 1 ? `删除选中的 ${selectedIds.length} 个区块` : "删除区块"}
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
+                                    background: 'transparent',
+                                    color: (selectedRegion || selectedIds?.length > 0) ? '#ef4444' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: (selectedRegion || selectedIds?.length > 0) ? 'pointer' : 'not-allowed',
+                                    opacity: (selectedRegion || selectedIds?.length > 0) ? 1 : 0.5,
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                            <button
                                 onClick={() => setEditorMode(editorMode === 'select' ? 'view' : 'select')}
                                 title="选择区域 (Shift: 新增, Alt: 批量删除)"
                                 style={{
@@ -460,22 +476,6 @@ const TopToolbar = ({
                                 }}
                             >
                                 <Anchor size={17} strokeWidth={2} />
-                            </button>
-                            <button
-                                disabled={!selectedRegion && selectedIds?.length === 0}
-                                onClick={() => deleteRegion(selectedIds?.length > 0 ? selectedIds : selectedRegion.id)}
-                                title={selectedIds?.length > 1 ? `删除选中的 ${selectedIds.length} 个区块` : "删除区块"}
-                                style={{
-                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                    background: 'transparent',
-                                    color: (selectedRegion || selectedIds?.length > 0) ? '#ef4444' : 'var(--text-secondary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: (selectedRegion || selectedIds?.length > 0) ? 'pointer' : 'not-allowed',
-                                    opacity: (selectedRegion || selectedIds?.length > 0) ? 1 : 0.5,
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <Trash2 size={16} />
                             </button>
 
                         </div>

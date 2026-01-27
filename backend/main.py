@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger("backend")
 logger.info("Backend starting...")
 
-app = FastAPI(title="HITL Document Extraction API")
+app = FastAPI(title="InvoMaster Document Extraction API")
 
 # Storage paths configuration
 base_data_dir = os.environ.get("APP_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
@@ -771,7 +771,7 @@ def sort_regions_spatially(regions):
 
 @app.get("/health")
 async def root():
-    return {"message": "HITL Document Extraction API is running"}
+    return {"message": "InvoMaster Document Extraction API is running"}
 
 @app.post("/analyze")
 def analyze_document(

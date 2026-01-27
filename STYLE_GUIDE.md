@@ -1,6 +1,6 @@
 # 视觉设计规范 (Style Guide)
 
-本文档定义了 HITL Document Extraction 项目的视觉语言与设计原则，确保全站 UI 在白天与黑夜模式下的高度一致性与高级感。
+本文档定义了 InvoMaster Document Extraction 项目的视觉语言与设计原则，确保全站 UI 在白天与黑夜模式下的高度一致性与高级感。
 
 ## 1. 核心设计理念
 

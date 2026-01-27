@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package, Save, CopyPlus, RefreshCw } from 'lucide-react';
+import { Layout, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package, Save, CopyPlus, RefreshCw, Filter } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -25,6 +25,7 @@ const LeftPanel = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState([]);
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
+    const [isAdvancedFeaturesOpen, setIsAdvancedFeaturesOpen] = useState(false);
 
     const toggleExpand = (id, e) => {
         e.stopPropagation();
@@ -252,44 +253,81 @@ const LeftPanel = ({
                             </button>
                         </div>
 
-                        {/* 常驻搜索框区域 */}
-                        <div style={{ position: 'relative' }}>
-                            <Search
-                                size={14}
-                                color="var(--text-secondary)"
-                                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}
-                            />
-                            <input
-                                type="text"
-                                placeholder="搜索模板名称或ID..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px 8px 32px',
-                                    borderRadius: '10px',
-                                    border: '1px solid var(--glass-border)',
-                                    background: 'var(--input-bg)',
-                                    color: 'var(--text-primary)',
-                                    fontSize: '12px',
-                                    outline: 'none',
-                                    transition: 'all 0.2s'
-                                }}
-                                onFocus={(e) => e.target.style.border = `1px solid var(--${templateMode === 'custom' ? 'accent' : 'primary'}-color)`}
-                                onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
-                            />
-                            {searchQuery && (
-                                <X
-                                    size={14}
-                                    color="var(--text-secondary)"
-                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0.6 }}
-                                    onClick={() => setSearchQuery('')}
-                                />
-                            )}
-                        </div>
 
                         <div style={{ flex: 1, overflowY: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>模型列表</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>模型列表</span>
+                                <button
+                                    onClick={() => setIsAdvancedFeaturesOpen(!isAdvancedFeaturesOpen)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: isAdvancedFeaturesOpen ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                        fontSize: '10px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        transition: 'all 0.2s ease',
+                                        padding: 0
+                                    }}
+                                >
+                                    <Filter size={10} />
+                                    高级功能
+                                    <div style={{ transform: isAdvancedFeaturesOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s ease' }}>
+                                        <ChevronDown size={10} />
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* 高级功能面板 - 折叠面板 */}
+                            <div className={`expand-vertical ${isAdvancedFeaturesOpen ? 'expanded' : ''}`} style={{
+                                padding: isAdvancedFeaturesOpen ? '10px' : '0 10px',
+                                marginBottom: isAdvancedFeaturesOpen ? '4px' : '0',
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '10px',
+                                border: `1px solid ${isAdvancedFeaturesOpen ? 'var(--glass-border)' : 'transparent'}`,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: isAdvancedFeaturesOpen ? '10px' : '0',
+                                pointerEvents: isAdvancedFeaturesOpen ? 'all' : 'none'
+                            }}>
+                                {/* 搜索框 */}
+                                <div style={{ position: 'relative' }}>
+                                    <Search
+                                        size={14}
+                                        color="var(--text-secondary)"
+                                        style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="搜索模板..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '6px 10px 6px 30px',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'var(--input-bg)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '11px',
+                                            outline: 'none',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onFocus={(e) => e.target.style.border = `1px solid var(--${templateMode === 'custom' ? 'accent' : 'primary'}-color)`}
+                                        onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
+                                    />
+                                    {searchQuery && (
+                                        <X
+                                            size={14}
+                                            color="var(--text-secondary)"
+                                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0.6 }}
+                                            onClick={() => setSearchQuery('')}
+                                        />
+                                    )}
+                                </div>
+                            </div>
                             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '2px' }} className="custom-scrollbar">
                                 {(() => {
                                     // Filter logic
@@ -434,14 +472,20 @@ const LeftPanel = ({
                         </div>
 
                         {/* 底部保存区域 */}
-                        <div style={{ paddingTop: '12px', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <input
-                                type="text"
-                                value={templateName || ''}
-                                onChange={(e) => setTemplateName && setTemplateName(e.target.value)}
-                                placeholder="输入模板名称并保存..."
-                                style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
-                            />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
+                                    <Save size={16} color="var(--primary-color)" />
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>保存模板</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={templateName || ''}
+                                    onChange={(e) => setTemplateName && setTemplateName(e.target.value)}
+                                    placeholder="输入模板名称..."
+                                    style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+                                />
+                            </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                     onClick={() => handleSaveTemplate && handleSaveTemplate(false)}

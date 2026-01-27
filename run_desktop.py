@@ -26,7 +26,7 @@ import shutil
 
 # ============== 日志配置 ==============
 def setup_logging(mode="frontend"):
-    log_dir = os.path.join(os.path.expanduser('~'), 'IndustryPDF_Logs')
+    log_dir = os.path.join(os.path.expanduser('~'), 'InvoMaster_Logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
         
@@ -53,7 +53,7 @@ if getattr(sys, 'frozen', False):
 
 def setup_data_directory():
     """配置应用数据目录"""
-    app_name = "IndustryPDF"
+    app_name = "InvoMaster"
     
     if getattr(sys, 'frozen', False):
         portable_data_path = os.path.join(app_root, 'data')

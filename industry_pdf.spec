@@ -161,7 +161,7 @@ if sys.platform == 'darwin':
         a_frontend.datas,
         name='InvoMaster.app',
         icon=icon_file,
-        bundle_identifier='com.industrypdf.app'
+        bundle_identifier='com.invomaster.app'
     )
 else:
     # Windows: 合并资源并收集两个 exe

@@ -1,7 +1,7 @@
 <div align="center">
   <img src="ICON_MAC.png" width="128" alt="InvoMaster Logo" />
   <h1>InvoMaster | 票据专家</h1>
-  <p><b>基于 HITL 设计的高精度行业 PDF 数据提取解决方案</b></p>
+  <p><b>基于 InvoMaster 设计的高精度行业 PDF 数据提取解决方案</b></p>
 
   <p>
     <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python" alt="Python" />
