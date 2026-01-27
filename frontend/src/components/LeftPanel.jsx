@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package } from 'lucide-react';
+import { Layout, ChevronLeft, ChevronRight, ChevronDown, Hash, Grid, FileText, Ban, Layers, ArrowRight, Plus, Upload, Search, X, Copy, Trash2, Sparkles, User, Package, Save, CopyPlus, RefreshCw } from 'lucide-react';
 import { TYPE_CONFIG } from './DocumentEditor';
 
 const LeftPanel = ({
@@ -14,7 +14,11 @@ const LeftPanel = ({
     templateMode,
     setTemplateMode,
     typeConfig = TYPE_CONFIG,
-    headerCollapsed = false
+    headerCollapsed = false,
+    templateName,
+    setTemplateName,
+    handleSaveTemplate,
+    isSaving
 }) => {
     const [expandedIds, setExpandedIds] = useState([]);
     const [dragActive, setDragActive] = useState(false);
@@ -249,45 +253,42 @@ const LeftPanel = ({
                         </div>
 
                         {/* 常驻搜索框区域 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>模板搜索</div>
-                            <div style={{ position: 'relative' }}>
-                                <Search
+                        <div style={{ position: 'relative' }}>
+                            <Search
+                                size={14}
+                                color="var(--text-secondary)"
+                                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="搜索模板名称或ID..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px 8px 32px',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'var(--input-bg)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '12px',
+                                    outline: 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                                onFocus={(e) => e.target.style.border = `1px solid var(--${templateMode === 'custom' ? 'accent' : 'primary'}-color)`}
+                                onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
+                            />
+                            {searchQuery && (
+                                <X
                                     size={14}
                                     color="var(--text-secondary)"
-                                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}
+                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0.6 }}
+                                    onClick={() => setSearchQuery('')}
                                 />
-                                <input
-                                    type="text"
-                                    placeholder="搜索模板名称或ID..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px 8px 32px',
-                                        borderRadius: '10px',
-                                        border: '1px solid var(--glass-border)',
-                                        background: 'var(--input-bg)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '12px',
-                                        outline: 'none',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onFocus={(e) => e.target.style.border = `1px solid var(--${templateMode === 'custom' ? 'accent' : 'primary'}-color)`}
-                                    onBlur={(e) => e.target.style.border = '1px solid var(--glass-border)'}
-                                />
-                                {searchQuery && (
-                                    <X
-                                        size={14}
-                                        color="var(--text-secondary)"
-                                        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', opacity: 0.6 }}
-                                        onClick={() => setSearchQuery('')}
-                                    />
-                                )}
-                            </div>
+                            )}
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ flex: 1, overflowY: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>模型列表</div>
                             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '2px' }} className="custom-scrollbar">
                                 {(() => {
@@ -431,9 +432,81 @@ const LeftPanel = ({
                                 })()}
                             </div>
                         </div>
+
+                        {/* 底部保存区域 */}
+                        <div style={{ paddingTop: '12px', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <input
+                                type="text"
+                                value={templateName || ''}
+                                onChange={(e) => setTemplateName && setTemplateName(e.target.value)}
+                                placeholder="输入模板名称并保存..."
+                                style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', padding: '8px', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    onClick={() => handleSaveTemplate && handleSaveTemplate(false)}
+                                    disabled={isSaving}
+                                    className={`btn-primary ${isSaving ? 'shimmer-effect' : ''}`}
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px',
+                                        margin: 0,
+                                        background: isSaving
+                                            ? 'var(--text-secondary)'
+                                            : (templateMode === 'auto'
+                                                ? 'linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%)'
+                                                : 'linear-gradient(135deg, var(--accent-color) 0%, #7c3aed 100%)'),
+                                        border: 'none',
+                                        boxShadow: isSaving ? 'none' : '0 4px 12px rgba(99, 102, 241, 0.25)',
+                                        fontSize: '12px',
+                                        padding: '0 12px',
+                                        height: '38px',
+                                        borderRadius: '10px',
+                                        fontWeight: '600',
+                                        cursor: isSaving ? 'not-allowed' : 'pointer',
+                                        color: '#fff'
+                                    }}
+                                >
+                                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {isSaving ? '保存中...' : '保存模板'}
+                                </button>
+
+                                {templateMode === 'custom' && (
+                                    <button
+                                        onClick={() => handleSaveTemplate && handleSaveTemplate(true)}
+                                        disabled={isSaving}
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            margin: 0,
+                                            background: 'rgba(124, 58, 237, 0.05)',
+                                            border: '1.5px solid rgba(124, 58, 237, 0.3)',
+                                            color: 'var(--accent-color)',
+                                            fontSize: '12px',
+                                            padding: '0 12px',
+                                            height: '38px',
+                                            borderRadius: '10px',
+                                            fontWeight: '600',
+                                            cursor: isSaving ? 'not-allowed' : 'pointer',
+                                            opacity: isSaving ? 0.6 : 1
+                                        }}
+                                    >
+                                        {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <CopyPlus size={14} />}
+                                        {isSaving ? '另存中...' : '另存为'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </>
-            )}
+            )
+            }
         </aside >
     );
 };

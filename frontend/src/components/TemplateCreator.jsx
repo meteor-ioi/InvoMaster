@@ -737,6 +737,10 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     setToast={setToast}
                     templateMode={templateMode}
                     setTemplateMode={setTemplateMode}
+                    templateName={templateName}
+                    setTemplateName={setTemplateName}
+                    handleSaveTemplate={handleSaveTemplate}
+                    isSaving={isSaving}
                 />
 
                 {/* Center Panel - Main Content */}
