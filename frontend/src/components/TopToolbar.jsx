@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw, Scan, Target } from 'lucide-react';
+import { Zap, RefreshCw, Minus, Plus, Filter, Eye, EyeOff, HelpCircle, Info, Hash, Table, Grid, Check, ChevronDown, Layout, Trash2, PlusSquare, BoxSelect, RotateCcw, RotateCw, Scan, Target, Anchor } from 'lucide-react';
 
 const TopToolbar = ({
     tableRefining,
@@ -394,7 +394,7 @@ const TopToolbar = ({
                                 title={selectedRegion?.locked ? "解锁当前区块" : "锁定当前区块"}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                                    background: selectedRegion?.locked ? 'var(--accent-color)' : 'transparent',
+                                    background: selectedRegion?.locked ? '#f97316' : 'transparent',
                                     color: selectedRegion?.locked ? '#fff' : 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     cursor: selectedRegion ? 'pointer' : 'not-allowed',
@@ -448,7 +448,7 @@ const TopToolbar = ({
                             <button
                                 onClick={() => setPositioningMode(!positioningMode)}
                                 disabled={!selectedRegion || selectedIds?.length > 1}
-                                title={!selectedRegion ? "请先选择一个区块以开启动态定位" : "动态定位配置"}
+                                title={!selectedRegion ? "请先选择一个区块以开启动态定位" : "动态定位"}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px', border: 'none',
                                     background: positioningMode ? 'var(--accent-color)' : 'transparent',
@@ -459,7 +459,17 @@ const TopToolbar = ({
                                     opacity: (!selectedRegion || selectedIds?.length > 1) ? 0.4 : 1
                                 }}
                             >
-                                <Target size={16} />
+                                <div style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    border: '1.5px solid currentColor',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Anchor size={11} strokeWidth={2.5} />
+                                </div>
                             </button>
                             <button
                                 disabled={!selectedRegion && selectedIds?.length === 0}

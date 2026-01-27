@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
@@ -11,9 +11,9 @@ const TYPE_CONFIG = {
     'abandon': { label: '无效区域', color: '#808080', icon: Ban },
     'figure': { label: '图片', color: '#f59e0b', icon: Image },
     'list': { label: '列表', color: '#ec4899', icon: List },
-    'header': { label: '页眉', color: '#8b5cf6', icon: PanelTop },
+    'header': { label: '页眉', color: '#6366f1', icon: PanelTop },
     'footer': { label: '页脚', color: '#6366f1', icon: PanelBottom },
-    'equation': { label: '数学公式', color: '#10b981', icon: Sigma },
+    'equation': { label: '数学公式', color: '#60a5fa', icon: Sigma },
     'table caption': { label: '表格标题', color: '#0ea5e9', icon: TextSelect },
     'figure caption': { label: '图片标题', color: '#f97316', icon: MessageSquareText },
     'custom': { label: '自定义区域', color: '#f43f5e', icon: BoxSelect }
@@ -582,21 +582,60 @@ const DocumentEditor = ({
                 setRegions(prev => prev.map(r => {
                     const initR = interaction.initialRegionsMap[r.id];
                     if (initR) {
+                        const newX = Math.max(0, Math.min(1 - r.width, initR.x + dx));
+                        const newY = Math.max(0, Math.min(1 - r.height, initR.y + dy));
+                        const actualDx = newX - initR.x;
+                        const actualDy = newY - initR.y;
+
+                        let positioning = r.positioning;
+                        if (positioning?.anchors) {
+                            const nextAnchors = { ...positioning.anchors };
+                            Object.keys(nextAnchors).forEach(corner => {
+                                nextAnchors[corner] = {
+                                    ...nextAnchors[corner],
+                                    offset_x: (nextAnchors[corner].offset_x || 0) + actualDx,
+                                    offset_y: (nextAnchors[corner].offset_y || 0) + actualDy
+                                };
+                            });
+                            positioning = { ...positioning, anchors: nextAnchors };
+                        }
+
                         return {
                             ...r,
-                            x: Math.max(0, Math.min(1 - r.width, initR.x + dx)),
-                            y: Math.max(0, Math.min(1 - r.height, initR.y + dy))
+                            x: newX,
+                            y: newY,
+                            positioning
                         };
                     }
                     return r;
                 }));
             } else {
                 // Fallback single move
-                setRegions(prev => prev.map(r => r.id === interaction.id ? {
-                    ...r,
-                    x: Math.max(0, Math.min(1 - r.width, interaction.initialRegion.x + dx)),
-                    y: Math.max(0, Math.min(1 - r.height, interaction.initialRegion.y + dy))
-                } : r));
+                setRegions(prev => prev.map(r => {
+                    if (r.id === interaction.id) {
+                        const initR = interaction.initialRegion;
+                        const newX = Math.max(0, Math.min(1 - r.width, initR.x + dx));
+                        const newY = Math.max(0, Math.min(1 - r.height, initR.y + dy));
+                        const actualDx = newX - initR.x;
+                        const actualDy = newY - initR.y;
+
+                        let positioning = r.positioning;
+                        if (positioning?.anchors) {
+                            const nextAnchors = { ...positioning.anchors };
+                            Object.keys(nextAnchors).forEach(corner => {
+                                nextAnchors[corner] = {
+                                    ...nextAnchors[corner],
+                                    offset_x: (nextAnchors[corner].offset_x || 0) + actualDx,
+                                    offset_y: (nextAnchors[corner].offset_y || 0) + actualDy
+                                };
+                            });
+                            positioning = { ...positioning, anchors: nextAnchors };
+                        }
+
+                        return { ...r, x: newX, y: newY, positioning };
+                    }
+                    return r;
+                }));
             }
 
         } else if (interaction.type === 'resize') {
@@ -616,6 +655,30 @@ const DocumentEditor = ({
                 const nextY = Math.max(0, r.y + dy);
                 newReg.height = Math.max(0.001, r.y + r.height - nextY);
                 newReg.y = nextY;
+            }
+
+            // Sync anchor offsets during resize
+            if (newReg.positioning?.anchors) {
+                const nextAnchors = { ...newReg.positioning.anchors };
+                const dx_l = newReg.x - r.x;
+                const dy_t = newReg.y - r.y;
+                const dx_r = (newReg.x + newReg.width) - (r.x + r.width);
+                const dy_b = (newReg.y + newReg.height) - (r.y + r.height);
+
+                if (nextAnchors.tl) {
+                    nextAnchors.tl = { ...nextAnchors.tl, offset_x: (nextAnchors.tl.offset_x || 0) + dx_l, offset_y: (nextAnchors.tl.offset_y || 0) + dy_t };
+                }
+                if (nextAnchors.tr) {
+                    nextAnchors.tr = { ...nextAnchors.tr, offset_x: (nextAnchors.tr.offset_x || 0) + dx_r, offset_y: (nextAnchors.tr.offset_y || 0) + dy_t };
+                }
+                if (nextAnchors.bl) {
+                    nextAnchors.bl = { ...nextAnchors.bl, offset_x: (nextAnchors.bl.offset_x || 0) + dx_l, offset_y: (nextAnchors.bl.offset_y || 0) + dy_b };
+                }
+                if (nextAnchors.br) {
+                    nextAnchors.br = { ...nextAnchors.br, offset_x: (nextAnchors.br.offset_x || 0) + dx_r, offset_y: (nextAnchors.br.offset_y || 0) + dy_b };
+                }
+
+                newReg.positioning = { ...newReg.positioning, anchors: nextAnchors };
             }
 
             setRegions(prev => prev.map(reg => reg.id === interaction.id ? newReg : reg));
@@ -1065,7 +1128,7 @@ const DocumentEditor = ({
                                                 width: `18px`,
                                                 height: `18px`,
                                                 borderRadius: '50%',
-                                                background: reg.locked ? '#8b5cf6' : 'rgba(255,255,255,0.2)',
+                                                background: reg.locked ? '#f97316' : 'rgba(255,255,255,0.2)',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s ease',
                                                 border: reg.locked ? '1px solid #fff' : 'none'
@@ -1086,10 +1149,26 @@ const DocumentEditor = ({
                                         <span style={{ pointerEvents: 'none' }}>
                                             {(() => {
                                                 const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
-                                                return isGenericLabel ? config.label : reg.label;
+                                                const displayText = isGenericLabel ? config.label : reg.label;
+                                                const isDynamic = reg.positioning?.anchors && Object.keys(reg.positioning.anchors).length > 0;
+
+                                                return (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {displayText}
+                                                        {isDynamic && (
+                                                            <div title="已启用动态定位" style={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Anchor size={12} color="white" fill="white" fillOpacity={0.5} />
+                                                            </div>
+                                                        )}
+                                                    </span>
+                                                );
                                             })()}
                                         </span>
-                                        {isRefinedTable && <Edit3 size={11} />}
+                                        {isRefinedTable && (
+                                            <div title="已应用高精度表格微调" style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+                                                <Sliders size={11} />
+                                            </div>
+                                        )}
                                     </div>
                                 </foreignObject>
 
@@ -1266,127 +1345,72 @@ const DocumentEditor = ({
                             }
                         `}</style>
 
-                        {/* Mode Status Indicator Bar */}
-                        <div style={{
-                            position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
-                            background: 'rgba(0,0,0,0.8)', borderRadius: '8px', padding: '8px 16px',
-                            display: 'flex', alignItems: 'center', gap: '12px', color: '#fff', fontSize: '13px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 200, pointerEvents: 'auto'
-                        }}>
-                            {posState.mode === null && (
-                                <span>按住角点并拖拽至目标文本以建立锚点</span>
-                            )}
-                            {posState.mode === 'picking_text' && (
-                                <span style={{ color: '#3b82f6' }}>📌 正在拖拽定位锚点...</span>
-                            )}
-                            <button
-                                onClick={() => {
-                                    if (posState.mode === 'picking_text') {
-                                        // 取消当前拖拽
-                                        setPosState(prev => ({ ...prev, mode: null, activeCorner: null }));
-                                    } else if (posState.mode) {
-                                        // 从选择类型模式返回
-                                        setPosState(prev => ({ ...prev, mode: null, activeCorner: null }));
-                                    } else {
-                                        // 退出定位模式
-                                        setPositioningMode(false);
-                                        setPosState({ activeCorner: null, mode: null, hoverWord: null, draggingAnchor: null, savedZoom: null });
-                                    }
-                                }}
-                                style={{
-                                    background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff',
-                                    padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'
-                                }}
-                            >
-                                {posState.mode ? '返回' : '退出'}
-                            </button>
-                            {/* 保存按钮：当至少配置了2个对角锚点时可用 */}
-                            {(() => {
-                                const anchors = selectedRegion.positioning?.anchors || {};
-                                const configuredCorners = Object.keys(anchors).filter(k => anchors[k]?.bounds);
-                                const hasOppositeCorners =
-                                    (configuredCorners.includes('tl') && configuredCorners.includes('br')) ||
-                                    (configuredCorners.includes('tr') && configuredCorners.includes('bl'));
-                                return hasOppositeCorners && (
-                                    <button
-                                        onClick={() => {
-                                            // 保存并退出
-                                            setPositioningMode(false);
-                                            setPosState({ activeCorner: null, mode: null, hoverWord: null, draggingAnchor: null });
-                                            // 触发历史快照
-                                            if (onHistorySnapshot) onHistorySnapshot();
-                                        }}
-                                        style={{
-                                            background: 'var(--accent-color)', border: 'none', color: '#fff',
-                                            padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px',
-                                            fontWeight: 'bold'
-                                        }}
-                                    >
-                                        ✓ 保存定位
-                                    </button>
-                                );
-                            })()}
-                        </div>
 
                         {/* Corner Breathing Circles */}
-                        {posState.mode === null && ['tl', 'tr', 'bl', 'br'].map(corner => {
+                        {['tl', 'tr', 'bl', 'br'].map(corner => {
 
                             let cx = selectedRegion.x;
                             let cy = selectedRegion.y;
                             if (corner.includes('r')) cx += selectedRegion.width;
                             if (corner.includes('b')) cy += selectedRegion.height;
 
-                            const isActive = false;
+                            const isActive = posState.activeCorner === corner;
+
+                            const isAnchored = selectedRegion?.positioning?.anchors?.[corner];
+                            const themeColor = isAnchored ? 'var(--primary-color)' : 'var(--accent-color)';
+                            const shadowColor = isAnchored ? 'rgba(59, 130, 246, 0.5)' : 'rgba(139, 92, 246, 0.5)';
 
                             return (
                                 <div key={corner} style={{ position: 'absolute', left: `${cx * 100}%`, top: `${cy * 100}%`, pointerEvents: 'none' }}>
-                                    {/* Only show other circles if no corner is being configured, or show the active one */}
-                                    {(posState.mode === null || isActive) && (
+                                    {/* Always show circles in positioning mode */}
+                                    <div
+                                        className="anchor-circle"
+                                        onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            // 准备开始拖拽拾取
+                                            const { x, y } = getCoordinates(e);
+                                            setPosState(prev => ({
+                                                ...prev,
+                                                activeCorner: corner,
+                                                mode: 'picking_text',
+                                                dragStart: { x, y },
+                                                currentDrag: { x, y }
+                                            }));
+                                        }}
+                                        style={{
+                                            position: 'absolute', left: '-12px', top: '-12px',
+                                            width: '24px', height: '24px', borderRadius: '50%',
+                                            background: '#fff',
+                                            border: `3px solid ${themeColor}`,
+                                            boxShadow: `0 0 10px ${shadowColor}`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            zIndex: isActive ? 101 : 100,
+                                            cursor: 'crosshair',
+                                            pointerEvents: 'auto'
+                                        }}
+                                    >
                                         <div
-                                            className="anchor-circle"
-                                            onMouseDown={(e) => {
-                                                e.stopPropagation();
-                                                // 准备开始拖拽拾取
-                                                const { x, y } = getCoordinates(e);
-                                                setPosState(prev => ({
-                                                    ...prev,
-                                                    activeCorner: corner,
-                                                    mode: 'picking_text',
-                                                    dragStart: { x, y },
-                                                    currentDrag: { x, y }
-                                                }));
-                                            }}
                                             style={{
-                                                position: 'absolute', left: '-12px', top: '-12px',
-                                                width: '24px', height: '24px', borderRadius: '50%',
-                                                background: '#fff', border: '3px solid var(--accent-color)',
-                                                boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                zIndex: isActive ? 101 : 100,
-                                                cursor: 'crosshair',
-                                                pointerEvents: 'auto'
+                                                color: themeColor,
+                                                pointerEvents: 'none'
                                             }}
                                         >
-                                            <div
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: 'var(--accent-color)',
-                                                    pointerEvents: 'none'
-                                                }}
-                                            >
+                                            {/* 如果这个角正在被拖拽，显示虚线边框锚图标 */}
+                                            {isActive && posState.mode === 'picking_text' ? (
+                                                <Anchor size={14} strokeWidth={1.5} strokeDasharray="2 2" />
+                                            ) : (
                                                 <Anchor size={14} />
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
-
-
+                                    </div>
                                 </div>
                             );
                         })}
 
                         {/* Dragging Preview Line */}
                         {posState.mode === 'picking_text' && posState.dragStart && posState.currentDrag && (
-                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 55 }}>
+                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 105 }}>
                                 <line
                                     x1={`${posState.dragStart.x * 100}%`}
                                     y1={`${posState.dragStart.y * 100}%`}
@@ -1394,11 +1418,25 @@ const DocumentEditor = ({
                                     y2={`${posState.currentDrag.y * 100}%`}
                                     stroke="var(--accent-color)" strokeWidth={2} strokeDasharray="5 5"
                                 />
-                                <circle
-                                    cx={`${posState.currentDrag.x * 100}%`}
-                                    cy={`${posState.currentDrag.y * 100}%`}
-                                    r={4} fill="var(--accent-color)"
-                                />
+
+                                {/* 只有在未碰到文字块时才显示跟随鼠标的锚图标 */}
+                                {!posState.hoverWord && (
+                                    <foreignObject
+                                        x={`calc(${posState.currentDrag.x * 100}% - 12px)`}
+                                        y={`calc(${posState.currentDrag.y * 100}% - 12px)`}
+                                        width="24" height="24"
+                                    >
+                                        <div style={{
+                                            color: 'var(--accent-color)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                                        }}>
+                                            <Anchor size={20} strokeWidth={2.5} />
+                                        </div>
+                                    </foreignObject>
+                                )}
                             </svg>
                         )}
 
@@ -1528,9 +1566,17 @@ const DocumentEditor = ({
                             const ax = (ax0 + ax1) / 2;
                             const ay = (ay0 + ay1) / 2;
 
-                            // Corner position = anchor_center + offset
-                            const cx = ax + anchor.offset_x;
-                            const cy = ay + anchor.offset_y;
+                            // Use region's real geometry for corner position to ensure perfect connection during move
+                            const rx = selectedRegion.x;
+                            const ry = selectedRegion.y;
+                            const rw = selectedRegion.width;
+                            const rh = selectedRegion.height;
+
+                            let cx, cy;
+                            if (corner === 'tl') { cx = rx; cy = ry; }
+                            else if (corner === 'tr') { cx = rx + rw; cy = ry; }
+                            else if (corner === 'bl') { cx = rx; cy = ry + rh; }
+                            else if (corner === 'br') { cx = rx + rw; cy = ry + rh; }
 
                             // 删除锚点处理函数
                             const handleDeleteAnchor = (e) => {
@@ -1592,44 +1638,18 @@ const DocumentEditor = ({
                                     <line
                                         x1={`${ax * 100}%`} y1={`${ay * 100}%`}
                                         x2={`${cx * 100}%`} y2={`${cy * 100}%`}
-                                        stroke="var(--accent-color)" strokeWidth={1.5} strokeDasharray="4 4"
+                                        stroke="var(--primary-color)" strokeWidth={1.5} strokeDasharray="4 4"
                                     />
 
-                                    {/* Corner Dot (Draggable to re-pick) */}
-                                    <g
-                                        onMouseDown={(e) => {
-                                            e.stopPropagation();
-                                            const { x, y } = getCoordinates(e);
-                                            setPosState(prev => ({
-                                                ...prev,
-                                                activeCorner: corner,
-                                                mode: 'picking_text',
-                                                dragStart: { x, y },
-                                                currentDrag: { x, y }
-                                            }));
-                                        }}
-                                        style={{ pointerEvents: 'auto', cursor: 'crosshair' }}
-                                    >
-                                        <circle cx={`${cx * 100}%`} cy={`${cy * 100}%`} r={8} fill="white" stroke="var(--accent-color)" strokeWidth={2} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
-                                        <foreignObject
-                                            x={`calc(${cx * 100}% - 8px)`}
-                                            y={`calc(${cy * 100}% - 8px)`}
-                                            width="16" height="16"
-                                        >
-                                            <div style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Anchor size={10} />
-                                            </div>
-                                        </foreignObject>
-                                    </g>
 
                                     {/* Anchor Point on Text (Small circle) */}
-                                    <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--accent-color)" />
+                                    <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--primary-color)" />
                                 </g>
                             );
                         })}
-                    </svg>
+                    </svg >
                 )}
-            </div>
+            </div >
         </div >
     );
 };

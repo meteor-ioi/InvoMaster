@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock, Sliders } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -339,7 +339,7 @@ const RightSidebar = ({
                                                     transition: 'all 0.3s'
                                                 }}
                                             >
-                                                <Grid size={14} />
+                                                <Sliders size={14} />
                                                 高精度表格微调
                                             </button>
                                         </div>
@@ -369,116 +369,6 @@ const RightSidebar = ({
                                         />
                                     </div>
 
-                                    {/* [NEW] 动态定位配置面板 */}
-                                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '15px', marginTop: '5px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <MousePointer2 size={16} color="var(--accent-color)" />
-                                            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>动态定位配置</span>
-                                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!selectedRegion?.positioning?.enabled}
-                                                    onChange={(e) => selectedRegion && updateRegionPositioning(selectedId, { ...selectedRegion.positioning, enabled: e.target.checked })}
-                                                    disabled={!selectedRegion || selectedRegion.locked}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {selectedRegion?.positioning?.enabled && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                {/* 锚点选择 */}
-                                                <div>
-                                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>锚点位置</p>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                                                        {['top_left', 'top_right', 'bottom_left', 'bottom_right'].map(pos => (
-                                                            <button
-                                                                key={pos}
-                                                                onClick={() => updateRegionPositioning(selectedId, { ...selectedRegion.positioning, anchor: pos })}
-                                                                style={{
-                                                                    padding: '4px',
-                                                                    fontSize: '10px',
-                                                                    borderRadius: '4px',
-                                                                    border: `1px solid ${selectedRegion.positioning?.anchor === pos ? 'var(--accent-color)' : 'var(--glass-border)'}`,
-                                                                    background: selectedRegion.positioning?.anchor === pos ? 'var(--accent-color)22' : 'transparent',
-                                                                    color: selectedRegion.positioning?.anchor === pos ? 'var(--accent-color)' : 'var(--text-secondary)',
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                            >
-                                                                {pos.replace('_', ' ').toUpperCase()}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* 锚点定位器 */}
-                                                <div>
-                                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>锚点定位方式</p>
-                                                    <select
-                                                        value={selectedRegion.positioning?.anchor_locator?.method || 'fixed'}
-                                                        onChange={(e) => updateRegionPositioning(selectedId, {
-                                                            ...selectedRegion.positioning,
-                                                            anchor_locator: { ...(selectedRegion.positioning?.anchor_locator || {}), method: e.target.value }
-                                                        })}
-                                                        style={{ width: '100%', padding: '6px', borderRadius: '6px', fontSize: '11px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
-                                                    >
-                                                        <option value="fixed">固定坐标</option>
-                                                        <option value="text">文本特征</option>
-                                                        <option value="image">图像特征</option>
-                                                        <option value="relative">百分比相对</option>
-                                                    </select>
-                                                </div>
-
-                                                {/* 文本定位详情 */}
-                                                {selectedRegion.positioning?.anchor_locator?.method === 'text' && (
-                                                    <div style={{ background: 'rgba(0,0,0,0.05)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="搜索文本..."
-                                                            value={selectedRegion.positioning.anchor_locator?.text_query || ''}
-                                                            onChange={(e) => updateRegionPositioning(selectedId, {
-                                                                ...selectedRegion.positioning,
-                                                                anchor_locator: { ...selectedRegion.positioning.anchor_locator, text_query: e.target.value }
-                                                            })}
-                                                            style={{ width: '100%', padding: '6px', borderRadius: '4px', fontSize: '11px', border: '1px solid var(--glass-border)' }}
-                                                        />
-                                                        <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!selectedRegion.positioning.anchor_locator?.is_regex}
-                                                                onChange={(e) => updateRegionPositioning(selectedId, {
-                                                                    ...selectedRegion.positioning,
-                                                                    anchor_locator: { ...selectedRegion.positioning.anchor_locator, is_regex: e.target.checked }
-                                                                })}
-                                                            /> 正则表达式
-                                                        </label>
-                                                    </div>
-                                                )}
-
-                                                {/* 边界模式 (相邻 vs 对角) */}
-                                                <div>
-                                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>边界确定模式</p>
-                                                    <div style={{ display: 'flex', gap: '4px' }}>
-                                                        {['adjacent', 'diagonal'].map(mode => (
-                                                            <button
-                                                                key={mode}
-                                                                onClick={() => updateRegionPositioning(selectedId, { ...selectedRegion.positioning, boundary_mode: mode })}
-                                                                style={{
-                                                                    flex: 1, padding: '4px', fontSize: '10px', borderRadius: '4px',
-                                                                    border: `1px solid ${selectedRegion.positioning?.boundary_mode === mode ? 'var(--accent-color)' : 'var(--glass-border)'}`,
-                                                                    background: selectedRegion.positioning?.boundary_mode === mode ? 'var(--accent-color)22' : 'transparent',
-                                                                    color: selectedRegion.positioning?.boundary_mode === mode ? 'var(--accent-color)' : 'var(--text-secondary)',
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                            >
-                                                                {mode === 'adjacent' ? '相邻边' : '对角点'}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             )}
                         </div>
