@@ -116,17 +116,6 @@ const LeftPanel = ({
 
             {collapsed ? (
                 <div className="glass-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0', borderRadius: '16px' }}>
-                    <div style={{
-                        width: '44px',
-                        height: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--primary-color)'
-                    }}>
-                        <Layout size={20} />
-                    </div>
-
                     <button
                         onClick={() => document.getElementById('panel-file-upload').click()}
                         style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
@@ -141,6 +130,15 @@ const LeftPanel = ({
                         title="模板仓库"
                     >
                         <Package size={22} />
+                    </button>
+
+                    <button
+                        onClick={() => handleSaveTemplate && handleSaveTemplate(false)}
+                        disabled={isSaving}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isSaving ? 'not-allowed' : 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                        title={isSaving ? "正在保存..." : "保存模板"}
+                    >
+                        {isSaving ? <RefreshCw size={22} className="animate-spin" /> : <Save size={22} />}
                     </button>
 
                     <input id="panel-file-upload" type="file" className="hidden" onChange={handleFileSelect} />

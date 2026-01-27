@@ -1090,6 +1090,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     setSearchAreaEditMode={setSearchAreaEditMode}
                     activeSearchAnchor={activeSearchAnchor}
                     setActiveSearchAnchor={setActiveSearchAnchor}
+                    positioningMode={positioningMode}
                 />
             </main>
 

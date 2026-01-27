@@ -48,7 +48,8 @@ const RightSidebar = ({
     searchAreaEditMode,
     setSearchAreaEditMode,
     activeSearchAnchor,
-    setActiveSearchAnchor
+    setActiveSearchAnchor,
+    positioningMode
 }) => {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
@@ -112,23 +113,33 @@ const RightSidebar = ({
                     </div>
 
                     <button
-                        onClick={() => setCollapsed(false)}
-                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                        title="要素编辑"
+                        onClick={() => selectedRegion?.type === 'table' && !selectedRegion.locked && handleEnterTableRefine(selectedRegion)}
+                        disabled={!selectedRegion || selectedRegion.type !== 'table' || selectedRegion.locked}
+                        style={{
+                            width: '44px',
+                            height: '44px',
+                            border: 'none',
+                            background: 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: (selectedRegion?.type === 'table' && !selectedRegion.locked) ? 'pointer' : 'not-allowed',
+                            color: (selectedRegion?.type === 'table' && !selectedRegion.locked) ? 'var(--success-color)' : 'var(--text-tertiary)',
+                            transition: 'all 0.2s',
+                            opacity: (selectedRegion?.type === 'table' && !selectedRegion.locked) ? 1 : 0.4
+                        }}
+                        title="高精度表格微调"
                     >
-                        <Layout size={22} />
+                        <Sliders size={22} />
                     </button>
 
-                    {!tableRefining && (
-                        <button
-                            onClick={() => handleSaveTemplate(false)}
-                            disabled={isSaving}
-                            style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isSaving ? 'not-allowed' : 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                            title={isSaving ? "正在保存..." : "保存模板"}
-                        >
-                            {isSaving ? <RefreshCw size={22} className="animate-spin" /> : <Save size={22} />}
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setCollapsed(false)}
+                        style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
+                        title="动态定位锚点"
+                    >
+                        <Anchor size={22} />
+                    </button>
                 </div>
             ) : (
                 <>
@@ -138,7 +149,7 @@ const RightSidebar = ({
                         style={{
                             width: '100%',
                             flex: 1,
-                            padding: '15px 0 15px 15px',
+                            padding: '15px',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '12px',
@@ -146,15 +157,15 @@ const RightSidebar = ({
                             borderRadius: '16px'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', paddingRight: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
                             <Edit3 size={16} color="var(--primary-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8, paddingRight: '15px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>
                             {tableRefining ? '数据抽取策略配置' : '区块类型'}
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '12px' }} className="custom-scrollbar">
+                        <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
                             {tableRefining ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div>
@@ -350,7 +361,7 @@ const RightSidebar = ({
                                             </button>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div style={{ marginTop: '-12px' }}>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>业务备注</p>
                                         <textarea
                                             value={selectedRegion?.remarks || ''}
@@ -401,7 +412,7 @@ const RightSidebar = ({
                                                 textAlign: 'center'
                                             }}>
                                                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                                                    拖拽区块角落的 <strong style={{ color: 'var(--accent-color)' }}>⚓</strong> 图标到页面文字上，建立定位锚点
+                                                    激活动态定位功能后，拖拽区块角落的 <strong style={{ color: 'var(--accent-color)' }}>⚓</strong> 图标到页面文字上建立定位锚点
                                                 </p>
                                             </div>
                                         ) : (
@@ -498,6 +509,7 @@ const RightSidebar = ({
                                             }}>
                                                 <div
                                                     onClick={() => {
+                                                        if (!positioningMode) return;
                                                         const newMode = !searchAreaEditMode;
                                                         if (setSearchAreaEditMode) setSearchAreaEditMode(newMode);
 
@@ -530,9 +542,10 @@ const RightSidebar = ({
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'space-between',
-                                                        cursor: 'pointer',
+                                                        cursor: positioningMode ? 'pointer' : 'not-allowed',
                                                         background: searchAreaEditMode ? 'rgba(249, 115, 22, 0.08)' : 'rgba(255,255,255,0.02)',
-                                                        borderBottom: searchAreaEditMode ? '1px solid rgba(249, 115, 22, 0.1)' : 'none'
+                                                        borderBottom: searchAreaEditMode ? '1px solid rgba(249, 115, 22, 0.1)' : 'none',
+                                                        opacity: positioningMode ? 1 : 0.5
                                                     }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
