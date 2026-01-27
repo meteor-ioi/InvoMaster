@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock, Sliders, Target } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Trash2, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock, Sliders, Target, Anchor, MoveUpLeft, MoveUpRight, MoveDownLeft, MoveDownRight } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -150,10 +150,13 @@ const RightSidebar = ({
                             <Edit3 size={16} color="var(--primary-color)" />
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{tableRefining ? '策略中心' : '要素编辑'}</span>
                         </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '4px', opacity: 0.8 }}>
+                            {tableRefining ? '数据抽取策略配置' : '区块类型'}
+                        </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
                             {tableRefining ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div>
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>垂直策略 (列)：</span>
@@ -274,7 +277,7 @@ const RightSidebar = ({
                                     </button>
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                                             {[
@@ -384,17 +387,10 @@ const RightSidebar = ({
                                 const cornerLabels = { tl: '左上角', tr: '右上角', bl: '左下角', br: '右下角' };
 
                                 return (
-                                    <div style={{
-                                        marginTop: '15px',
-                                        padding: '12px',
-                                        background: theme === 'dark' ? 'rgba(51, 65, 85, 0.4)' : 'rgba(248, 250, 252, 0.6)',
-                                        borderRadius: '10px',
-                                        border: '1px solid var(--glass-border)',
-                                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <Target size={14} style={{ color: 'var(--accent-color)' }} />
-                                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>动态定位锚点</span>
+                                    <div style={{ marginTop: '15px' }}>
+                                        <div style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <Anchor size={16} color="var(--primary-color)" />
+                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>动态定位锚点</span>
                                         </div>
 
                                         {anchorEntries.length === 0 ? (
@@ -413,254 +409,279 @@ const RightSidebar = ({
                                         ) : (
                                             /* Anchor cards */
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                {anchorEntries.map(([corner, anchor]) => (
-                                                    <div
-                                                        key={corner}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '8px 10px',
-                                                            background: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid rgba(59, 130, 246, 0.3)'
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                                                                {cornerLabels[corner] || corner}
-                                                            </span>
-                                                            <span style={{ color: 'var(--text-tertiary)' }}>→</span>
-                                                            <span style={{
-                                                                fontSize: '11px',
-                                                                fontWeight: '500',
-                                                                color: 'var(--primary-color)',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                whiteSpace: 'nowrap',
-                                                                maxWidth: '100px'
-                                                            }}>
-                                                                "{anchor.text}"
-                                                            </span>
-                                                        </div>
-                                                        <button
+                                                {anchorEntries.map(([corner, anchor]) => {
+                                                    const CornerIcon = {
+                                                        tl: MoveUpLeft,
+                                                        tr: MoveUpRight,
+                                                        bl: MoveDownLeft,
+                                                        br: MoveDownRight
+                                                    }[corner] || Target;
+
+                                                    return (
+                                                        <div
+                                                            key={corner}
                                                             onClick={() => {
-                                                                if (updateRegionPositioning) {
-                                                                    const newAnchors = { ...anchors };
-                                                                    delete newAnchors[corner];
-                                                                    updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                if (searchAreaEditMode && setActiveSearchAnchor) {
+                                                                    setActiveSearchAnchor({ corner });
                                                                 }
                                                             }}
                                                             style={{
-                                                                width: '18px',
-                                                                height: '18px',
-                                                                borderRadius: '4px',
-                                                                border: 'none',
-                                                                background: 'rgba(239, 68, 68, 0.2)',
-                                                                color: '#ef4444',
-                                                                cursor: 'pointer',
+                                                                padding: '10px',
+                                                                borderRadius: '10px',
+                                                                background: activeSearchAnchor?.corner === corner ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
+                                                                border: activeSearchAnchor?.corner === corner ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+                                                                cursor: searchAreaEditMode ? 'pointer' : 'default',
+                                                                transition: 'all 0.2s',
                                                                 display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                fontSize: '14px',
-                                                                fontWeight: 'bold',
-                                                                lineHeight: 1,
-                                                                transition: 'all 0.15s'
+                                                                gap: '8px',
+                                                                alignItems: 'flex-start'
                                                             }}
-                                                            onMouseEnter={(e) => {
-                                                                e.currentTarget.style.background = '#ef4444';
-                                                                e.currentTarget.style.color = '#fff';
-                                                            }}
-                                                            onMouseLeave={(e) => {
-                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                                                                e.currentTarget.style.color = '#ef4444';
-                                                            }}
-                                                            title="删除此锚点"
+                                                            className="list-item-hover"
                                                         >
-                                                            ×
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                                            <div style={{ marginTop: '2px', color: 'var(--accent-color)' }}>
+                                                                <CornerIcon size={14} />
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                                        {cornerLabels[corner] || corner}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (updateRegionPositioning) {
+                                                                                const newAnchors = { ...anchors };
+                                                                                delete newAnchors[corner];
+                                                                                updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            padding: '2px',
+                                                                            color: 'var(--text-tertiary)',
+                                                                            cursor: 'pointer',
+                                                                            borderRadius: '4px',
+                                                                            transition: 'all 0.2s',
+                                                                            marginLeft: '4px'
+                                                                        }}
+                                                                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                                                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                                                                        title="删除锚点"
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                                        "{anchor.text}"
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
 
                                         {anchorEntries.length > 0 && (
-                                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '10px', fontStyle: 'italic', lineHeight: '1.4' }}>
-                                                💡 拖拽画布上的锚点手柄可微调偏移位置
-                                            </p>
+                                            <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '8px', opacity: 0.6 }}>注：点击列表项可在编辑模式下激活该锚点</p>
                                         )}
 
-                                        {/* Advanced Options - Collapsible */}
+                                        {/* Advanced Options - Custom Collapsible */}
                                         {anchorEntries.length > 0 && (
-                                            <details style={{ marginTop: '12px' }} open={searchAreaEditMode}>
-                                                <summary style={{
-                                                    fontSize: '11px',
-                                                    color: 'var(--text-secondary)',
-                                                    cursor: 'pointer',
-                                                    userSelect: 'none',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}>
-                                                    <ChevronRight size={12} style={{ transition: 'transform 0.2s' }} className="details-chevron" />
-                                                    高级选项
-                                                </summary>
-                                                <div style={{ marginTop: '10px', paddingLeft: '4px' }}>
-                                                    {/* Toggle Switch for Search Area Edit Mode */}
-                                                    <label style={{
+                                            <div style={{
+                                                marginTop: '15px',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                background: searchAreaEditMode ? 'rgba(249, 115, 22, 0.03)' : 'transparent',
+                                                overflow: 'hidden',
+                                                transition: 'all 0.3s ease'
+                                            }}>
+                                                <div
+                                                    onClick={() => {
+                                                        const newMode = !searchAreaEditMode;
+                                                        if (setSearchAreaEditMode) setSearchAreaEditMode(newMode);
+
+                                                        if (newMode && anchorEntries.length > 0) {
+                                                            const [corner, anchor] = anchorEntries[0];
+                                                            if (setActiveSearchAnchor) setActiveSearchAnchor({ corner });
+                                                            if (!anchor.search_area && updateRegionPositioning) {
+                                                                const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
+                                                                const padding = 0.03;
+                                                                const anchorW = ax1 - ax0;
+                                                                const anchorH = ay1 - ay0;
+                                                                const newAnchors = { ...regions.find(r => r.id === selectedRegion.id)?.positioning?.anchors };
+                                                                newAnchors[corner] = {
+                                                                    ...anchor,
+                                                                    search_area: [
+                                                                        Math.max(0, ax0 - padding),
+                                                                        Math.max(0, ay0 - padding),
+                                                                        Math.min(1 - Math.max(0, ax0 - padding), anchorW + padding * 2),
+                                                                        Math.min(1 - Math.max(0, ay0 - padding), anchorH + padding * 2)
+                                                                    ]
+                                                                };
+                                                                updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                            }
+                                                        } else {
+                                                            if (setActiveSearchAnchor) setActiveSearchAnchor(null);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        padding: '12px 15px',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'space-between',
-                                                        gap: '8px',
-                                                        fontSize: '11px',
-                                                        color: 'var(--text-secondary)',
                                                         cursor: 'pointer',
-                                                        marginBottom: '8px'
-                                                    }}>
-                                                        <span>限制搜索范围</span>
-                                                        <div
-                                                            onClick={() => {
-                                                                const newMode = !searchAreaEditMode;
-                                                                if (setSearchAreaEditMode) setSearchAreaEditMode(newMode);
+                                                        background: searchAreaEditMode ? 'rgba(249, 115, 22, 0.08)' : 'rgba(255,255,255,0.02)',
+                                                        borderBottom: searchAreaEditMode ? '1px solid rgba(249, 115, 22, 0.1)' : 'none'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <Target size={14} color={searchAreaEditMode ? "#f97316" : "var(--text-secondary)"} />
+                                                        <span style={{
+                                                            fontSize: '13px',
+                                                            fontWeight: 'bold',
+                                                            color: searchAreaEditMode ? '#f97316' : 'var(--text-secondary)'
+                                                        }}>
+                                                            限制搜索范围
+                                                        </span>
+                                                    </div>
 
-                                                                if (newMode && anchorEntries.length > 0) {
-                                                                    // Enter edit mode - set initial search_area if not exists
-                                                                    const [corner, anchor] = anchorEntries[0];
-                                                                    if (setActiveSearchAnchor) {
-                                                                        setActiveSearchAnchor({ regionId: selectedRegion.id, corner });
-                                                                    }
+                                                    {/* Toggle Switch */}
+                                                    <div style={{ position: 'relative', width: '32px', height: '18px', background: searchAreaEditMode ? '#f97316' : 'var(--glass-border)', borderRadius: '10px', transition: '0.3s' }}>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: searchAreaEditMode ? '16px' : '2px',
+                                                            top: '2px',
+                                                            width: '14px',
+                                                            height: '14px',
+                                                            background: '#fff',
+                                                            borderRadius: '50%',
+                                                            transition: '0.3s',
+                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                                        }} />
+                                                    </div>
+                                                </div>
 
-                                                                    if (!anchor.search_area && updateRegionPositioning) {
-                                                                        // Set default search area with 20px padding (normalized)
-                                                                        const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
-                                                                        const anchorW = ax1 - ax0;
-                                                                        const anchorH = ay1 - ay0;
-                                                                        const padding = 0.03; // ~20px on a 600px canvas
-                                                                        const newAnchors = { ...anchors };
-                                                                        newAnchors[corner] = {
-                                                                            ...anchor,
-                                                                            search_area: [
-                                                                                Math.max(0, ax0 - padding),
-                                                                                Math.max(0, ay0 - padding),
-                                                                                Math.min(1, anchorW + padding * 2),
-                                                                                Math.min(1, anchorH + padding * 2)
-                                                                            ]
-                                                                        };
-                                                                        updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
-                                                                    }
-                                                                } else {
-                                                                    // Exit edit mode
-                                                                    if (setActiveSearchAnchor) setActiveSearchAnchor(null);
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                width: '36px',
-                                                                height: '20px',
-                                                                borderRadius: '10px',
-                                                                background: searchAreaEditMode ? '#f97316' : (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'),
-                                                                position: 'relative',
-                                                                transition: 'background 0.2s',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <div style={{
-                                                                width: '16px',
-                                                                height: '16px',
-                                                                borderRadius: '50%',
-                                                                background: '#fff',
-                                                                position: 'absolute',
-                                                                top: '2px',
-                                                                left: searchAreaEditMode ? '18px' : '2px',
-                                                                transition: 'left 0.2s',
-                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                                                            }} />
-                                                        </div>
-                                                    </label>
+                                                {/* Expandable Content */}
+                                                {searchAreaEditMode && activeSearchAnchor && (() => {
+                                                    const corner = activeSearchAnchor.corner;
+                                                    const anchor = selectedRegion.positioning?.anchors?.[corner];
+                                                    if (!anchor) return null;
 
-                                                    {/* Slider for scaling - only show when in edit mode */}
-                                                    {searchAreaEditMode && anchorEntries.length > 0 && (() => {
-                                                        const [corner, anchor] = anchorEntries[0];
-                                                        const searchArea = anchor.search_area;
-                                                        if (!searchArea) return null;
+                                                    const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
+                                                    const aw = ax1 - ax0;
+                                                    const ah = ay1 - ay0;
+                                                    // Ensure valid anchor dims to avoid division by zero
+                                                    const validAw = Math.max(aw, 0.0001);
+                                                    const validAh = Math.max(ah, 0.0001);
 
-                                                        // Calculate slider value (0 = anchor size, 100 = full page)
-                                                        const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
-                                                        const anchorW = ax1 - ax0;
-                                                        const anchorH = ay1 - ay0;
-                                                        const currentW = searchArea[2];
-                                                        const currentH = searchArea[3];
+                                                    const searchArea = anchor.search_area || [ax0, ay0, aw, ah];
+                                                    const [sx, sy, sw, sh] = searchArea;
 
-                                                        // Inverse of the scaling formula
-                                                        const tW = anchorW < 1 ? (currentW - anchorW) / (1 - anchorW) : 1;
-                                                        const tH = anchorH < 1 ? (currentH - anchorH) / (1 - anchorH) : 1;
-                                                        const sliderValue = Math.round(Math.max(tW, tH) * 100);
+                                                    // Logic Round 4: Anchor to Page Interpolation (0% -> 100%)
+                                                    // 0% => Size is Anchor Size
+                                                    // 100% => Size is Full Page (1.0)
+                                                    // t = (currentSize - anchorSize) / (pageSize - anchorSize)
 
-                                                        return (
-                                                            <div style={{ marginTop: '10px' }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
-                                                                    <span>锚点边界</span>
-                                                                    <span>全页范围</span>
-                                                                </div>
+                                                    const calcProgress = (current, anchorSize) => {
+                                                        const denom = 1.0 - anchorSize;
+                                                        if (denom <= 0.0001) return 100; // Anchor is already full page
+                                                        const t = (current - anchorSize) / denom;
+                                                        return Math.min(100, Math.max(0, t * 100));
+                                                    };
+
+                                                    const progressW = calcProgress(sw, aw);
+                                                    const progressH = calcProgress(sh, ah);
+
+                                                    const updateArea = (pw, ph) => {
+                                                        const tw = pw / 100;
+                                                        const th = ph / 100;
+
+                                                        // Interpolate Target Width/Height
+                                                        const targetW = aw + (1.0 - aw) * tw;
+                                                        const targetH = ah + (1.0 - ah) * th;
+
+                                                        const cx = ax0 + aw / 2;
+                                                        const cy = ay0 + ah / 2;
+
+                                                        // Calculate Ideal Top-Left (Centered)
+                                                        let idealX = cx - targetW / 2;
+                                                        let idealY = cy - targetH / 2;
+
+                                                        // Shift-to-fit: Constrain within [0, 1] without shrinking size
+                                                        // 1. Constrain Right/Bottom edge
+                                                        // if (idealX + targetW > 1) idealX = 1 - targetW;
+                                                        // 2. Constrain Left/Top edge (Priority over Right/Bottom to ensure 0 is handled)
+                                                        // if (idealX < 0) idealX = 0;
+
+                                                        const nx = Math.max(0, Math.min(1 - targetW, idealX));
+                                                        const ny = Math.max(0, Math.min(1 - targetH, idealY));
+
+                                                        // Final W/H might need tiny clamping if math precision issues, but usually strict math above handles it.
+                                                        // Ensuring we don't exceed boundaries slightly due to float precision
+                                                        const finW = Math.min(targetW, 1 - nx);
+                                                        const finH = Math.min(targetH, 1 - ny);
+
+                                                        const newAnchors = { ...selectedRegion.positioning?.anchors };
+                                                        newAnchors[corner] = { ...anchor, search_area: [nx, ny, finW, finH] };
+                                                        if (updateRegionPositioning) {
+                                                            updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                        }
+                                                    };
+
+                                                    const SliderBlock = ({ label, value, onChange }) => (
+                                                        <div style={{ marginBottom: '12px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{label}</span>
+                                                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f97316', fontVariantNumeric: 'tabular-nums' }}>
+                                                                    {Math.round(value)}%
+                                                                </span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <button
+                                                                    className="glass-stepper-btn"
+                                                                    onClick={() => onChange(Math.max(0, value - 10))}
+                                                                    style={{ color: '#f97316', borderColor: 'rgba(249, 115, 22, 0.3)' }}
+                                                                >
+                                                                    <Minus size={10} />
+                                                                </button>
                                                                 <input
                                                                     type="range"
-                                                                    min="0"
-                                                                    max="100"
-                                                                    value={sliderValue}
-                                                                    onChange={(e) => {
-                                                                        const t = parseInt(e.target.value) / 100;
-
-                                                                        // Calculate new search area with aspect ratio preservation
-                                                                        const currentRatio = searchArea[2] / searchArea[3];
-                                                                        const cx = (ax0 + ax1) / 2;
-                                                                        const cy = (ay0 + ay1) / 2;
-
-                                                                        let newW = anchorW + t * (1 - anchorW);
-                                                                        let newH = anchorH + t * (1 - anchorH);
-
-                                                                        // Preserve the custom aspect ratio if user has manually adjusted
-                                                                        if (currentRatio > 0) {
-                                                                            const avgScale = (newW + newH) / 2;
-                                                                            newW = avgScale * Math.sqrt(currentRatio);
-                                                                            newH = avgScale / Math.sqrt(currentRatio);
-                                                                        }
-
-                                                                        const newX = Math.max(0, cx - newW / 2);
-                                                                        const newY = Math.max(0, cy - newH / 2);
-
-                                                                        if (updateRegionPositioning) {
-                                                                            const newAnchors = { ...anchors };
-                                                                            newAnchors[corner] = {
-                                                                                ...anchor,
-                                                                                search_area: [
-                                                                                    newX,
-                                                                                    newY,
-                                                                                    Math.min(newW, 1 - newX),
-                                                                                    Math.min(newH, 1 - newY)
-                                                                                ]
-                                                                            };
-                                                                            updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
-                                                                        }
-                                                                    }}
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        cursor: 'pointer',
-                                                                        accentColor: '#f97316'
-                                                                    }}
+                                                                    min="0" max="100" step="10"
+                                                                    value={value}
+                                                                    className="glass-slider"
+                                                                    style={{ flex: 1, backgroundSize: `${value}% 100%`, '--slider-color': '#f97316' }}
+                                                                    onChange={(e) => onChange(parseFloat(e.target.value))}
                                                                 />
-                                                                <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '8px', lineHeight: 1.4 }}>
-                                                                    💡 画布上可拖拽橙色矩形四角调整形状
-                                                                </p>
+                                                                <button
+                                                                    className="glass-stepper-btn"
+                                                                    onClick={() => onChange(Math.min(100, value + 10))}
+                                                                    style={{ color: '#f97316', borderColor: 'rgba(249, 115, 22, 0.3)' }}
+                                                                >
+                                                                    <Plus size={10} />
+                                                                </button>
                                                             </div>
-                                                        );
-                                                    })()}
+                                                        </div>
+                                                    );
 
-                                                    {!searchAreaEditMode && (
-                                                        <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '4px', lineHeight: 1.4 }}>
-                                                            若页面有多个相似文本，启用此选项可提高匹配精度
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </details>
+                                                    return (
+                                                        <div style={{ padding: '15px', animation: 'fadeIn 0.3s ease' }}>
+                                                            <SliderBlock
+                                                                label="水平扩展 (宽度)"
+                                                                value={progressW}
+                                                                onChange={(v) => updateArea(v, progressH)}
+                                                            />
+                                                            <SliderBlock
+                                                                label="垂直扩展 (高度)"
+                                                                value={progressH}
+                                                                onChange={(v) => updateArea(progressW, v)}
+                                                            />
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
                                         )}
                                     </div>
                                 );

@@ -213,9 +213,12 @@ const ConfirmedTextAnchor = ({ corner, word, cornerHandle, flashCount, onFlashEn
                     top: `${word.y0 * 100}%`,
                     width: `${(word.x1 - word.x0) * 100}%`,
                     height: `${(word.y1 - word.y0) * 100}%`,
-                    border: isFlashing ? '3px solid #ef4444' : '2px dashed #3b82f6',
-                    background: isFlashing ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                    boxShadow: isFlashing ? '0 0 12px rgba(239, 68, 68, 0.8)' : '0 0 8px rgba(59, 130, 246, 0.4)',
+                    border: isFlashing ? '2px dashed var(--accent-color)' : '2px dashed var(--accent-color)',
+                    background: 'transparent',
+                    boxShadow: 'none',
+                    // Using the keyframe animation for color toggling if flashing, or just opacity?
+                    // The global keyframe anchor-flash toggles border color.
+                    // If we want the flash to be subtle, maybe just use the keyframe.
                     animation: isFlashing ? 'anchor-flash 0.3s ease-in-out' : 'none',
                     pointerEvents: 'none',
                     zIndex: 70
@@ -229,10 +232,9 @@ const ConfirmedTextAnchor = ({ corner, word, cornerHandle, flashCount, onFlashEn
                     y1={`${((word.y0 + word.y1) / 2) * 100}%`}
                     x2={`${cornerHandle.x * 100}%`}
                     y2={`${cornerHandle.y * 100}%`}
-                    stroke="#3b82f6"
+                    stroke="var(--accent-color)"
                     strokeWidth="2"
-                    strokeDasharray="6 4"
-                    opacity="0.8"
+                    strokeDasharray="5 5"
                 />
             </svg>
 
@@ -878,7 +880,7 @@ const DocumentEditor = ({
                     dragStart: null,
                     currentDrag: null,
                     flashingWord: posState.hoverWord,
-                    flashCount: 6 // 6 alternates = 3 full flashes
+                    flashCount: 4 // 4 alternates = 2 full flashes
                 }));
             } else {
                 // Cancel drag
@@ -1134,13 +1136,13 @@ const DocumentEditor = ({
                                     />
 
                                     {/* Hide region box during picking mode and flash animation */}
-                                    {!(positioningMode && (posState.mode === 'picking_text' || posState.flashCount > 0)) && (
+                                    {!(positioningMode && (posState.mode === 'picking_text' || posState.flashCount > 0)) && !searchAreaEditMode && (
                                         <rect
                                             x={`${reg.x * 100}%`}
                                             y={`${reg.y * 100}%`}
                                             width={`${reg.width * 100}%`}
                                             height={`${reg.height * 100}%`}
-                                            fill={isSelected ? `${displayColor}33` : `${displayColor}11`}
+                                            fill={(positioningMode && isSelected) ? 'transparent' : (isSelected ? `${displayColor}33` : `${displayColor}11`)}
                                             stroke={displayColor}
                                             strokeWidth={isSelected ? 3 : 2}
                                             style={{ pointerEvents: 'none' }}
@@ -1380,7 +1382,7 @@ const DocumentEditor = ({
                                     )}
 
                                     {/* 3. Handles (Rendered later to be on top) */}
-                                    {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
+                                    {isSelected && !tableRefining && !reg.locked && !searchAreaEditMode && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
                                         let hx = reg.x, hy = reg.y;
                                         if (handle.includes('e')) hx += reg.width;
                                         if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
@@ -1417,7 +1419,7 @@ const DocumentEditor = ({
                                     })}
 
                                     {/* 4. Delete and other buttons (Rendered last) */}
-                                    {isSelected && !tableRefining && onDelete && !reg.locked && (
+                                    {isSelected && !tableRefining && onDelete && !reg.locked && !searchAreaEditMode && !positioningMode && (
                                         <g
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -1528,8 +1530,8 @@ const DocumentEditor = ({
                                 100% { transform: scale(1); opacity: 0.8; }
                             }
                             @keyframes anchor-flash {
-                                0%, 100% { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.8); }
-                                50% { border-color: #fbbf24; box-shadow: 0 0 16px rgba(251, 191, 36, 1); }
+                                0%, 100% { border-color: var(--accent-color); }
+                                50% { border-color: transparent; }
                             }
                             .anchor-circle {
                                 animation: anchor-breath 1.5s ease-in-out infinite;
@@ -1554,7 +1556,7 @@ const DocumentEditor = ({
 
 
                             {/* Corner Breathing Circles */}
-                            {['tl', 'tr', 'bl', 'br'].map(corner => {
+                            {!searchAreaEditMode && ['tl', 'tr', 'bl', 'br'].map(corner => {
 
                                 let cx = selectedRegion.x;
                                 let cy = selectedRegion.y;
@@ -1568,8 +1570,8 @@ const DocumentEditor = ({
                                 if (isPickingOrFlashing && !isActive) return null;
 
                                 const isAnchored = selectedRegion?.positioning?.anchors?.[corner];
-                                const themeColor = isAnchored ? 'var(--primary-color)' : 'var(--accent-color)';
-                                const shadowColor = isAnchored ? 'rgba(59, 130, 246, 0.5)' : 'rgba(139, 92, 246, 0.5)';
+                                const themeColor = 'var(--accent-color)'; // Always purple for dynamic positioning consistency
+                                const shadowColor = 'rgba(139, 92, 246, 0.5)';
 
                                 return (
                                     <div key={corner} style={{ position: 'absolute', left: `${cx * 100}%`, top: `${cy * 100}%`, pointerEvents: 'none' }}>
@@ -1589,11 +1591,11 @@ const DocumentEditor = ({
                                                 }));
                                             }}
                                             style={{
-                                                position: 'absolute', left: '-12px', top: '-12px',
-                                                width: '24px', height: '24px', borderRadius: '50%',
+                                                position: 'absolute', left: '-9px', top: '-9px',
+                                                width: '18px', height: '18px', borderRadius: '50%',
                                                 background: '#fff',
-                                                border: `3px solid ${themeColor}`,
-                                                boxShadow: `0 0 10px ${shadowColor}`,
+                                                border: `2px solid ${themeColor}`,
+                                                boxShadow: `0 2px 4px rgba(0,0,0,0.1)`,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 zIndex: isActive ? 101 : 100,
                                                 cursor: 'crosshair',
@@ -1607,11 +1609,11 @@ const DocumentEditor = ({
                                                     pointerEvents: 'none'
                                                 }}
                                             >
-                                                {/* 如果这个角正在被拖拽，显示虚线边框锚图标 */}
-                                                {isActive && posState.mode === 'picking_text' ? (
-                                                    <Anchor size={14} strokeWidth={1.5} strokeDasharray="2 2" />
+                                                {/* 如果是已锚定状态、或者正在拖拽，显示锚图标；否则显示紫色圆点 */}
+                                                {(isAnchored || isActive) ? (
+                                                    <Anchor size={12} strokeWidth={isActive && posState.mode === 'picking_text' ? 1.5 : 2} strokeDasharray={isActive && posState.mode === 'picking_text' ? "2 2" : ""} />
                                                 ) : (
-                                                    <Anchor size={14} />
+                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgb(139, 92, 246)' }} />
                                                 )}
                                             </div>
                                         </div>
@@ -1672,8 +1674,8 @@ const DocumentEditor = ({
                                                     width: `${(w.x1 - w.x0) * 100}%`,
                                                     height: `${(w.y1 - w.y0) * 100}%`,
                                                     pointerEvents: 'none', // During drag, transparency to mouse events is better? No, MouseMove handles it.
-                                                    background: isHovered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0, 0, 0, 0.02)',
-                                                    border: isHovered ? '2px solid var(--accent-color)' : '1px solid rgba(59, 130, 246, 0.1)',
+                                                    background: 'transparent',
+                                                    border: isHovered ? '2px dashed var(--accent-color)' : 'none',
                                                     borderRadius: '2px',
                                                     zIndex: 60,
                                                 }}
@@ -1692,10 +1694,10 @@ const DocumentEditor = ({
                                         top: `${posState.flashingWord.y0 * 100}%`,
                                         width: `${(posState.flashingWord.x1 - posState.flashingWord.x0) * 100}%`,
                                         height: `${(posState.flashingWord.y1 - posState.flashingWord.y0) * 100}%`,
-                                        border: '3px solid var(--accent-color)',
-                                        background: 'rgba(59, 130, 246, 0.3)',
-                                        borderRadius: '4px',
-                                        boxShadow: '0 0 15px var(--accent-color)',
+                                        border: '2px dashed var(--accent-color)',
+                                        background: 'transparent',
+                                        borderRadius: '2px',
+                                        boxShadow: 'none',
                                         zIndex: 1000,
                                         pointerEvents: 'none'
                                     }}
@@ -1746,12 +1748,28 @@ const DocumentEditor = ({
                                             if (r.id !== selectedRegion.id) return r;
                                             const positioning = { ...(r.positioning || {}) };
                                             const anchors = { ...(positioning.anchors || {}) };
+                                            const aw = w.x1 - w.x0;
+                                            const ah = w.y1 - w.y0;
+
+                                            // Default 10% expansion logic
+                                            const targetW = aw + (1.0 - aw) * 0.1;
+                                            const targetH = ah + (1.0 - ah) * 0.1;
+                                            const cx = w.x0 + aw / 2;
+                                            const cy = w.y0 + ah / 2;
+                                            let idealX = cx - targetW / 2;
+                                            let idealY = cy - targetH / 2;
+                                            const nx = Math.max(0, Math.min(1 - targetW, idealX));
+                                            const ny = Math.max(0, Math.min(1 - targetH, idealY));
+                                            const finW = Math.min(targetW, 1 - nx);
+                                            const finH = Math.min(targetH, 1 - ny);
+
                                             anchors[corner] = {
                                                 type: 'text',
                                                 text: w.text,
                                                 bounds: [w.x0, w.y0, w.x1, w.y1],
                                                 offset_x: handle.x - ax,
-                                                offset_y: handle.y - ay
+                                                offset_y: handle.y - ay,
+                                                search_area: [nx, ny, finW, finH]
                                             };
                                             return { ...r, positioning: { ...positioning, anchors } };
                                         });
@@ -1913,19 +1931,6 @@ const DocumentEditor = ({
 
                                     return (
                                         <React.Fragment key={`anchor-vis-${corner}`}>
-                                            {/* Connection Line */}
-                                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 65 }}>
-                                                <line
-                                                    x1={`${cx * 100}%`}
-                                                    y1={`${cy * 100}%`}
-                                                    x2={`${ax * 100}%`}
-                                                    y2={`${ay * 100}%`}
-                                                    stroke="var(--primary-color)"
-                                                    strokeWidth="1.5"
-                                                    strokeDasharray="4 2"
-                                                    opacity="0.6"
-                                                />
-                                            </svg>
 
                                             {/* Anchor Box - Clickable to select */}
                                             <div
@@ -1989,7 +1994,7 @@ const DocumentEditor = ({
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                                             transition: 'all 0.15s ease'
                                                         }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#fff'; }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-color)'; e.currentTarget.style.color = '#fff'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                                                     >
                                                         <ChevronLeft size={14} strokeWidth={2.5} />
@@ -2016,7 +2021,7 @@ const DocumentEditor = ({
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                                             transition: 'all 0.15s ease'
                                                         }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#fff'; }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-color)'; e.currentTarget.style.color = '#fff'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                                                     >
                                                         <ChevronRight size={14} strokeWidth={2.5} />
@@ -2037,6 +2042,9 @@ const DocumentEditor = ({
                         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 60 }}>
                             {Object.entries(selectedRegion.positioning?.anchors || {}).map(([corner, anchor]) => {
                                 if (!anchor.bounds) return null;
+                                // In Search Area Edit Mode, only show the active anchor
+                                if (searchAreaEditMode && (!activeSearchAnchor || activeSearchAnchor.corner !== corner)) return null;
+
                                 const [ax0, ay0, ax1, ay1] = anchor.bounds;
                                 const ax = (ax0 + ax1) / 2;
                                 const ay = (ay0 + ay1) / 2;
@@ -2053,7 +2061,39 @@ const DocumentEditor = ({
                                 else if (corner === 'bl') { cx = rx; cy = ry + rh; }
                                 else if (corner === 'br') { cx = rx + rw; cy = ry + rh; }
 
-                                // 删除锚点处理函数
+                                return (
+                                    <g key={corner}>
+                                        {/* Anchor Bounds Visual */}
+                                        <rect
+                                            x={`${ax0 * 100}%`} y={`${ay0 * 100}%`}
+                                            width={`${(ax1 - ax0) * 100}%`} height={`${(ay1 - ay0) * 100}%`}
+                                            fill="rgba(168, 85, 247, 0.1)" stroke="var(--accent-color)"
+                                            strokeWidth={2} strokeDasharray="5 5"
+                                        />
+
+                                        {/* Connection Line - Hide in SearchAreaEditMode */}
+                                        {!searchAreaEditMode && (
+                                            <line
+                                                x1={`${ax * 100}%`} y1={`${ay * 100}%`}
+                                                x2={`${cx * 100}%`} y2={`${cy * 100}%`}
+                                                stroke="var(--accent-color)"
+                                                strokeWidth={2}
+                                                strokeDasharray="5 5"
+                                            />
+                                        )}
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    )}
+
+                    {/* Anchor Controls Overlay (Delete Buttons) - Hidden in Search Area Edit Mode */}
+                    {positioningMode && selectedRegion && !searchAreaEditMode && (
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 61 }}>
+                            {Object.entries(selectedRegion.positioning?.anchors || {}).map(([corner, anchor]) => {
+                                if (!anchor.bounds) return null;
+                                const [ax0, ay0, ax1, ay1] = anchor.bounds;
+
                                 const handleDeleteAnchor = (e) => {
                                     e.stopPropagation();
                                     const nextAnchors = { ...(selectedRegion.positioning?.anchors || {}) };
@@ -2065,64 +2105,42 @@ const DocumentEditor = ({
                                             anchors: nextAnchors
                                         }
                                     } : r);
-                                    setRegions(nextRegions);
+                                    if (setRegions) setRegions(nextRegions);
                                     if (onHistorySnapshot) onHistorySnapshot(nextRegions);
                                 };
 
                                 return (
-                                    <g key={corner}>
-                                        {/* Anchor Bounds Visual */}
-                                        <rect
-                                            x={`${ax0 * 100}%`} y={`${ay0 * 100}%`}
-                                            width={`${(ax1 - ax0) * 100}%`} height={`${(ay1 - ay0) * 100}%`}
-                                            fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6"
-                                            strokeWidth={2} strokeDasharray="5 5"
-                                        />
-
-                                        {/* Delete Button at top-right of anchor bounds */}
-                                        <foreignObject
-                                            x={`calc(${ax1 * 100}% - 10px)`}
-                                            y={`calc(${ay0 * 100}% - 10px)`}
-                                            width="20" height="20"
-                                            style={{ overflow: 'visible' }}
-                                        >
-                                            <div
-                                                onClick={handleDeleteAnchor}
-                                                style={{
-                                                    width: '20px',
-                                                    height: '20px',
-                                                    borderRadius: '50%',
-                                                    background: '#ef4444',
-                                                    color: 'white',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'pointer',
-                                                    pointerEvents: 'auto',
-                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                                                    transition: 'transform 0.15s, background 0.15s'
-                                                }}
-                                                onMouseEnter={(e) => { e.target.style.transform = 'scale(1.15)'; e.target.style.background = '#dc2626'; }}
-                                                onMouseLeave={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = '#ef4444'; }}
-                                            >
-                                                <X size={12} />
-                                            </div>
-                                        </foreignObject>
-
-                                        {/* Connection Line */}
-                                        <line
-                                            x1={`${ax * 100}%`} y1={`${ay * 100}%`}
-                                            x2={`${cx * 100}%`} y2={`${cy * 100}%`}
-                                            stroke="var(--primary-color)" strokeWidth={1.5} strokeDasharray="4 4"
-                                        />
-
-
-                                        {/* Anchor Point on Text (Small circle) */}
-                                        <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--primary-color)" />
-                                    </g>
+                                    <div
+                                        key={`del-${corner}`}
+                                        onClick={handleDeleteAnchor}
+                                        style={{
+                                            position: 'absolute',
+                                            left: `${ax1 * 100}%`,
+                                            top: `${ay0 * 100}%`,
+                                            transform: 'translate(-50%, -50%)',
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '50%',
+                                            background: '#ef4444',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            pointerEvents: 'auto',
+                                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                            transition: 'transform 0.15s, background 0.15s',
+                                            zIndex: 200 // Ensure it's above everything
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.15)'; e.currentTarget.style.background = '#dc2626'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'; e.currentTarget.style.background = '#ef4444'; }}
+                                        title="删除此锚点"
+                                    >
+                                        <X size={12} />
+                                    </div>
                                 );
                             })}
-                        </svg >
+                        </div>
                     )}
 
                     {/* Search Area Overlay - 搜索范围可视化 */}
