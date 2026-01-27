@@ -43,7 +43,12 @@ const RightSidebar = ({
     headerCollapsed = false,
     selectedIds = [],
     regions = [],
-    updateRegionPositioning // [NEW]
+    updateRegionPositioning, // [NEW]
+    // 搜索范围编辑模式
+    searchAreaEditMode,
+    setSearchAreaEditMode,
+    activeSearchAnchor,
+    setActiveSearchAnchor
 }) => {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
 
@@ -487,7 +492,7 @@ const RightSidebar = ({
 
                                         {/* Advanced Options - Collapsible */}
                                         {anchorEntries.length > 0 && (
-                                            <details style={{ marginTop: '12px' }}>
+                                            <details style={{ marginTop: '12px' }} open={searchAreaEditMode}>
                                                 <summary style={{
                                                     fontSize: '11px',
                                                     color: 'var(--text-secondary)',
@@ -501,51 +506,159 @@ const RightSidebar = ({
                                                     高级选项
                                                 </summary>
                                                 <div style={{ marginTop: '10px', paddingLeft: '4px' }}>
+                                                    {/* Toggle Switch for Search Area Edit Mode */}
                                                     <label style={{
                                                         display: 'flex',
                                                         alignItems: 'center',
+                                                        justifyContent: 'space-between',
                                                         gap: '8px',
                                                         fontSize: '11px',
                                                         color: 'var(--text-secondary)',
-                                                        cursor: 'pointer'
+                                                        cursor: 'pointer',
+                                                        marginBottom: '8px'
                                                     }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={(() => {
-                                                                const firstAnchor = anchorEntries[0]?.[1];
-                                                                return firstAnchor?.search_area != null;
-                                                            })()}
-                                                            onChange={(e) => {
-                                                                if (updateRegionPositioning) {
-                                                                    const newAnchors = { ...anchors };
-                                                                    Object.keys(newAnchors).forEach(key => {
-                                                                        if (newAnchors[key].type === 'text') {
-                                                                            if (e.target.checked) {
-                                                                                // Enable search area - use anchor center with medium range
-                                                                                const [ax0, ay0, ax1, ay1] = newAnchors[key].bounds || [0, 0, 0, 0];
-                                                                                const cx = (ax0 + ax1) / 2;
-                                                                                const cy = (ay0 + ay1) / 2;
-                                                                                newAnchors[key] = {
-                                                                                    ...newAnchors[key],
-                                                                                    search_area: [Math.max(0, cx - 0.15), Math.max(0, cy - 0.15), 0.3, 0.3]
-                                                                                };
-                                                                            } else {
-                                                                                // Disable - remove search_area
-                                                                                const { search_area, ...rest } = newAnchors[key];
-                                                                                newAnchors[key] = rest;
-                                                                            }
-                                                                        }
-                                                                    });
-                                                                    updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                        <span>限制搜索范围</span>
+                                                        <div
+                                                            onClick={() => {
+                                                                const newMode = !searchAreaEditMode;
+                                                                if (setSearchAreaEditMode) setSearchAreaEditMode(newMode);
+
+                                                                if (newMode && anchorEntries.length > 0) {
+                                                                    // Enter edit mode - set initial search_area if not exists
+                                                                    const [corner, anchor] = anchorEntries[0];
+                                                                    if (setActiveSearchAnchor) {
+                                                                        setActiveSearchAnchor({ regionId: selectedRegion.id, corner });
+                                                                    }
+
+                                                                    if (!anchor.search_area && updateRegionPositioning) {
+                                                                        // Set default search area with 20px padding (normalized)
+                                                                        const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
+                                                                        const anchorW = ax1 - ax0;
+                                                                        const anchorH = ay1 - ay0;
+                                                                        const padding = 0.03; // ~20px on a 600px canvas
+                                                                        const newAnchors = { ...anchors };
+                                                                        newAnchors[corner] = {
+                                                                            ...anchor,
+                                                                            search_area: [
+                                                                                Math.max(0, ax0 - padding),
+                                                                                Math.max(0, ay0 - padding),
+                                                                                Math.min(1, anchorW + padding * 2),
+                                                                                Math.min(1, anchorH + padding * 2)
+                                                                            ]
+                                                                        };
+                                                                        updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                    }
+                                                                } else {
+                                                                    // Exit edit mode
+                                                                    if (setActiveSearchAnchor) setActiveSearchAnchor(null);
                                                                 }
                                                             }}
-                                                            style={{ accentColor: 'var(--accent-color)' }}
-                                                        />
-                                                        限制搜索区域
+                                                            style={{
+                                                                width: '36px',
+                                                                height: '20px',
+                                                                borderRadius: '10px',
+                                                                background: searchAreaEditMode ? '#f97316' : (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'),
+                                                                position: 'relative',
+                                                                transition: 'background 0.2s',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '16px',
+                                                                height: '16px',
+                                                                borderRadius: '50%',
+                                                                background: '#fff',
+                                                                position: 'absolute',
+                                                                top: '2px',
+                                                                left: searchAreaEditMode ? '18px' : '2px',
+                                                                transition: 'left 0.2s',
+                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                                            }} />
+                                                        </div>
                                                     </label>
-                                                    <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '6px', marginLeft: '20px', lineHeight: 1.4 }}>
-                                                        若页面有多个相似文本，启用此选项可提高匹配精度
-                                                    </p>
+
+                                                    {/* Slider for scaling - only show when in edit mode */}
+                                                    {searchAreaEditMode && anchorEntries.length > 0 && (() => {
+                                                        const [corner, anchor] = anchorEntries[0];
+                                                        const searchArea = anchor.search_area;
+                                                        if (!searchArea) return null;
+
+                                                        // Calculate slider value (0 = anchor size, 100 = full page)
+                                                        const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
+                                                        const anchorW = ax1 - ax0;
+                                                        const anchorH = ay1 - ay0;
+                                                        const currentW = searchArea[2];
+                                                        const currentH = searchArea[3];
+
+                                                        // Inverse of the scaling formula
+                                                        const tW = anchorW < 1 ? (currentW - anchorW) / (1 - anchorW) : 1;
+                                                        const tH = anchorH < 1 ? (currentH - anchorH) / (1 - anchorH) : 1;
+                                                        const sliderValue = Math.round(Math.max(tW, tH) * 100);
+
+                                                        return (
+                                                            <div style={{ marginTop: '10px' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
+                                                                    <span>锚点边界</span>
+                                                                    <span>全页范围</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    value={sliderValue}
+                                                                    onChange={(e) => {
+                                                                        const t = parseInt(e.target.value) / 100;
+
+                                                                        // Calculate new search area with aspect ratio preservation
+                                                                        const currentRatio = searchArea[2] / searchArea[3];
+                                                                        const cx = (ax0 + ax1) / 2;
+                                                                        const cy = (ay0 + ay1) / 2;
+
+                                                                        let newW = anchorW + t * (1 - anchorW);
+                                                                        let newH = anchorH + t * (1 - anchorH);
+
+                                                                        // Preserve the custom aspect ratio if user has manually adjusted
+                                                                        if (currentRatio > 0) {
+                                                                            const avgScale = (newW + newH) / 2;
+                                                                            newW = avgScale * Math.sqrt(currentRatio);
+                                                                            newH = avgScale / Math.sqrt(currentRatio);
+                                                                        }
+
+                                                                        const newX = Math.max(0, cx - newW / 2);
+                                                                        const newY = Math.max(0, cy - newH / 2);
+
+                                                                        if (updateRegionPositioning) {
+                                                                            const newAnchors = { ...anchors };
+                                                                            newAnchors[corner] = {
+                                                                                ...anchor,
+                                                                                search_area: [
+                                                                                    newX,
+                                                                                    newY,
+                                                                                    Math.min(newW, 1 - newX),
+                                                                                    Math.min(newH, 1 - newY)
+                                                                                ]
+                                                                            };
+                                                                            updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        cursor: 'pointer',
+                                                                        accentColor: '#f97316'
+                                                                    }}
+                                                                />
+                                                                <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '8px', lineHeight: 1.4 }}>
+                                                                    💡 画布上可拖拽橙色矩形四角调整形状
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {!searchAreaEditMode && (
+                                                        <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '4px', lineHeight: 1.4 }}>
+                                                            若页面有多个相似文本，启用此选项可提高匹配精度
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </details>
                                         )}

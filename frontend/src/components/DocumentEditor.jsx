@@ -21,6 +21,142 @@ const TYPE_CONFIG = {
 
 const HANDLE_SIZE = 9; // Slightly increased base size
 
+// 搜索范围覆盖组件：橙色虚线外接矩形 + 四角控点
+const SearchAreaOverlay = ({
+    searchArea,          // [x, y, width, height] normalized
+    anchorBounds,        // [x0, y0, x1, y1] normalized anchor bounds for reference
+    onUpdate,            // (newSearchArea) => void
+    containerRef,
+    getCoordinates
+}) => {
+    const [dragging, setDragging] = useState(null); // 'tl' | 'tr' | 'bl' | 'br' | null
+    const [startPos, setStartPos] = useState(null);
+    const [startArea, setStartArea] = useState(null);
+
+    const handleSize = 10;
+    const [sx, sy, sw, sh] = searchArea;
+    const [ax0, ay0, ax1, ay1] = anchorBounds;
+
+    // Handle drag start
+    const handleMouseDown = (e, corner) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setDragging(corner);
+        setStartPos(getCoordinates(e));
+        setStartArea([...searchArea]);
+    };
+
+    // Global mouse events for drag
+    useEffect(() => {
+        if (!dragging) return;
+
+        const handleMouseMove = (e) => {
+            if (!startPos || !startArea) return;
+            const pos = getCoordinates(e);
+            const dx = pos.x - startPos.x;
+            const dy = pos.y - startPos.y;
+            const [osx, osy, osw, osh] = startArea;
+
+            let nx = osx, ny = osy, nw = osw, nh = osh;
+
+            if (dragging === 'tl') {
+                nx = Math.max(0, Math.min(osx + dx, osx + osw - 0.01));
+                ny = Math.max(0, Math.min(osy + dy, osy + osh - 0.01));
+                nw = osw - (nx - osx);
+                nh = osh - (ny - osy);
+            } else if (dragging === 'tr') {
+                nw = Math.max(0.01, Math.min(osw + dx, 1 - osx));
+                ny = Math.max(0, Math.min(osy + dy, osy + osh - 0.01));
+                nh = osh - (ny - osy);
+            } else if (dragging === 'bl') {
+                nx = Math.max(0, Math.min(osx + dx, osx + osw - 0.01));
+                nw = osw - (nx - osx);
+                nh = Math.max(0.01, Math.min(osh + dy, 1 - osy));
+            } else if (dragging === 'br') {
+                nw = Math.max(0.01, Math.min(osw + dx, 1 - osx));
+                nh = Math.max(0.01, Math.min(osh + dy, 1 - osy));
+            }
+
+            // Clamp to page bounds
+            nw = Math.min(nw, 1 - nx);
+            nh = Math.min(nh, 1 - ny);
+
+            // Ensure minimum contains anchor bounds
+            const minX = Math.min(nx, ax0);
+            const minY = Math.min(ny, ay0);
+            const maxX = Math.max(nx + nw, ax1);
+            const maxY = Math.max(ny + nh, ay1);
+
+            onUpdate?.([minX, minY, maxX - minX, maxY - minY]);
+        };
+
+        const handleMouseUp = () => {
+            setDragging(null);
+            setStartPos(null);
+            setStartArea(null);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragging, startPos, startArea, ax0, ay0, ax1, ay1, onUpdate, getCoordinates]);
+
+    const corners = [
+        { key: 'tl', x: sx, y: sy, cursor: 'nwse-resize' },
+        { key: 'tr', x: sx + sw, y: sy, cursor: 'nesw-resize' },
+        { key: 'bl', x: sx, y: sy + sh, cursor: 'nesw-resize' },
+        { key: 'br', x: sx + sw, y: sy + sh, cursor: 'nwse-resize' }
+    ];
+
+    return (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1100 }}>
+            {/* Orange dashed rectangle */}
+            <div
+                style={{
+                    position: 'absolute',
+                    left: `${sx * 100}%`,
+                    top: `${sy * 100}%`,
+                    width: `${sw * 100}%`,
+                    height: `${sh * 100}%`,
+                    border: '2px dashed #f97316',
+                    borderRadius: '4px',
+                    background: 'rgba(249, 115, 22, 0.08)',
+                    boxShadow: '0 0 0 1px rgba(249, 115, 22, 0.2), inset 0 0 20px rgba(249, 115, 22, 0.05)',
+                    pointerEvents: 'none'
+                }}
+            />
+
+            {/* Corner handles */}
+            {corners.map(({ key, x, y, cursor }) => (
+                <div
+                    key={key}
+                    onMouseDown={(e) => handleMouseDown(e, key)}
+                    style={{
+                        position: 'absolute',
+                        left: `calc(${x * 100}% - ${handleSize / 2}px)`,
+                        top: `calc(${y * 100}% - ${handleSize / 2}px)`,
+                        width: `${handleSize}px`,
+                        height: `${handleSize}px`,
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        border: '2px solid white',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        cursor: cursor,
+                        pointerEvents: 'auto',
+                        transition: 'transform 0.1s',
+                        zIndex: 1200
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.3)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                />
+            ))}
+        </div>
+    );
+};
+
 // 确认的文本锚点组件：闪烁动画 + 蓝色虚线框 + 可移动外框
 const ConfirmedTextAnchor = ({ corner, word, cornerHandle, flashCount, onFlashEnd, onHandleMove, onConfirm, getCoordinates }) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -145,6 +281,11 @@ const DocumentEditor = ({
     setSelectedIds = null,
     positioningMode = false,
     setPositioningMode = null,
+    // 搜索范围编辑模式
+    searchAreaEditMode = false,
+    setSearchAreaEditMode = null,
+    activeSearchAnchor = null,
+    setActiveSearchAnchor = null,
     words = [],
     theme = 'light'
 }) => {
@@ -1983,6 +2124,42 @@ const DocumentEditor = ({
                             })}
                         </svg >
                     )}
+
+                    {/* Search Area Overlay - 搜索范围可视化 */}
+                    {searchAreaEditMode && activeSearchAnchor && selectedRegion && (() => {
+                        const { corner } = activeSearchAnchor;
+                        const anchor = selectedRegion.positioning?.anchors?.[corner];
+                        if (!anchor || !anchor.search_area) return null;
+
+                        const handleSearchAreaUpdate = (newSearchArea) => {
+                            if (!setRegions) return;
+                            setRegions(prev => prev.map(r => {
+                                if (r.id !== selectedRegion.id) return r;
+                                const newAnchors = { ...r.positioning?.anchors };
+                                newAnchors[corner] = {
+                                    ...newAnchors[corner],
+                                    search_area: newSearchArea
+                                };
+                                return {
+                                    ...r,
+                                    positioning: {
+                                        ...r.positioning,
+                                        anchors: newAnchors
+                                    }
+                                };
+                            }));
+                        };
+
+                        return (
+                            <SearchAreaOverlay
+                                searchArea={anchor.search_area}
+                                anchorBounds={anchor.bounds || [0, 0, 0, 0]}
+                                onUpdate={handleSearchAreaUpdate}
+                                containerRef={containerRef}
+                                getCoordinates={getCoordinates}
+                            />
+                        );
+                    })()}
                 </div >
             </div>
         </div >

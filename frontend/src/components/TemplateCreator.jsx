@@ -146,6 +146,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
     // --- 动态定位重构状态 ---
     const [positioningMode, setPositioningMode] = useState(false);
+    // --- 搜索范围编辑模式 ---
+    const [searchAreaEditMode, setSearchAreaEditMode] = useState(false);
+    const [activeSearchAnchor, setActiveSearchAnchor] = useState(null); // { regionId, corner }
 
     const recordTableHistory = (newTableRefining) => {
         if (!newTableRefining) return;
@@ -798,6 +801,10 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                     tableHistoryLength={tableHistory.length}
                                     positioningMode={positioningMode}
                                     setPositioningMode={setPositioningMode}
+                                    searchAreaEditMode={searchAreaEditMode}
+                                    setSearchAreaEditMode={setSearchAreaEditMode}
+                                    activeSearchAnchor={activeSearchAnchor}
+                                    setActiveSearchAnchor={setActiveSearchAnchor}
                                 />
 
                                 <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
@@ -909,6 +916,10 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                         onHistorySnapshot={(newRegs) => recordHistory(newRegs || regions)}
                                                         positioningMode={positioningMode}
                                                         setPositioningMode={setPositioningMode}
+                                                        searchAreaEditMode={searchAreaEditMode}
+                                                        setSearchAreaEditMode={setSearchAreaEditMode}
+                                                        activeSearchAnchor={activeSearchAnchor}
+                                                        setActiveSearchAnchor={setActiveSearchAnchor}
                                                         words={analysis?.words || []}
                                                         theme={theme}
                                                     />
@@ -1075,6 +1086,10 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     selectedIds={selectedIds}
                     regions={regions}
                     updateRegionPositioning={updateRegionPositioning}
+                    searchAreaEditMode={searchAreaEditMode}
+                    setSearchAreaEditMode={setSearchAreaEditMode}
+                    activeSearchAnchor={activeSearchAnchor}
+                    setActiveSearchAnchor={setActiveSearchAnchor}
                 />
             </main>
 
