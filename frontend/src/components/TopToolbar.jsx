@@ -459,17 +459,7 @@ const TopToolbar = ({
                                     opacity: (!selectedRegion || selectedIds?.length > 1) ? 0.4 : 1
                                 }}
                             >
-                                <div style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    border: '1.5px solid currentColor',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    <Anchor size={11} strokeWidth={2.5} />
-                                </div>
+                                <Anchor size={17} strokeWidth={2} />
                             </button>
                             <button
                                 disabled={!selectedRegion && selectedIds?.length === 0}

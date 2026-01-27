@@ -371,6 +371,76 @@ const RightSidebar = ({
 
                                 </div>
                             )}
+
+                            {/* Dynamic Positioning Settings */}
+                            {selectedRegion && selectedRegion.positioning && selectedRegion.positioning.enabled && (
+                                <div style={{
+                                    marginTop: '15px',
+                                    padding: '12px',
+                                    background: theme === 'dark' ? 'rgba(51, 65, 85, 0.4)' : 'rgba(248, 250, 252, 0.6)',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--glass-border)',
+                                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                        <Target size={14} style={{ color: 'var(--accent-color)' }} />
+                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>锚点搜索范围 (Robustness)</span>
+                                    </div>
+                                    <div style={{ padding: '0 5px' }}>
+                                        <input
+                                            type="range"
+                                            min="0" max="3" step="1"
+                                            className="glass-slider"
+                                            value={(() => {
+                                                const anchors = selectedRegion.positioning.anchors || {};
+                                                const firstTextAnchor = Object.values(anchors).find(a => a.type === 'text');
+                                                if (!firstTextAnchor || !firstTextAnchor.search_area) return 0;
+                                                const w = firstTextAnchor.search_area[2];
+                                                if (w < 0.2) return 3; // Narrow
+                                                if (w < 0.5) return 2; // Medium
+                                                if (w < 0.8) return 1; // Wide
+                                                return 0; // Global
+                                            })()}
+                                            onChange={(e) => {
+                                                const level = parseInt(e.target.value);
+                                                const positioning = { ...selectedRegion.positioning };
+                                                const anchors = { ...positioning.anchors };
+
+                                                Object.keys(anchors).forEach(key => {
+                                                    if (anchors[key].type === 'text') {
+                                                        const [ax0, ay0, ax1, ay1] = anchors[key].bounds;
+                                                        const cx = (ax0 + ax1) / 2;
+                                                        const cy = (ay0 + ay1) / 2;
+                                                        let area = null;
+                                                        if (level === 1) area = [Math.max(0, cx - 0.3), Math.max(0, cy - 0.3), 0.6, 0.6];
+                                                        else if (level === 2) area = [Math.max(0, cx - 0.15), Math.max(0, cy - 0.15), 0.3, 0.3];
+                                                        else if (level === 3) area = [Math.max(0, cx - 0.05), Math.max(0, cy - 0.05), 0.1, 0.1];
+                                                        anchors[key] = { ...anchors[key], search_area: area };
+                                                    }
+                                                });
+
+                                                if (updateRegionPositioning) {
+                                                    updateRegionPositioning(selectedRegion.id, { anchors: anchors });
+                                                }
+                                            }}
+                                            style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--accent-color)' }}
+                                        />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <span style={{ display: 'block' }}>全页</span>
+                                                <span style={{ fontSize: '9px', opacity: 0.7 }}>Global</span>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <span style={{ display: 'block' }}>精准</span>
+                                                <span style={{ fontSize: '9px', opacity: 0.7 }}>Narrow</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '10px', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                        提示：若页面有多个相似文本，请尝试降低搜索范围。
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

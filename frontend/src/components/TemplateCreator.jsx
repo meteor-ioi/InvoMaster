@@ -906,6 +906,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                         positioningMode={positioningMode}
                                                         setPositioningMode={setPositioningMode}
                                                         words={analysis?.words || []}
+                                                        theme={theme}
                                                     />
                                                 </div>
 

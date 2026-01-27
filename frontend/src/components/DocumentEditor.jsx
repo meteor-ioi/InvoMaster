@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders, Check, Save } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders, Check, Save, Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
@@ -145,7 +145,8 @@ const DocumentEditor = ({
     setSelectedIds = null,
     positioningMode = false,
     setPositioningMode = null,
-    words = []
+    words = [],
+    theme = 'light'
 }) => {
 
     const [interaction, setInteraction] = useState(null);
@@ -226,7 +227,15 @@ const DocumentEditor = ({
         });
 
         setRegions(nextRegions);
-        exitCaptureMode();
+        // Don't call exitCaptureMode() - preserve activeCorner so controls remain visible
+        setPosState(prev => ({
+            ...prev,
+            mode: null,
+            confirmedAnchor: null,
+            flashCount: 0,
+            flashingWord: null
+            // Note: activeCorner is preserved
+        }));
         if (onHistorySnapshot) onHistorySnapshot(nextRegions);
     };
 
@@ -955,7 +964,13 @@ const DocumentEditor = ({
                             const isFaded = tableRefining && tableRefining.id !== reg.id;
                             const isRefinedTable = reg.type === 'table' && reg.table_settings;
 
+                            // Hide non-selected regions when in positioning mode
+                            if (positioningMode && !isSelected) return null;
+
                             if (isFaded) return null;
+
+                            // Use purple color when in positioning mode
+                            const displayColor = (positioningMode && isSelected) ? '#a855f7' : config.color;
 
                             return (
                                 <g key={reg.id}>
@@ -977,16 +992,19 @@ const DocumentEditor = ({
                                         onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
                                     />
 
-                                    <rect
-                                        x={`${reg.x * 100}%`}
-                                        y={`${reg.y * 100}%`}
-                                        width={`${reg.width * 100}%`}
-                                        height={`${reg.height * 100}%`}
-                                        fill={isSelected ? `${config.color}33` : `${config.color}11`}
-                                        stroke={config.color}
-                                        strokeWidth={isSelected ? 3 : 2}
-                                        style={{ pointerEvents: 'none' }}
-                                    />
+                                    {/* Hide region box during picking mode and flash animation */}
+                                    {!(positioningMode && (posState.mode === 'picking_text' || posState.flashCount > 0)) && (
+                                        <rect
+                                            x={`${reg.x * 100}%`}
+                                            y={`${reg.y * 100}%`}
+                                            width={`${reg.width * 100}%`}
+                                            height={`${reg.height * 100}%`}
+                                            fill={isSelected ? `${displayColor}33` : `${displayColor}11`}
+                                            stroke={displayColor}
+                                            strokeWidth={isSelected ? 3 : 2}
+                                            style={{ pointerEvents: 'none' }}
+                                        />
+                                    )}
 
                                     {tableRefining && tableRefining.id === reg.id && (
                                         <g>
@@ -1132,91 +1150,93 @@ const DocumentEditor = ({
                                     )}
 
                                     {/* 1. Label rendered here to stay on top of borders but below handles */}
-                                    <foreignObject
-                                        x={`${reg.x * 100}%`}
-                                        y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
-                                        width={200}
-                                        height={30}
-                                        style={{
-                                            overflow: 'visible',
-                                            pointerEvents: 'none' // Container doesn't block events
-                                        }}
-                                    >
-                                        <div
-                                            onClick={(e) => e.stopPropagation()}
+                                    {!(positioningMode && isSelected) && (
+                                        <foreignObject
+                                            x={`${reg.x * 100}%`}
+                                            y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
+                                            width={200}
+                                            height={30}
                                             style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                padding: `2px 8px`,
-                                                background: config.color,
-                                                color: '#fff',
-                                                fontSize: `11px`,
-                                                fontWeight: 'bold',
-                                                borderRadius: '3px 3px 3px 0',
-                                                whiteSpace: 'nowrap',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                                opacity: 0.9,
-                                                transformOrigin: 'top left',
-                                                gap: `6px`,
-                                                cursor: 'default',
-                                                pointerEvents: 'auto'
+                                                overflow: 'visible',
+                                                pointerEvents: 'none' // Container doesn't block events
                                             }}
                                         >
                                             <div
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onToggleLock && onToggleLock(reg.id);
-                                                }}
+                                                onClick={(e) => e.stopPropagation()}
                                                 style={{
-                                                    display: 'flex',
+                                                    display: 'inline-flex',
                                                     alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: `18px`,
-                                                    height: `18px`,
-                                                    borderRadius: '50%',
-                                                    background: reg.locked ? '#f97316' : 'rgba(255,255,255,0.2)',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s ease',
-                                                    border: reg.locked ? '1px solid #fff' : 'none'
+                                                    padding: `2px 8px`,
+                                                    background: displayColor,
+                                                    color: '#fff',
+                                                    fontSize: `11px`,
+                                                    fontWeight: 'bold',
+                                                    borderRadius: '3px 3px 3px 0',
+                                                    whiteSpace: 'nowrap',
+                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                                    opacity: 0.9,
+                                                    transformOrigin: 'top left',
+                                                    gap: `6px`,
+                                                    cursor: 'default',
+                                                    pointerEvents: 'auto'
                                                 }}
                                             >
-                                                {reg.locked ? (
-                                                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                    </svg>
-                                                ) : (
-                                                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-                                                    </svg>
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onToggleLock && onToggleLock(reg.id);
+                                                    }}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        width: `18px`,
+                                                        height: `18px`,
+                                                        borderRadius: '50%',
+                                                        background: reg.locked ? '#f97316' : 'rgba(255,255,255,0.2)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease',
+                                                        border: reg.locked ? '1px solid #fff' : 'none'
+                                                    }}
+                                                >
+                                                    {reg.locked ? (
+                                                        <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                        </svg>
+                                                    ) : (
+                                                        <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <span style={{ pointerEvents: 'none' }}>
+                                                    {(() => {
+                                                        const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
+                                                        const displayText = isGenericLabel ? config.label : reg.label;
+                                                        const isDynamic = reg.positioning?.anchors && Object.keys(reg.positioning.anchors).length > 0;
+
+                                                        return (
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                {displayText}
+                                                                {isDynamic && (
+                                                                    <div title="已启用动态定位" style={{ display: 'flex', alignItems: 'center' }}>
+                                                                        <Anchor size={12} color="white" fill="white" fillOpacity={0.5} />
+                                                                    </div>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </span>
+                                                {isRefinedTable && (
+                                                    <div title="已应用高精度表格微调" style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+                                                        <Sliders size={11} />
+                                                    </div>
                                                 )}
                                             </div>
-                                            <span style={{ pointerEvents: 'none' }}>
-                                                {(() => {
-                                                    const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
-                                                    const displayText = isGenericLabel ? config.label : reg.label;
-                                                    const isDynamic = reg.positioning?.anchors && Object.keys(reg.positioning.anchors).length > 0;
-
-                                                    return (
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            {displayText}
-                                                            {isDynamic && (
-                                                                <div title="已启用动态定位" style={{ display: 'flex', alignItems: 'center' }}>
-                                                                    <Anchor size={12} color="white" fill="white" fillOpacity={0.5} />
-                                                                </div>
-                                                            )}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </span>
-                                            {isRefinedTable && (
-                                                <div title="已应用高精度表格微调" style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
-                                                    <Sliders size={11} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </foreignObject>
+                                        </foreignObject>
+                                    )}
 
                                     {/* 3. Handles (Rendered later to be on top) */}
                                     {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
@@ -1401,6 +1421,10 @@ const DocumentEditor = ({
                                 if (corner.includes('b')) cy += selectedRegion.height;
 
                                 const isActive = posState.activeCorner === corner;
+
+                                // Hide non-active corners during picking mode or flash animation
+                                const isPickingOrFlashing = posState.mode === 'picking_text' || posState.flashCount > 0;
+                                if (isPickingOrFlashing && !isActive) return null;
 
                                 const isAnchored = selectedRegion?.positioning?.anchors?.[corner];
                                 const themeColor = isAnchored ? 'var(--primary-color)' : 'var(--accent-color)';
@@ -1599,6 +1623,270 @@ const DocumentEditor = ({
                                 />
                             )}
 
+                            {/* Persistent Anchors Visualization & Controls */}
+                            {positioningMode && selectedRegion && selectedRegion.positioning && selectedRegion.positioning.anchors && (
+                                Object.entries(selectedRegion.positioning.anchors).map(([corner, anchor]) => {
+                                    if (anchor.type !== 'text') return null;
+
+                                    // anchor.bounds is [x0, y0, x1, y1]
+                                    const [ax0, ay0, ax1, ay1] = anchor.bounds;
+                                    const ax = (ax0 + ax1) / 2;
+                                    const ay = (ay0 + ay1) / 2;
+
+                                    // Region corner position
+                                    let cx = selectedRegion.x;
+                                    let cy = selectedRegion.y;
+                                    if (corner.includes('r')) cx += selectedRegion.width;
+                                    if (corner.includes('b')) cy += selectedRegion.height;
+
+                                    // Helper to update anchor
+                                    const handleExpand = (direction) => {
+                                        // 1. Identify current word geometric center/bounds
+                                        // 2. Find nearest word in direction
+                                        // 3. Merge bounds and text
+
+                                        const currentCenterY = (ay0 + ay1) / 2;
+                                        const currentHeight = ay1 - ay0;
+                                        const currentCenterX = (ax0 + ax1) / 2;
+
+                                        // Filter words on same line (heuristic)
+                                        const lineWords = words.filter(w => {
+                                            const wCenterY = (w.y0 + w.y1) / 2;
+                                            return Math.abs(wCenterY - currentCenterY) < currentHeight * 0.5;
+                                        });
+
+                                        let targetWord = null;
+                                        if (direction === 'prev') {
+                                            // Find word ending near ax0
+                                            // Sort by x1 descending, find first where x1 < ax0
+                                            const candidates = lineWords.filter(w => w.x1 < ax0 + 0.005).sort((a, b) => b.x1 - a.x1);
+                                            if (candidates.length > 0) targetWord = candidates[0];
+                                        } else if (direction === 'next') {
+                                            // Find word starting near ax1
+                                            // Sort by x0 ascending, find first where x0 > ax1
+                                            const candidates = lineWords.filter(w => w.x0 > ax1 - 0.005).sort((a, b) => a.x0 - b.x0);
+                                            if (candidates.length > 0) targetWord = candidates[0];
+                                        } else if (direction === 'shrink_prev') {
+                                            const parts = anchor?.text?.split(' ') || [];
+                                            if (parts.length > 1) {
+                                                const newText = parts.slice(1).join(' ');
+                                                const containedWords = lineWords.filter(w => w.x0 >= ax0 - 0.01 && w.x1 <= ax1 + 0.01).sort((a, b) => a.x0 - b.x0);
+                                                if (containedWords.length >= parts.length) {
+                                                    const newWords = containedWords.slice(1);
+                                                    const newBounds = [
+                                                        Math.min(...newWords.map(w => w.x0)), Math.min(...newWords.map(w => w.y0)),
+                                                        Math.max(...newWords.map(w => w.x1)), Math.max(...newWords.map(w => w.y1))
+                                                    ];
+                                                    const newAx = (newBounds[0] + newBounds[2]) / 2;
+                                                    const newAy = (newBounds[1] + newBounds[3]) / 2;
+                                                    // Clear expandDir if back to 1 word
+                                                    const newExpandDir = newWords.length > 1 ? anchor.expandDir : undefined;
+                                                    const nextRegions = regions.map(r => {
+                                                        if (r.id !== selectedRegion.id) return r;
+                                                        const newPos = { ...r.positioning };
+                                                        newPos.anchors = { ...newPos.anchors };
+                                                        newPos.anchors[corner] = { ...anchor, text: newText, bounds: newBounds, offset_x: cx - newAx, offset_y: cy - newAy, expandDir: newExpandDir };
+                                                        return { ...r, positioning: newPos };
+                                                    });
+                                                    setRegions(nextRegions);
+                                                    return;
+                                                }
+                                            }
+                                        } else if (direction === 'shrink_next') {
+                                            const parts = anchor?.text?.split(' ') || [];
+                                            if (parts.length > 1) {
+                                                const newText = parts.slice(0, -1).join(' ');
+                                                const containedWords = lineWords.filter(w => w.x0 >= ax0 - 0.01 && w.x1 <= ax1 + 0.01).sort((a, b) => a.x0 - b.x0);
+                                                if (containedWords.length >= parts.length) {
+                                                    const newWords = containedWords.slice(0, -1);
+                                                    const newBounds = [
+                                                        Math.min(...newWords.map(w => w.x0)), Math.min(...newWords.map(w => w.y0)),
+                                                        Math.max(...newWords.map(w => w.x1)), Math.max(...newWords.map(w => w.y1))
+                                                    ];
+                                                    const newAx = (newBounds[0] + newBounds[2]) / 2;
+                                                    const newAy = (newBounds[1] + newBounds[3]) / 2;
+                                                    // Clear expandDir if back to 1 word
+                                                    const newExpandDir = newWords.length > 1 ? anchor.expandDir : undefined;
+                                                    const nextRegions = regions.map(r => {
+                                                        if (r.id !== selectedRegion.id) return r;
+                                                        const newPos = { ...r.positioning };
+                                                        newPos.anchors = { ...newPos.anchors };
+                                                        newPos.anchors[corner] = { ...anchor, text: newText, bounds: newBounds, offset_x: cx - newAx, offset_y: cy - newAy, expandDir: newExpandDir };
+                                                        return { ...r, positioning: newPos };
+                                                    });
+                                                    setRegions(nextRegions);
+                                                    return;
+                                                }
+                                            }
+                                        } else if (direction === 'shrink_start') {
+                                            // Not implemented: requires knowing original split. 
+                                            // For now simpler: Just contract by splitting string? 
+                                            // Hard without history. Let's just stick to expand for now as per plan focus, 
+                                            // or maybe basic shrink if we can re-find the "sub-words".
+                                            // Actually, robust shrink requires re-matching the text in the "words" list.
+
+                                            // Let's implement robust "Remove last word" if it matches?
+                                            // Too complex for single step. Let's start with Expand.
+                                            return;
+                                        }
+
+                                        if (targetWord) {
+                                            const newText = direction === 'prev' ? `${targetWord.text} ${anchor?.text || ''}` : `${anchor?.text || ''} ${targetWord.text}`;
+                                            const newBounds = [
+                                                Math.min(ax0, targetWord.x0),
+                                                Math.min(ay0, targetWord.y0),
+                                                Math.max(ax1, targetWord.x1),
+                                                Math.max(ay1, targetWord.y1)
+                                            ];
+
+                                            // Recalculate offset (Offset is RegionCorner - AnchorCenter)
+                                            // AnchorCenter changes!
+                                            const newAx = (newBounds[0] + newBounds[2]) / 2;
+                                            const newAy = (newBounds[1] + newBounds[3]) / 2;
+
+                                            // We want to KEEP the Region where it is.
+                                            // So Offset = RegionCorner - NewAnchorCenter
+                                            const newOffsetX = cx - newAx;
+                                            const newOffsetY = cy - newAy;
+
+                                            // Track expansion direction
+                                            const newExpandDir = direction === 'prev' ? 'left' : 'right';
+
+                                            const nextRegions = regions.map(r => {
+                                                if (r.id !== selectedRegion.id) return r;
+                                                const newPos = { ...r.positioning };
+                                                newPos.anchors = { ...newPos.anchors };
+                                                newPos.anchors[corner] = {
+                                                    ...anchor,
+                                                    text: newText,
+                                                    bounds: newBounds,
+                                                    offset_x: newOffsetX,
+                                                    offset_y: newOffsetY,
+                                                    expandDir: newExpandDir
+                                                };
+                                                return { ...r, positioning: newPos };
+                                            });
+                                            setRegions(nextRegions);
+                                        }
+                                    };
+
+                                    return (
+                                        <React.Fragment key={`anchor-vis-${corner}`}>
+                                            {/* Connection Line */}
+                                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 65 }}>
+                                                <line
+                                                    x1={`${cx * 100}%`}
+                                                    y1={`${cy * 100}%`}
+                                                    x2={`${ax * 100}%`}
+                                                    y2={`${ay * 100}%`}
+                                                    stroke="var(--primary-color)"
+                                                    strokeWidth="1.5"
+                                                    strokeDasharray="4 2"
+                                                    opacity="0.6"
+                                                />
+                                            </svg>
+
+                                            {/* Anchor Box - Clickable to select */}
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPosState(prev => ({ ...prev, activeCorner: corner }));
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: `${ax0 * 100}%`,
+                                                    top: `${ay0 * 100}%`,
+                                                    width: `${(ax1 - ax0) * 100}%`,
+                                                    height: `${(ay1 - ay0) * 100}%`,
+                                                    border: `1.5px dashed ${corner === posState.activeCorner ? 'var(--accent-color)' : 'var(--primary-color)'}`,
+                                                    background: corner === posState.activeCorner ? 'rgba(139, 92, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                                                    pointerEvents: 'auto',
+                                                    cursor: 'pointer',
+                                                    zIndex: 66
+                                                }}
+                                            />
+
+                                            {/* Anchor Controls - Only show for active corner */}
+                                            {corner === posState.activeCorner && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: `${ax * 100}%`,
+                                                        top: `${ay0 * 100}%`,
+                                                        transform: 'translate(-50%, -100%) translateY(-6px)',
+                                                        display: 'flex',
+                                                        gap: '2px',
+                                                        padding: '2px',
+                                                        background: theme === 'dark' ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                                                        backdropFilter: 'blur(6px)',
+                                                        border: `1px solid ${theme === 'dark' ? 'rgba(100,116,139,0.5)' : 'rgba(203,213,225,0.8)'}`,
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                                                        pointerEvents: 'auto',
+                                                        zIndex: 200,
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    {/* Smart Left Button (<): If expanded right, shrink from right; else expand left */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const expandDir = anchor?.expandDir;
+                                                            // If expanded right, clicking < shrinks from right
+                                                            // If not expanded or expanded left, clicking < expands left
+                                                            if (expandDir === 'right') {
+                                                                handleExpand('shrink_next');
+                                                            } else {
+                                                                handleExpand('prev');
+                                                            }
+                                                        }}
+                                                        title={anchor?.expandDir === 'right' ? "向左收缩 (Shrink Left)" : "向左扩展 (Expand Left)"}
+                                                        style={{
+                                                            background: theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)',
+                                                            color: 'var(--text-primary)',
+                                                            border: 'none', borderRadius: '4px', width: '22px', height: '22px',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#fff'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                                    >
+                                                        <ChevronLeft size={14} strokeWidth={2.5} />
+                                                    </button>
+
+                                                    {/* Smart Right Button (>): If expanded left, shrink from left; else expand right */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const expandDir = anchor?.expandDir;
+                                                            // If expanded left, clicking > shrinks from left
+                                                            // If not expanded or expanded right, clicking > expands right
+                                                            if (expandDir === 'left') {
+                                                                handleExpand('shrink_prev');
+                                                            } else {
+                                                                handleExpand('next');
+                                                            }
+                                                        }}
+                                                        title={anchor?.expandDir === 'left' ? "向右收缩 (Shrink Right)" : "向右扩展 (Expand Right)"}
+                                                        style={{
+                                                            background: theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)',
+                                                            color: 'var(--text-primary)',
+                                                            border: 'none', borderRadius: '4px', width: '22px', height: '22px',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#fff'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                                    >
+                                                        <ChevronRight size={14} strokeWidth={2.5} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
+
 
                         </div>
                     )}
@@ -1697,7 +1985,7 @@ const DocumentEditor = ({
                     )}
                 </div >
             </div>
-        </div>
+        </div >
     );
 };
 
