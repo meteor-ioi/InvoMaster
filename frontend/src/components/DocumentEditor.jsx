@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders, Check, Save } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
     'table': { label: '表格', color: '#10b981', icon: Grid3X3 },
     'plain text': { label: '普通正文', color: '#94a3b8', icon: AlignLeft },
     'text': { label: '普通正文', color: '#94a3b8', icon: Type },
-    'abandon': { label: '无效区域', color: '#808080', icon: Ban },
+    'abandon': { label: '无效区域', color: '#ef4444', icon: Ban },
     'figure': { label: '图片', color: '#f59e0b', icon: Image },
     'list': { label: '列表', color: '#ec4899', icon: List },
     'header': { label: '页眉', color: '#6366f1', icon: PanelTop },
@@ -16,7 +16,7 @@ const TYPE_CONFIG = {
     'equation': { label: '数学公式', color: '#60a5fa', icon: Sigma },
     'table caption': { label: '表格标题', color: '#0ea5e9', icon: TextSelect },
     'figure caption': { label: '图片标题', color: '#f97316', icon: MessageSquareText },
-    'custom': { label: '自定义区域', color: '#f43f5e', icon: BoxSelect }
+    'custom': { label: '自定义区域', color: '#3b82f6', icon: BoxSelect }
 };
 
 const HANDLE_SIZE = 9; // Slightly increased base size
@@ -854,467 +854,513 @@ const DocumentEditor = ({
     }, [isDrawing, interaction, handleMouseMove, handleMouseUp]);
 
     return (
-        <div
-            ref={viewportRef}
-            style={{
-                width: '100%',
-                flex: 1,
-                minHeight: 0,
-                overflow: 'auto',
-                background: '#1a1a1a',
-                borderRadius: '0',
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
-                position: 'relative'
-            }}
-        >
-            <div
-                style={{
-                    position: 'relative',
-                    width: `${100 * zoom}%`,
-                    margin: '0 auto',
-                    cursor: editorMode === 'add' || (editorMode === 'select' && shiftPressed) ? 'crosshair' :
-                        (editorMode === 'select' && altPressed) ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='white' stroke-width='3' stroke-linecap='square'/%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='black' stroke-width='1' stroke-linecap='square'/%3E%3C/svg%3E") 8 8, crosshair` :
-                            (editorMode === 'select' ? 'cell' : 'default'),
-                    userSelect: 'none',
-                    transition: 'width 0.2s ease-out'
-                }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                ref={containerRef}
-            >
-                <img
-                    src={image}
-                    alt="document"
-                    style={{
-                        width: '100%', height: 'auto', display: 'block', pointerEvents: 'none',
-                        opacity: (tableRefining && showRegions) ? 0.3 : 1
-                    }}
-                />
-
-                <svg style={{
-                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                    pointerEvents: 'none',
-                    opacity: (showRegions && !(positioningMode && posState.mode === 'picking_text')) ? 1 : 0,
-                    transition: 'opacity 0.2s'
+        <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {positioningMode && (
+                <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 2000,
+                    pointerEvents: 'auto'
                 }}>
-                    {regions.map(reg => {
-                        const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
-                        const isFiltered = activeFilters.length > 0 && !activeFilters.includes(reg.type.toLowerCase());
-                        if (isFiltered) return null;
+                    <button
+                        onClick={() => setPositioningMode(false)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: 'rgba(0, 0, 0, 0.75)',
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            fontSize: '11px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap',
+                            backdropFilter: 'blur(8px)',
+                            letterSpacing: '0.02em'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.9)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.75)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                        }}
+                    >
+                        <Save size={14} />
+                        保存并退出
+                    </button>
+                </div>
+            )}
+            <div
+                ref={viewportRef}
+                style={{
+                    width: '100%',
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'auto',
+                    background: '#1a1a1a',
+                    borderRadius: '0',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
+                    position: 'relative'
+                }}
+            >
+                <div
+                    style={{
+                        position: 'relative',
+                        width: `${100 * zoom}%`,
+                        margin: '0 auto',
+                        cursor: editorMode === 'add' || (editorMode === 'select' && shiftPressed) ? 'crosshair' :
+                            (editorMode === 'select' && altPressed) ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='white' stroke-width='3' stroke-linecap='square'/%3E%3Cline x1='1' y1='8.5' x2='16' y2='8.5' stroke='black' stroke-width='1' stroke-linecap='square'/%3E%3C/svg%3E") 8 8, crosshair` :
+                                (editorMode === 'select' ? 'cell' : 'default'),
+                        userSelect: 'none',
+                        transition: 'width 0.2s ease-out'
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    ref={containerRef}
+                >
+                    <img
+                        src={image}
+                        alt="document"
+                        style={{
+                            width: '100%', height: 'auto', display: 'block', pointerEvents: 'none',
+                            opacity: (tableRefining && showRegions) ? 0.3 : 1
+                        }}
+                    />
 
-                        const config = TYPE_CONFIG[reg.type?.toLowerCase()] || TYPE_CONFIG['custom'];
-                        const isSelected = selectedId === reg.id || (selectedIds && selectedIds.includes(reg.id));
-                        const isFaded = tableRefining && tableRefining.id !== reg.id;
-                        const isRefinedTable = reg.type === 'table' && reg.table_settings;
+                    <svg style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        pointerEvents: 'none',
+                        opacity: (showRegions && !(positioningMode && posState.mode === 'picking_text')) ? 1 : 0,
+                        transition: 'opacity 0.2s'
+                    }}>
+                        {regions.map(reg => {
+                            const activeFilters = Object.entries(viewFilters).filter(([_, v]) => v).map(([k, _]) => k);
+                            const isFiltered = activeFilters.length > 0 && !activeFilters.includes(reg.type.toLowerCase());
+                            if (isFiltered) return null;
 
-                        if (isFaded) return null;
+                            const config = TYPE_CONFIG[reg.type?.toLowerCase()] || TYPE_CONFIG['custom'];
+                            const isSelected = selectedId === reg.id || (selectedIds && selectedIds.includes(reg.id));
+                            const isFaded = tableRefining && tableRefining.id !== reg.id;
+                            const isRefinedTable = reg.type === 'table' && reg.table_settings;
 
-                        return (
-                            <g key={reg.id}>
+                            if (isFaded) return null;
+
+                            return (
+                                <g key={reg.id}>
 
 
-                                {/* 2. Main Box Interaction Hit Area */}
-                                <rect
-                                    x={`${reg.x * 100}%`}
-                                    y={`${reg.y * 100}%`}
-                                    width={`${reg.width * 100}%`}
-                                    height={`${reg.height * 100}%`}
-                                    fill="transparent"
-                                    style={{
-                                        pointerEvents: 'auto',
-                                        cursor: tableRefining ? 'default' : 'move',
-                                        stroke: 'transparent',
-                                        strokeWidth: 15 / zoom
-                                    }}
-                                    onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
-                                />
+                                    {/* 2. Main Box Interaction Hit Area */}
+                                    <rect
+                                        x={`${reg.x * 100}%`}
+                                        y={`${reg.y * 100}%`}
+                                        width={`${reg.width * 100}%`}
+                                        height={`${reg.height * 100}%`}
+                                        fill="transparent"
+                                        style={{
+                                            pointerEvents: 'auto',
+                                            cursor: tableRefining ? 'default' : 'move',
+                                            stroke: 'transparent',
+                                            strokeWidth: 15 / zoom
+                                        }}
+                                        onMouseDown={(e) => !tableRefining && startMove(e, reg.id)}
+                                    />
 
-                                <rect
-                                    x={`${reg.x * 100}%`}
-                                    y={`${reg.y * 100}%`}
-                                    width={`${reg.width * 100}%`}
-                                    height={`${reg.height * 100}%`}
-                                    fill={isSelected ? `${config.color}33` : `${config.color}11`}
-                                    stroke={config.color}
-                                    strokeWidth={isSelected ? 3 : 2}
-                                    style={{ pointerEvents: 'none' }}
-                                />
+                                    <rect
+                                        x={`${reg.x * 100}%`}
+                                        y={`${reg.y * 100}%`}
+                                        width={`${reg.width * 100}%`}
+                                        height={`${reg.height * 100}%`}
+                                        fill={isSelected ? `${config.color}33` : `${config.color}11`}
+                                        stroke={config.color}
+                                        strokeWidth={isSelected ? 3 : 2}
+                                        style={{ pointerEvents: 'none' }}
+                                    />
 
-                                {tableRefining && tableRefining.id === reg.id && (
-                                    <g>
-                                        {tableRefining.cells?.map((cell, idx) => (
-                                            <rect
-                                                key={`cell-${idx}`}
-                                                x={`${(reg.x + cell.x * reg.width) * 100}%`}
-                                                y={`${(reg.y + cell.y * reg.height) * 100}%`}
-                                                width={`${cell.w * reg.width * 100}%`}
-                                                height={`${cell.h * reg.height * 100}%`}
-                                                fill="rgba(59, 130, 246, 0.05)"
-                                                stroke="rgba(59, 130, 246, 0.2)"
-                                                strokeWidth={1}
-                                            />
-                                        ))}
-                                        {tableRefining.cols.map((colX, idx) => (
-                                            <line
-                                                key={`col-line-${idx}`}
-                                                x1={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y1={`${reg.y * 100}%`}
-                                                x2={`${(reg.x + colX * reg.width) * 100}%`}
-                                                y2={`${(reg.y + reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.8)"
-                                                strokeWidth={1.5}
-                                                style={{ pointerEvents: 'none' }}
-                                            />
-                                        ))}
-                                        {tableRefining.rows.map((rowY, idx) => (
-                                            <line
-                                                key={`row-line-${idx}`}
-                                                x1={`${reg.x * 100}%`}
-                                                y1={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                x2={`${(reg.x + reg.width) * 100}%`}
-                                                y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                stroke="rgba(16, 185, 129, 0.8)"
-                                                strokeWidth={1.5}
-                                                style={{ pointerEvents: 'none' }}
-                                            />
-                                        ))}
-                                        {tableRefining.cols.map((colX, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
-                                            const isLocked = tableRefining.settings?.vertical_locked;
-                                            return (
+                                    {tableRefining && tableRefining.id === reg.id && (
+                                        <g>
+                                            {tableRefining.cells?.map((cell, idx) => (
+                                                <rect
+                                                    key={`cell-${idx}`}
+                                                    x={`${(reg.x + cell.x * reg.width) * 100}%`}
+                                                    y={`${(reg.y + cell.y * reg.height) * 100}%`}
+                                                    width={`${cell.w * reg.width * 100}%`}
+                                                    height={`${cell.h * reg.height * 100}%`}
+                                                    fill="rgba(59, 130, 246, 0.05)"
+                                                    stroke="rgba(59, 130, 246, 0.2)"
+                                                    strokeWidth={1}
+                                                />
+                                            ))}
+                                            {tableRefining.cols.map((colX, idx) => (
                                                 <line
-                                                    key={`col-hit-${idx}`}
+                                                    key={`col-line-${idx}`}
                                                     x1={`${(reg.x + colX * reg.width) * 100}%`}
                                                     y1={`${reg.y * 100}%`}
                                                     x2={`${(reg.x + colX * reg.width) * 100}%`}
                                                     y2={`${(reg.y + reg.height) * 100}%`}
-                                                    stroke="transparent"
-                                                    strokeWidth={12}
-                                                    style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'col-resize' }}
-                                                    onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
+                                                    stroke="rgba(16, 185, 129, 0.8)"
+                                                    strokeWidth={1.5}
+                                                    style={{ pointerEvents: 'none' }}
                                                 />
-                                            );
-                                        })}
-                                        {tableRefining.rows.map((rowY, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
-                                            const isLocked = tableRefining.settings?.horizontal_locked;
-                                            return (
+                                            ))}
+                                            {tableRefining.rows.map((rowY, idx) => (
                                                 <line
-                                                    key={`row-hit-${idx}`}
+                                                    key={`row-line-${idx}`}
                                                     x1={`${reg.x * 100}%`}
                                                     y1={`${(reg.y + rowY * reg.height) * 100}%`}
                                                     x2={`${(reg.x + reg.width) * 100}%`}
                                                     y2={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                    stroke="transparent"
-                                                    strokeWidth={12}
-                                                    style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'row-resize' }}
-                                                    onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
+                                                    stroke="rgba(16, 185, 129, 0.8)"
+                                                    strokeWidth={1.5}
+                                                    style={{ pointerEvents: 'none' }}
                                                 />
-                                            );
-                                        })}
-                                        {tableRefining.cols.map((colX, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
-                                            const isLocked = tableRefining.settings?.vertical_locked;
-                                            if (isBorder || isLocked) return null;
-                                            return (
-                                                <g
-                                                    key={`col-del-${idx}`}
-                                                    onMouseDown={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        deleteTableLine(e, 'col', idx);
-                                                    }}
-                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                >
-                                                    <circle
-                                                        cx={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        cy={`${(reg.y + reg.height) * 100}%`}
-                                                        r={10}
-                                                        fill="#ef4444"
-                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                            ))}
+                                            {tableRefining.cols.map((colX, idx) => {
+                                                const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                                const isLocked = tableRefining.settings?.vertical_locked;
+                                                return (
+                                                    <line
+                                                        key={`col-hit-${idx}`}
+                                                        x1={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y1={`${reg.y * 100}%`}
+                                                        x2={`${(reg.x + colX * reg.width) * 100}%`}
+                                                        y2={`${(reg.y + reg.height) * 100}%`}
+                                                        stroke="transparent"
+                                                        strokeWidth={12}
+                                                        style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'col-resize' }}
+                                                        onMouseDown={(e) => startTableLineMove(e, 'col', idx, colX)}
                                                     />
-                                                    <text
-                                                        x={`${(reg.x + colX * reg.width) * 100}%`}
-                                                        y={`${(reg.y + reg.height) * 100}%`}
-                                                        fill="white"
-                                                        fontSize={14}
-                                                        fontWeight="bold"
-                                                        textAnchor="middle"
-                                                        dominantBaseline="middle"
-                                                        style={{ pointerEvents: 'none' }}
-                                                    >-</text>
-                                                </g>
-                                            );
-                                        })}
-                                        {tableRefining.rows.map((rowY, idx) => {
-                                            const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
-                                            const isLocked = tableRefining.settings?.horizontal_locked;
-                                            if (isBorder || isLocked) return null;
-                                            return (
-                                                <g
-                                                    key={`row-del-${idx}`}
-                                                    onMouseDown={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        deleteTableLine(e, 'row', idx);
-                                                    }}
-                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                                >
-                                                    <circle
-                                                        cx={`${(reg.x + reg.width) * 100}%`}
-                                                        cy={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        r={10}
-                                                        fill="#ef4444"
-                                                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                );
+                                            })}
+                                            {tableRefining.rows.map((rowY, idx) => {
+                                                const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                                const isLocked = tableRefining.settings?.horizontal_locked;
+                                                return (
+                                                    <line
+                                                        key={`row-hit-${idx}`}
+                                                        x1={`${reg.x * 100}%`}
+                                                        y1={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        x2={`${(reg.x + reg.width) * 100}%`}
+                                                        y2={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                        stroke="transparent"
+                                                        strokeWidth={12}
+                                                        style={{ pointerEvents: isLocked ? 'none' : 'auto', cursor: isBorder || isLocked ? 'default' : 'row-resize' }}
+                                                        onMouseDown={(e) => startTableLineMove(e, 'row', idx, rowY)}
                                                     />
-                                                    <text
-                                                        x={`${(reg.x + reg.width) * 100}%`}
-                                                        y={`${(reg.y + rowY * reg.height) * 100}%`}
-                                                        fill="white"
-                                                        fontSize={14}
-                                                        fontWeight="bold"
-                                                        textAnchor="middle"
-                                                        dominantBaseline="middle"
-                                                        style={{ pointerEvents: 'none' }}
-                                                    >-</text>
-                                                </g>
-                                            );
-                                        })}
-                                    </g>
-                                )}
+                                                );
+                                            })}
+                                            {tableRefining.cols.map((colX, idx) => {
+                                                const isBorder = idx === 0 || idx === tableRefining.cols.length - 1;
+                                                const isLocked = tableRefining.settings?.vertical_locked;
+                                                if (isBorder || isLocked) return null;
+                                                return (
+                                                    <g
+                                                        key={`col-del-${idx}`}
+                                                        onMouseDown={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            deleteTableLine(e, 'col', idx);
+                                                        }}
+                                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                    >
+                                                        <circle
+                                                            cx={`${(reg.x + colX * reg.width) * 100}%`}
+                                                            cy={`${(reg.y + reg.height) * 100}%`}
+                                                            r={10}
+                                                            fill="#ef4444"
+                                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                        />
+                                                        <text
+                                                            x={`${(reg.x + colX * reg.width) * 100}%`}
+                                                            y={`${(reg.y + reg.height) * 100}%`}
+                                                            fill="white"
+                                                            fontSize={14}
+                                                            fontWeight="bold"
+                                                            textAnchor="middle"
+                                                            dominantBaseline="middle"
+                                                            style={{ pointerEvents: 'none' }}
+                                                        >-</text>
+                                                    </g>
+                                                );
+                                            })}
+                                            {tableRefining.rows.map((rowY, idx) => {
+                                                const isBorder = idx === 0 || idx === tableRefining.rows.length - 1;
+                                                const isLocked = tableRefining.settings?.horizontal_locked;
+                                                if (isBorder || isLocked) return null;
+                                                return (
+                                                    <g
+                                                        key={`row-del-${idx}`}
+                                                        onMouseDown={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            deleteTableLine(e, 'row', idx);
+                                                        }}
+                                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                    >
+                                                        <circle
+                                                            cx={`${(reg.x + reg.width) * 100}%`}
+                                                            cy={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                            r={10}
+                                                            fill="#ef4444"
+                                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                                                        />
+                                                        <text
+                                                            x={`${(reg.x + reg.width) * 100}%`}
+                                                            y={`${(reg.y + rowY * reg.height) * 100}%`}
+                                                            fill="white"
+                                                            fontSize={14}
+                                                            fontWeight="bold"
+                                                            textAnchor="middle"
+                                                            dominantBaseline="middle"
+                                                            style={{ pointerEvents: 'none' }}
+                                                        >-</text>
+                                                    </g>
+                                                );
+                                            })}
+                                        </g>
+                                    )}
 
-                                {/* 1. Label rendered here to stay on top of borders but below handles */}
-                                <foreignObject
-                                    x={`${reg.x * 100}%`}
-                                    y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
-                                    width={200}
-                                    height={30}
-                                    style={{
-                                        overflow: 'visible',
-                                        pointerEvents: 'none' // Container doesn't block events
-                                    }}
-                                >
-                                    <div
-                                        onClick={(e) => e.stopPropagation()}
+                                    {/* 1. Label rendered here to stay on top of borders but below handles */}
+                                    <foreignObject
+                                        x={`${reg.x * 100}%`}
+                                        y={`${reg.y * 100 - (reg.y < 0.05 ? 0 : 0.015) / zoom * 100}%`}
+                                        width={200}
+                                        height={30}
                                         style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: `2px 8px`,
-                                            background: config.color,
-                                            color: '#fff',
-                                            fontSize: `11px`,
-                                            fontWeight: 'bold',
-                                            borderRadius: '3px 3px 3px 0',
-                                            whiteSpace: 'nowrap',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                            opacity: 0.9,
-                                            transformOrigin: 'top left',
-                                            gap: `6px`,
-                                            cursor: 'default',
-                                            pointerEvents: 'auto'
+                                            overflow: 'visible',
+                                            pointerEvents: 'none' // Container doesn't block events
                                         }}
                                     >
                                         <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onToggleLock && onToggleLock(reg.id);
-                                            }}
+                                            onClick={(e) => e.stopPropagation()}
                                             style={{
-                                                display: 'flex',
+                                                display: 'inline-flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                width: `18px`,
-                                                height: `18px`,
-                                                borderRadius: '50%',
-                                                background: reg.locked ? '#f97316' : 'rgba(255,255,255,0.2)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                border: reg.locked ? '1px solid #fff' : 'none'
+                                                padding: `2px 8px`,
+                                                background: config.color,
+                                                color: '#fff',
+                                                fontSize: `11px`,
+                                                fontWeight: 'bold',
+                                                borderRadius: '3px 3px 3px 0',
+                                                whiteSpace: 'nowrap',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                                opacity: 0.9,
+                                                transformOrigin: 'top left',
+                                                gap: `6px`,
+                                                cursor: 'default',
+                                                pointerEvents: 'auto'
                                             }}
                                         >
-                                            {reg.locked ? (
-                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                                </svg>
-                                            ) : (
-                                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-                                                </svg>
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onToggleLock && onToggleLock(reg.id);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    width: `18px`,
+                                                    height: `18px`,
+                                                    borderRadius: '50%',
+                                                    background: reg.locked ? '#f97316' : 'rgba(255,255,255,0.2)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    border: reg.locked ? '1px solid #fff' : 'none'
+                                                }}
+                                            >
+                                                {reg.locked ? (
+                                                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                                    </svg>
+                                                ) : (
+                                                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <span style={{ pointerEvents: 'none' }}>
+                                                {(() => {
+                                                    const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
+                                                    const displayText = isGenericLabel ? config.label : reg.label;
+                                                    const isDynamic = reg.positioning?.anchors && Object.keys(reg.positioning.anchors).length > 0;
+
+                                                    return (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            {displayText}
+                                                            {isDynamic && (
+                                                                <div title="已启用动态定位" style={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <Anchor size={12} color="white" fill="white" fillOpacity={0.5} />
+                                                                </div>
+                                                            )}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </span>
+                                            {isRefinedTable && (
+                                                <div title="已应用高精度表格微调" style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+                                                    <Sliders size={11} />
+                                                </div>
                                             )}
                                         </div>
-                                        <span style={{ pointerEvents: 'none' }}>
-                                            {(() => {
-                                                const isGenericLabel = !reg.label || reg.label.toLowerCase() === reg.type.toLowerCase();
-                                                const displayText = isGenericLabel ? config.label : reg.label;
-                                                const isDynamic = reg.positioning?.anchors && Object.keys(reg.positioning.anchors).length > 0;
+                                    </foreignObject>
 
-                                                return (
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        {displayText}
-                                                        {isDynamic && (
-                                                            <div title="已启用动态定位" style={{ display: 'flex', alignItems: 'center' }}>
-                                                                <Anchor size={12} color="white" fill="white" fillOpacity={0.5} />
-                                                            </div>
-                                                        )}
-                                                    </span>
-                                                );
-                                            })()}
-                                        </span>
-                                        {isRefinedTable && (
-                                            <div title="已应用高精度表格微调" style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
-                                                <Sliders size={11} />
-                                            </div>
-                                        )}
-                                    </div>
-                                </foreignObject>
+                                    {/* 3. Handles (Rendered later to be on top) */}
+                                    {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
+                                        let hx = reg.x, hy = reg.y;
+                                        if (handle.includes('e')) hx += reg.width;
+                                        if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
+                                        if (handle === 'n' || handle === 's') hx += reg.width / 2;
+                                        if (handle === 'e' || handle === 'w') hy += reg.height / 2;
+                                        if (handle === 'ne') hx = reg.x + reg.width;
 
-                                {/* 3. Handles (Rendered later to be on top) */}
-                                {isSelected && !tableRefining && !reg.locked && ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => {
-                                    let hx = reg.x, hy = reg.y;
-                                    if (handle.includes('e')) hx += reg.width;
-                                    if (handle.includes('se') || handle.includes('sw') || handle === 's') hy += reg.height;
-                                    if (handle === 'n' || handle === 's') hx += reg.width / 2;
-                                    if (handle === 'e' || handle === 'w') hy += reg.height / 2;
-                                    if (handle === 'ne') hx = reg.x + reg.width;
+                                        const scaledHandleSize = HANDLE_SIZE / zoom;
+                                        const hitAreaSize = Math.max(24, 30 / zoom);
 
-                                    const scaledHandleSize = HANDLE_SIZE / zoom;
-                                    const hitAreaSize = Math.max(24, 30 / zoom);
+                                        return (
+                                            <g key={handle}>
+                                                <rect
+                                                    x={`calc(${hx * 100}% - ${hitAreaSize / 2}px)`}
+                                                    y={`calc(${hy * 100}% - ${hitAreaSize / 2}px)`}
+                                                    width={hitAreaSize}
+                                                    height={hitAreaSize}
+                                                    fill="transparent"
+                                                    style={{ pointerEvents: 'auto', cursor: `${handle}-resize` }}
+                                                    onMouseDown={(e) => startResize(e, reg.id, handle)}
+                                                />
+                                                <rect
+                                                    x={`calc(${hx * 100}% - ${scaledHandleSize / 2}px)`}
+                                                    y={`calc(${hy * 100}% - ${scaledHandleSize / 2}px)`}
+                                                    width={scaledHandleSize}
+                                                    height={scaledHandleSize}
+                                                    fill="#fff"
+                                                    stroke={config.color}
+                                                    strokeWidth={1}
+                                                    style={{ pointerEvents: 'none' }}
+                                                />
+                                            </g>
+                                        );
+                                    })}
 
-                                    return (
-                                        <g key={handle}>
-                                            <rect
-                                                x={`calc(${hx * 100}% - ${hitAreaSize / 2}px)`}
-                                                y={`calc(${hy * 100}% - ${hitAreaSize / 2}px)`}
-                                                width={hitAreaSize}
-                                                height={hitAreaSize}
-                                                fill="transparent"
-                                                style={{ pointerEvents: 'auto', cursor: `${handle}-resize` }}
-                                                onMouseDown={(e) => startResize(e, reg.id, handle)}
+                                    {/* 4. Delete and other buttons (Rendered last) */}
+                                    {isSelected && !tableRefining && onDelete && !reg.locked && (
+                                        <g
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDelete(reg.id);
+                                            }}
+                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                        >
+                                            <circle
+                                                cx={`${(reg.x + reg.width) * 100}%`}
+                                                cy={`${reg.y * 100}%`}
+                                                r={9}
+                                                fill="#ef4444"
+                                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
                                             />
-                                            <rect
-                                                x={`calc(${hx * 100}% - ${scaledHandleSize / 2}px)`}
-                                                y={`calc(${hy * 100}% - ${scaledHandleSize / 2}px)`}
-                                                width={scaledHandleSize}
-                                                height={scaledHandleSize}
-                                                fill="#fff"
-                                                stroke={config.color}
-                                                strokeWidth={1}
-                                                style={{ pointerEvents: 'none' }}
-                                            />
+                                            <text
+                                                x={`${(reg.x + reg.width) * 100}%`}
+                                                y={`${reg.y * 100}%`}
+                                                fill="white"
+                                                fontSize={12}
+                                                fontWeight="bold"
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                            >-</text>
                                         </g>
-                                    );
-                                })}
+                                    )}
+                                </g>
+                            );
+                        })}
 
-                                {/* 4. Delete and other buttons (Rendered last) */}
-                                {isSelected && !tableRefining && onDelete && !reg.locked && (
-                                    <g
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(reg.id);
-                                        }}
-                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                                    >
-                                        <circle
-                                            cx={`${(reg.x + reg.width) * 100}%`}
-                                            cy={`${reg.y * 100}%`}
-                                            r={9}
-                                            fill="#ef4444"
-                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
-                                        />
-                                        <text
-                                            x={`${(reg.x + reg.width) * 100}%`}
-                                            y={`${reg.y * 100}%`}
-                                            fill="white"
-                                            fontSize={12}
-                                            fontWeight="bold"
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
-                                        >-</text>
-                                    </g>
-                                )}
-                            </g>
-                        );
-                    })}
-
-                    {isDrawing && currentRect && (
-                        <rect
-                            x={`${(currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x) * 100}%`}
-                            y={`${(currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y) * 100}%`}
-                            width={`${Math.abs(currentRect.width) * 100}%`}
-                            height={`${Math.abs(currentRect.height) * 100}%`}
-                            fill={currentRect.type === 'crop_box' ? "rgba(245, 158, 11, 0.15)" :
-                                currentRect.isModifiedMode === 'delete' ? "rgba(239, 68, 68, 0.15)" :
-                                    currentRect.isModifiedMode === 'add' ? "rgba(16, 185, 129, 0.15)" :
-                                        "rgba(59, 130, 246, 0.1)"}
-                            stroke={currentRect.type === 'crop_box' ? "#f59e0b" :
-                                currentRect.isModifiedMode === 'delete' ? "#ef4444" :
-                                    currentRect.isModifiedMode === 'add' ? "#10b981" :
-                                        "var(--primary-color)"}
-                            strokeWidth={2}
-                            strokeDasharray={currentRect.type === 'crop_box' ? "none" : "4 4"}
-                        />
-                    )}
-
-                    {addLineHover && tableRefining && (
-                        <g
-                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                            onClick={(e) => addTableLine(e, addLineHover.type, addLineHover.val)}
-                        >
-                            <circle
-                                cx={`${addLineHover.x * 100}%`}
-                                cy={`${addLineHover.y * 100}%`}
-                                r={12}
-                                fill="#3b82f6"
-                                stroke="#fff"
+                        {isDrawing && currentRect && (
+                            <rect
+                                x={`${(currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x) * 100}%`}
+                                y={`${(currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y) * 100}%`}
+                                width={`${Math.abs(currentRect.width) * 100}%`}
+                                height={`${Math.abs(currentRect.height) * 100}%`}
+                                fill={currentRect.type === 'crop_box' ? "rgba(245, 158, 11, 0.15)" :
+                                    currentRect.isModifiedMode === 'delete' ? "rgba(239, 68, 68, 0.15)" :
+                                        currentRect.isModifiedMode === 'add' ? "rgba(16, 185, 129, 0.15)" :
+                                            "rgba(59, 130, 246, 0.1)"}
+                                stroke={currentRect.type === 'crop_box' ? "#f59e0b" :
+                                    currentRect.isModifiedMode === 'delete' ? "#ef4444" :
+                                        currentRect.isModifiedMode === 'add' ? "#10b981" :
+                                            "var(--primary-color)"}
                                 strokeWidth={2}
-                                style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                                strokeDasharray={currentRect.type === 'crop_box' ? "none" : "4 4"}
                             />
-                            <text
-                                x={`${addLineHover.x * 100}%`}
-                                y={`${addLineHover.y * 100}%`}
-                                fill="white"
-                                fontSize={16}
-                                fontWeight="bold"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                style={{ pointerEvents: 'none' }}
-                            >+</text>
-                            <line
-                                x1={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${regions.find(r => r.id === tableRefining.id).x * 100}%`}
-                                y1={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${regions.find(r => r.id === tableRefining.id).y * 100}%`}
-                                x2={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${(regions.find(r => r.id === tableRefining.id).x + regions.find(r => r.id === tableRefining.id).width) * 100}%`}
-                                y2={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${(regions.find(r => r.id === tableRefining.id).y + regions.find(r => r.id === tableRefining.id).height) * 100}%`}
-                                stroke="#3b82f6"
-                                strokeWidth={1}
-                                strokeDasharray={`4 4`}
-                                opacity={0.6}
-                                pointerEvents="none"
-                            />
-                        </g>
-                    )}
-                </svg>
+                        )}
 
-                {/* Positioning Mode Interaction Layer */}
-                {positioningMode && selectedRegion && (
-                    <div
-                        style={{
-                            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                            pointerEvents: (posState.mode === 'picking_text' || posState.confirmedAnchor) ? 'auto' : 'none',
-                            background: 'transparent',
-                            zIndex: 50
-                        }}
-                        onMouseDown={(e) => {
-                            // 阻止冒泡到容器的 handleMouseDown
-                            e.stopPropagation();
-                            // 如果是图像框选模式，开始框选
+                        {addLineHover && tableRefining && (
+                            <g
+                                style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                onClick={(e) => addTableLine(e, addLineHover.type, addLineHover.val)}
+                            >
+                                <circle
+                                    cx={`${addLineHover.x * 100}%`}
+                                    cy={`${addLineHover.y * 100}%`}
+                                    r={12}
+                                    fill="#3b82f6"
+                                    stroke="#fff"
+                                    strokeWidth={2}
+                                    style={{ filter: 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' }}
+                                />
+                                <text
+                                    x={`${addLineHover.x * 100}%`}
+                                    y={`${addLineHover.y * 100}%`}
+                                    fill="white"
+                                    fontSize={16}
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                    style={{ pointerEvents: 'none' }}
+                                >+</text>
+                                <line
+                                    x1={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${regions.find(r => r.id === tableRefining.id).x * 100}%`}
+                                    y1={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${regions.find(r => r.id === tableRefining.id).y * 100}%`}
+                                    x2={addLineHover.type === 'col' ? `${addLineHover.x * 100}%` : `${(regions.find(r => r.id === tableRefining.id).x + regions.find(r => r.id === tableRefining.id).width) * 100}%`}
+                                    y2={addLineHover.type === 'row' ? `${addLineHover.y * 100}%` : `${(regions.find(r => r.id === tableRefining.id).y + regions.find(r => r.id === tableRefining.id).height) * 100}%`}
+                                    stroke="#3b82f6"
+                                    strokeWidth={1}
+                                    strokeDasharray={`4 4`}
+                                    opacity={0.6}
+                                    pointerEvents="none"
+                                />
+                            </g>
+                        )}
+                    </svg>
 
-                        }}
-                    >
-                        <style>{`
+                    {/* Positioning Mode Interaction Layer */}
+                    {positioningMode && selectedRegion && (
+                        <div
+                            style={{
+                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                                pointerEvents: (posState.mode === 'picking_text' || posState.confirmedAnchor) ? 'auto' : 'none',
+                                background: 'transparent',
+                                zIndex: 50
+                            }}
+                            onMouseDown={(e) => {
+                                // 阻止冒泡到容器的 handleMouseDown
+                                e.stopPropagation();
+                                // 如果是图像框选模式，开始框选
+
+                            }}
+                        >
+                            <style>{`
                             @keyframes anchor-breath {
                                 0% { transform: scale(1); opacity: 0.8; }
                                 50% { transform: scale(1.15); opacity: 1; }
@@ -1346,311 +1392,312 @@ const DocumentEditor = ({
                         `}</style>
 
 
-                        {/* Corner Breathing Circles */}
-                        {['tl', 'tr', 'bl', 'br'].map(corner => {
+                            {/* Corner Breathing Circles */}
+                            {['tl', 'tr', 'bl', 'br'].map(corner => {
 
-                            let cx = selectedRegion.x;
-                            let cy = selectedRegion.y;
-                            if (corner.includes('r')) cx += selectedRegion.width;
-                            if (corner.includes('b')) cy += selectedRegion.height;
+                                let cx = selectedRegion.x;
+                                let cy = selectedRegion.y;
+                                if (corner.includes('r')) cx += selectedRegion.width;
+                                if (corner.includes('b')) cy += selectedRegion.height;
 
-                            const isActive = posState.activeCorner === corner;
+                                const isActive = posState.activeCorner === corner;
 
-                            const isAnchored = selectedRegion?.positioning?.anchors?.[corner];
-                            const themeColor = isAnchored ? 'var(--primary-color)' : 'var(--accent-color)';
-                            const shadowColor = isAnchored ? 'rgba(59, 130, 246, 0.5)' : 'rgba(139, 92, 246, 0.5)';
+                                const isAnchored = selectedRegion?.positioning?.anchors?.[corner];
+                                const themeColor = isAnchored ? 'var(--primary-color)' : 'var(--accent-color)';
+                                const shadowColor = isAnchored ? 'rgba(59, 130, 246, 0.5)' : 'rgba(139, 92, 246, 0.5)';
 
-                            return (
-                                <div key={corner} style={{ position: 'absolute', left: `${cx * 100}%`, top: `${cy * 100}%`, pointerEvents: 'none' }}>
-                                    {/* Always show circles in positioning mode */}
-                                    <div
-                                        className="anchor-circle"
-                                        onMouseDown={(e) => {
-                                            e.stopPropagation();
-                                            // 准备开始拖拽拾取
-                                            const { x, y } = getCoordinates(e);
-                                            setPosState(prev => ({
-                                                ...prev,
-                                                activeCorner: corner,
-                                                mode: 'picking_text',
-                                                dragStart: { x, y },
-                                                currentDrag: { x, y }
-                                            }));
-                                        }}
-                                        style={{
-                                            position: 'absolute', left: '-12px', top: '-12px',
-                                            width: '24px', height: '24px', borderRadius: '50%',
-                                            background: '#fff',
-                                            border: `3px solid ${themeColor}`,
-                                            boxShadow: `0 0 10px ${shadowColor}`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            zIndex: isActive ? 101 : 100,
-                                            cursor: 'crosshair',
-                                            pointerEvents: 'auto'
-                                        }}
-                                    >
+                                return (
+                                    <div key={corner} style={{ position: 'absolute', left: `${cx * 100}%`, top: `${cy * 100}%`, pointerEvents: 'none' }}>
+                                        {/* Always show circles in positioning mode */}
                                         <div
+                                            className="anchor-circle"
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                                // 准备开始拖拽拾取
+                                                const { x, y } = getCoordinates(e);
+                                                setPosState(prev => ({
+                                                    ...prev,
+                                                    activeCorner: corner,
+                                                    mode: 'picking_text',
+                                                    dragStart: { x, y },
+                                                    currentDrag: { x, y }
+                                                }));
+                                            }}
                                             style={{
+                                                position: 'absolute', left: '-12px', top: '-12px',
+                                                width: '24px', height: '24px', borderRadius: '50%',
+                                                background: '#fff',
+                                                border: `3px solid ${themeColor}`,
+                                                boxShadow: `0 0 10px ${shadowColor}`,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                color: themeColor,
-                                                pointerEvents: 'none'
+                                                zIndex: isActive ? 101 : 100,
+                                                cursor: 'crosshair',
+                                                pointerEvents: 'auto'
                                             }}
                                         >
-                                            {/* 如果这个角正在被拖拽，显示虚线边框锚图标 */}
-                                            {isActive && posState.mode === 'picking_text' ? (
-                                                <Anchor size={14} strokeWidth={1.5} strokeDasharray="2 2" />
-                                            ) : (
-                                                <Anchor size={14} />
-                                            )}
+                                            <div
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: themeColor,
+                                                    pointerEvents: 'none'
+                                                }}
+                                            >
+                                                {/* 如果这个角正在被拖拽，显示虚线边框锚图标 */}
+                                                {isActive && posState.mode === 'picking_text' ? (
+                                                    <Anchor size={14} strokeWidth={1.5} strokeDasharray="2 2" />
+                                                ) : (
+                                                    <Anchor size={14} />
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
 
-                        {/* Dragging Preview Line */}
-                        {posState.mode === 'picking_text' && posState.dragStart && posState.currentDrag && (
-                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 105 }}>
-                                <line
-                                    x1={`${posState.dragStart.x * 100}%`}
-                                    y1={`${posState.dragStart.y * 100}%`}
-                                    x2={`${posState.currentDrag.x * 100}%`}
-                                    y2={`${posState.currentDrag.y * 100}%`}
-                                    stroke="var(--accent-color)" strokeWidth={2} strokeDasharray="5 5"
-                                />
-
-                                {/* 只有在未碰到文字块时才显示跟随鼠标的锚图标 */}
-                                {!posState.hoverWord && (
-                                    <foreignObject
-                                        x={`calc(${posState.currentDrag.x * 100}% - 12px)`}
-                                        y={`calc(${posState.currentDrag.y * 100}% - 12px)`}
-                                        width="24" height="24"
-                                    >
-                                        <div style={{
-                                            color: 'var(--accent-color)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                                        }}>
-                                            <Anchor size={20} strokeWidth={2.5} />
-                                        </div>
-                                    </foreignObject>
-                                )}
-                            </svg>
-                        )}
-
-                        {/* Text OCR Hover Layer */}
-                        {posState.mode === 'picking_text' && !posState.confirmedAnchor && (
-                            <>
-                                {/* 可交互的词条层 - 红色悬停框 */}
-                                {words.map((w, idx) => {
-                                    const isHovered = posState.hoverWord &&
-                                        posState.hoverWord.x0 === w.x0 &&
-                                        posState.hoverWord.y0 === w.y0 &&
-                                        posState.hoverWord.text === w.text;
-
-                                    return (
-                                        <div
-                                            key={`word-${idx}`}
-                                            // onMouseEnter/Leave handled by handleMouseMove for drag consistency
-                                            style={{
-                                                position: 'absolute',
-                                                left: `${w.x0 * 100}%`,
-                                                top: `${w.y0 * 100}%`,
-                                                width: `${(w.x1 - w.x0) * 100}%`,
-                                                height: `${(w.y1 - w.y0) * 100}%`,
-                                                pointerEvents: 'none', // During drag, transparency to mouse events is better? No, MouseMove handles it.
-                                                background: isHovered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0, 0, 0, 0.02)',
-                                                border: isHovered ? '2px solid var(--accent-color)' : '1px solid rgba(59, 130, 246, 0.1)',
-                                                borderRadius: '2px',
-                                                zIndex: 60,
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </>
-                        )}
-
-                        {/* 捕获反馈闪烁框 */}
-                        {posState.flashingWord && posState.flashCount % 2 === 0 && (
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    left: `${posState.flashingWord.x0 * 100}%`,
-                                    top: `${posState.flashingWord.y0 * 100}%`,
-                                    width: `${(posState.flashingWord.x1 - posState.flashingWord.x0) * 100}%`,
-                                    height: `${(posState.flashingWord.y1 - posState.flashingWord.y0) * 100}%`,
-                                    border: '3px solid var(--accent-color)',
-                                    background: 'rgba(59, 130, 246, 0.3)',
-                                    borderRadius: '4px',
-                                    boxShadow: '0 0 15px var(--accent-color)',
-                                    zIndex: 1000,
-                                    pointerEvents: 'none'
-                                }}
-                            />
-                        )}
-
-                        {/* 确认的文本锚点：闪烁动画 + 蓝色虚线框 + 可移动外框 */}
-                        {posState.confirmedAnchor && (
-                            <ConfirmedTextAnchor
-                                corner={posState.activeCorner}
-                                word={posState.confirmedAnchor.word}
-                                cornerHandle={posState.confirmedAnchor.cornerHandle}
-                                flashCount={posState.flashCount}
-                                onFlashEnd={() => setPosState(prev => ({ ...prev, flashCount: 0 }))}
-                                onHandleMove={(newPos) => {
-                                    setPosState(prev => ({
-                                        ...prev,
-                                        confirmedAnchor: {
-                                            ...prev.confirmedAnchor,
-                                            cornerHandle: newPos
-                                        }
-                                    }));
-
-                                    // 实时更新区块几何形状（预览效果）
-                                    const corner = posState.activeCorner;
-                                    setRegions(prev => prev.map(r => {
-                                        if (r.id !== selectedRegion.id) return r;
-                                        let { x: rx, y: ry, width: rw, height: rh } = r;
-                                        const rb = ry + rh;
-                                        const rr = rx + rw;
-                                        // 确保宽度和高度不为负
-                                        if (corner === 'tl') { rx = newPos.x; ry = newPos.y; rw = Math.max(0.001, rr - rx); rh = Math.max(0.001, rb - ry); }
-                                        else if (corner === 'tr') { ry = newPos.y; rw = Math.max(0.001, newPos.x - rx); rh = Math.max(0.001, rb - ry); }
-                                        else if (corner === 'bl') { rx = newPos.x; rw = Math.max(0.001, rr - rx); rh = Math.max(0.001, newPos.y - ry); }
-                                        else if (corner === 'br') { rw = Math.max(0.001, newPos.x - rx); rh = Math.max(0.001, newPos.y - ry); }
-                                        return { ...r, x: rx, y: ry, width: rw, height: rh };
-                                    }));
-                                }}
-                                onConfirm={() => {
-                                    // 保存锚点数据
-                                    const w = posState.confirmedAnchor.word;
-                                    const handle = posState.confirmedAnchor.cornerHandle;
-                                    const corner = posState.activeCorner;
-                                    const ax = (w.x0 + w.x1) / 2;
-                                    const ay = (w.y0 + w.y1) / 2;
-
-                                    const nextRegions = regions.map(r => {
-                                        if (r.id !== selectedRegion.id) return r;
-                                        const positioning = { ...(r.positioning || {}) };
-                                        const anchors = { ...(positioning.anchors || {}) };
-                                        anchors[corner] = {
-                                            type: 'text',
-                                            text: w.text,
-                                            bounds: [w.x0, w.y0, w.x1, w.y1],
-                                            offset_x: handle.x - ax,
-                                            offset_y: handle.y - ay
-                                        };
-                                        return { ...r, positioning: { ...positioning, anchors } };
-                                    });
-                                    setRegions(nextRegions);
-                                    exitCaptureMode();
-                                    if (onHistorySnapshot) onHistorySnapshot(nextRegions);
-                                }}
-                                getCoordinates={getCoordinates}
-                                containerRef={containerRef}
-                            />
-                        )}
-
-
-                    </div>
-                )}
-
-                {/* Drawn Anchors Visualization Layer (Visible when positioningMode is on) */}
-                {positioningMode && selectedRegion && (
-                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 60 }}>
-                        {Object.entries(selectedRegion.positioning?.anchors || {}).map(([corner, anchor]) => {
-                            if (!anchor.bounds) return null;
-                            const [ax0, ay0, ax1, ay1] = anchor.bounds;
-                            const ax = (ax0 + ax1) / 2;
-                            const ay = (ay0 + ay1) / 2;
-
-                            // Use region's real geometry for corner position to ensure perfect connection during move
-                            const rx = selectedRegion.x;
-                            const ry = selectedRegion.y;
-                            const rw = selectedRegion.width;
-                            const rh = selectedRegion.height;
-
-                            let cx, cy;
-                            if (corner === 'tl') { cx = rx; cy = ry; }
-                            else if (corner === 'tr') { cx = rx + rw; cy = ry; }
-                            else if (corner === 'bl') { cx = rx; cy = ry + rh; }
-                            else if (corner === 'br') { cx = rx + rw; cy = ry + rh; }
-
-                            // 删除锚点处理函数
-                            const handleDeleteAnchor = (e) => {
-                                e.stopPropagation();
-                                const nextAnchors = { ...(selectedRegion.positioning?.anchors || {}) };
-                                delete nextAnchors[corner];
-                                const nextRegions = regions.map(r => r.id === selectedRegion.id ? {
-                                    ...r,
-                                    positioning: {
-                                        ...r.positioning,
-                                        anchors: nextAnchors
-                                    }
-                                } : r);
-                                setRegions(nextRegions);
-                                if (onHistorySnapshot) onHistorySnapshot(nextRegions);
-                            };
-
-                            return (
-                                <g key={corner}>
-                                    {/* Anchor Bounds Visual */}
-                                    <rect
-                                        x={`${ax0 * 100}%`} y={`${ay0 * 100}%`}
-                                        width={`${(ax1 - ax0) * 100}%`} height={`${(ay1 - ay0) * 100}%`}
-                                        fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6"
-                                        strokeWidth={2} strokeDasharray="5 5"
+                            {/* Dragging Preview Line */}
+                            {posState.mode === 'picking_text' && posState.dragStart && posState.currentDrag && (
+                                <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 105 }}>
+                                    <line
+                                        x1={`${posState.dragStart.x * 100}%`}
+                                        y1={`${posState.dragStart.y * 100}%`}
+                                        x2={`${posState.currentDrag.x * 100}%`}
+                                        y2={`${posState.currentDrag.y * 100}%`}
+                                        stroke="var(--accent-color)" strokeWidth={2} strokeDasharray="5 5"
                                     />
 
-                                    {/* Delete Button at top-right of anchor bounds */}
-                                    <foreignObject
-                                        x={`calc(${ax1 * 100}% - 10px)`}
-                                        y={`calc(${ay0 * 100}% - 10px)`}
-                                        width="20" height="20"
-                                        style={{ overflow: 'visible' }}
-                                    >
-                                        <div
-                                            onClick={handleDeleteAnchor}
-                                            style={{
-                                                width: '20px',
-                                                height: '20px',
-                                                borderRadius: '50%',
-                                                background: '#ef4444',
-                                                color: 'white',
+                                    {/* 只有在未碰到文字块时才显示跟随鼠标的锚图标 */}
+                                    {!posState.hoverWord && (
+                                        <foreignObject
+                                            x={`calc(${posState.currentDrag.x * 100}% - 12px)`}
+                                            y={`calc(${posState.currentDrag.y * 100}% - 12px)`}
+                                            width="24" height="24"
+                                        >
+                                            <div style={{
+                                                color: 'var(--accent-color)',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                cursor: 'pointer',
-                                                pointerEvents: 'auto',
-                                                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                                                transition: 'transform 0.15s, background 0.15s'
-                                            }}
-                                            onMouseEnter={(e) => { e.target.style.transform = 'scale(1.15)'; e.target.style.background = '#dc2626'; }}
-                                            onMouseLeave={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = '#ef4444'; }}
+                                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                                            }}>
+                                                <Anchor size={20} strokeWidth={2.5} />
+                                            </div>
+                                        </foreignObject>
+                                    )}
+                                </svg>
+                            )}
+
+                            {/* Text OCR Hover Layer */}
+                            {posState.mode === 'picking_text' && !posState.confirmedAnchor && (
+                                <>
+                                    {/* 可交互的词条层 - 红色悬停框 */}
+                                    {words.map((w, idx) => {
+                                        const isHovered = posState.hoverWord &&
+                                            posState.hoverWord.x0 === w.x0 &&
+                                            posState.hoverWord.y0 === w.y0 &&
+                                            posState.hoverWord.text === w.text;
+
+                                        return (
+                                            <div
+                                                key={`word-${idx}`}
+                                                // onMouseEnter/Leave handled by handleMouseMove for drag consistency
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: `${w.x0 * 100}%`,
+                                                    top: `${w.y0 * 100}%`,
+                                                    width: `${(w.x1 - w.x0) * 100}%`,
+                                                    height: `${(w.y1 - w.y0) * 100}%`,
+                                                    pointerEvents: 'none', // During drag, transparency to mouse events is better? No, MouseMove handles it.
+                                                    background: isHovered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0, 0, 0, 0.02)',
+                                                    border: isHovered ? '2px solid var(--accent-color)' : '1px solid rgba(59, 130, 246, 0.1)',
+                                                    borderRadius: '2px',
+                                                    zIndex: 60,
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </>
+                            )}
+
+                            {/* 捕获反馈闪烁框 */}
+                            {posState.flashingWord && posState.flashCount % 2 === 0 && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${posState.flashingWord.x0 * 100}%`,
+                                        top: `${posState.flashingWord.y0 * 100}%`,
+                                        width: `${(posState.flashingWord.x1 - posState.flashingWord.x0) * 100}%`,
+                                        height: `${(posState.flashingWord.y1 - posState.flashingWord.y0) * 100}%`,
+                                        border: '3px solid var(--accent-color)',
+                                        background: 'rgba(59, 130, 246, 0.3)',
+                                        borderRadius: '4px',
+                                        boxShadow: '0 0 15px var(--accent-color)',
+                                        zIndex: 1000,
+                                        pointerEvents: 'none'
+                                    }}
+                                />
+                            )}
+
+                            {/* 确认的文本锚点：闪烁动画 + 蓝色虚线框 + 可移动外框 */}
+                            {posState.confirmedAnchor && (
+                                <ConfirmedTextAnchor
+                                    corner={posState.activeCorner}
+                                    word={posState.confirmedAnchor.word}
+                                    cornerHandle={posState.confirmedAnchor.cornerHandle}
+                                    flashCount={posState.flashCount}
+                                    onFlashEnd={() => setPosState(prev => ({ ...prev, flashCount: 0 }))}
+                                    onHandleMove={(newPos) => {
+                                        setPosState(prev => ({
+                                            ...prev,
+                                            confirmedAnchor: {
+                                                ...prev.confirmedAnchor,
+                                                cornerHandle: newPos
+                                            }
+                                        }));
+
+                                        // 实时更新区块几何形状（预览效果）
+                                        const corner = posState.activeCorner;
+                                        setRegions(prev => prev.map(r => {
+                                            if (r.id !== selectedRegion.id) return r;
+                                            let { x: rx, y: ry, width: rw, height: rh } = r;
+                                            const rb = ry + rh;
+                                            const rr = rx + rw;
+                                            // 确保宽度和高度不为负
+                                            if (corner === 'tl') { rx = newPos.x; ry = newPos.y; rw = Math.max(0.001, rr - rx); rh = Math.max(0.001, rb - ry); }
+                                            else if (corner === 'tr') { ry = newPos.y; rw = Math.max(0.001, newPos.x - rx); rh = Math.max(0.001, rb - ry); }
+                                            else if (corner === 'bl') { rx = newPos.x; rw = Math.max(0.001, rr - rx); rh = Math.max(0.001, newPos.y - ry); }
+                                            else if (corner === 'br') { rw = Math.max(0.001, newPos.x - rx); rh = Math.max(0.001, newPos.y - ry); }
+                                            return { ...r, x: rx, y: ry, width: rw, height: rh };
+                                        }));
+                                    }}
+                                    onConfirm={() => {
+                                        // 保存锚点数据
+                                        const w = posState.confirmedAnchor.word;
+                                        const handle = posState.confirmedAnchor.cornerHandle;
+                                        const corner = posState.activeCorner;
+                                        const ax = (w.x0 + w.x1) / 2;
+                                        const ay = (w.y0 + w.y1) / 2;
+
+                                        const nextRegions = regions.map(r => {
+                                            if (r.id !== selectedRegion.id) return r;
+                                            const positioning = { ...(r.positioning || {}) };
+                                            const anchors = { ...(positioning.anchors || {}) };
+                                            anchors[corner] = {
+                                                type: 'text',
+                                                text: w.text,
+                                                bounds: [w.x0, w.y0, w.x1, w.y1],
+                                                offset_x: handle.x - ax,
+                                                offset_y: handle.y - ay
+                                            };
+                                            return { ...r, positioning: { ...positioning, anchors } };
+                                        });
+                                        setRegions(nextRegions);
+                                        exitCaptureMode();
+                                        if (onHistorySnapshot) onHistorySnapshot(nextRegions);
+                                    }}
+                                    getCoordinates={getCoordinates}
+                                    containerRef={containerRef}
+                                />
+                            )}
+
+
+                        </div>
+                    )}
+
+                    {/* Drawn Anchors Visualization Layer (Visible when positioningMode is on) */}
+                    {positioningMode && selectedRegion && (
+                        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 60 }}>
+                            {Object.entries(selectedRegion.positioning?.anchors || {}).map(([corner, anchor]) => {
+                                if (!anchor.bounds) return null;
+                                const [ax0, ay0, ax1, ay1] = anchor.bounds;
+                                const ax = (ax0 + ax1) / 2;
+                                const ay = (ay0 + ay1) / 2;
+
+                                // Use region's real geometry for corner position to ensure perfect connection during move
+                                const rx = selectedRegion.x;
+                                const ry = selectedRegion.y;
+                                const rw = selectedRegion.width;
+                                const rh = selectedRegion.height;
+
+                                let cx, cy;
+                                if (corner === 'tl') { cx = rx; cy = ry; }
+                                else if (corner === 'tr') { cx = rx + rw; cy = ry; }
+                                else if (corner === 'bl') { cx = rx; cy = ry + rh; }
+                                else if (corner === 'br') { cx = rx + rw; cy = ry + rh; }
+
+                                // 删除锚点处理函数
+                                const handleDeleteAnchor = (e) => {
+                                    e.stopPropagation();
+                                    const nextAnchors = { ...(selectedRegion.positioning?.anchors || {}) };
+                                    delete nextAnchors[corner];
+                                    const nextRegions = regions.map(r => r.id === selectedRegion.id ? {
+                                        ...r,
+                                        positioning: {
+                                            ...r.positioning,
+                                            anchors: nextAnchors
+                                        }
+                                    } : r);
+                                    setRegions(nextRegions);
+                                    if (onHistorySnapshot) onHistorySnapshot(nextRegions);
+                                };
+
+                                return (
+                                    <g key={corner}>
+                                        {/* Anchor Bounds Visual */}
+                                        <rect
+                                            x={`${ax0 * 100}%`} y={`${ay0 * 100}%`}
+                                            width={`${(ax1 - ax0) * 100}%`} height={`${(ay1 - ay0) * 100}%`}
+                                            fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6"
+                                            strokeWidth={2} strokeDasharray="5 5"
+                                        />
+
+                                        {/* Delete Button at top-right of anchor bounds */}
+                                        <foreignObject
+                                            x={`calc(${ax1 * 100}% - 10px)`}
+                                            y={`calc(${ay0 * 100}% - 10px)`}
+                                            width="20" height="20"
+                                            style={{ overflow: 'visible' }}
                                         >
-                                            <X size={12} />
-                                        </div>
-                                    </foreignObject>
+                                            <div
+                                                onClick={handleDeleteAnchor}
+                                                style={{
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '50%',
+                                                    background: '#ef4444',
+                                                    color: 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    pointerEvents: 'auto',
+                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                                    transition: 'transform 0.15s, background 0.15s'
+                                                }}
+                                                onMouseEnter={(e) => { e.target.style.transform = 'scale(1.15)'; e.target.style.background = '#dc2626'; }}
+                                                onMouseLeave={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = '#ef4444'; }}
+                                            >
+                                                <X size={12} />
+                                            </div>
+                                        </foreignObject>
 
-                                    {/* Connection Line */}
-                                    <line
-                                        x1={`${ax * 100}%`} y1={`${ay * 100}%`}
-                                        x2={`${cx * 100}%`} y2={`${cy * 100}%`}
-                                        stroke="var(--primary-color)" strokeWidth={1.5} strokeDasharray="4 4"
-                                    />
+                                        {/* Connection Line */}
+                                        <line
+                                            x1={`${ax * 100}%`} y1={`${ay * 100}%`}
+                                            x2={`${cx * 100}%`} y2={`${cy * 100}%`}
+                                            stroke="var(--primary-color)" strokeWidth={1.5} strokeDasharray="4 4"
+                                        />
 
 
-                                    {/* Anchor Point on Text (Small circle) */}
-                                    <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--primary-color)" />
-                                </g>
-                            );
-                        })}
-                    </svg >
-                )}
-            </div >
-        </div >
+                                        {/* Anchor Point on Text (Small circle) */}
+                                        <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--primary-color)" />
+                                    </g>
+                                );
+                            })}
+                        </svg >
+                    )}
+                </div >
+            </div>
+        </div>
     );
 };
 

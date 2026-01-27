@@ -17,7 +17,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const DEFAULT_TABLE_SETTINGS = {
         vertical_strategy: 'text',
         horizontal_strategy: 'text',
-        snap_tolerance: 6,
+        snap_tolerance: 5,
         join_tolerance: 3,
     };
     const [templates, setTemplates] = useState([]);
@@ -126,7 +126,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
     const [tableSettings, setTableSettings] = useState({
         vertical_strategy: 'text',
         horizontal_strategy: 'text',
-        snap_tolerance: 6,
+        snap_tolerance: 5,
         join_tolerance: 3,
     });
 

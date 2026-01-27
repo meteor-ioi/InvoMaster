@@ -215,7 +215,7 @@ const RightSidebar = ({
                                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>吸附容差：</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                                             <button
-                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.max(1, (prev.snap_tolerance || 3) - 1) }))}
+                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.max(1, (prev.snap_tolerance || 5) - 1) }))}
                                                 className="glass-stepper-btn"
                                                 title="减少吸附容差"
                                             >
@@ -223,20 +223,20 @@ const RightSidebar = ({
                                             </button>
                                             <input
                                                 type="range" min="1" max="10" step="1"
-                                                value={tableSettings.snap_tolerance || 3}
+                                                value={tableSettings.snap_tolerance || 5}
                                                 onChange={(e) => setTableSettings({ ...tableSettings, snap_tolerance: parseInt(e.target.value) })}
                                                 className="glass-slider"
                                                 style={{ flex: 1, cursor: 'pointer' }}
                                             />
                                             <button
-                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.min(10, (prev.snap_tolerance || 3) + 1) }))}
+                                                onClick={() => setTableSettings(prev => ({ ...prev, snap_tolerance: Math.min(10, (prev.snap_tolerance || 5) + 1) }))}
                                                 className="glass-stepper-btn"
                                                 title="增加吸附容差"
                                             >
                                                 <Plus size={12} />
                                             </button>
                                             <span style={{ fontSize: '11px', minWidth: '20px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 'bold' }}>
-                                                {tableSettings.snap_tolerance || 3}
+                                                {tableSettings.snap_tolerance || 5}
                                             </span>
                                         </div>
                                     </div>
