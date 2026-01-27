@@ -378,19 +378,21 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             // If template found, use its mode, otherwise default to auto
             setTemplateMode(res.data.matched_template?.mode || 'auto');
 
-            // --- 提示气泡逻辑 ---
-            if (res.data.template_found) {
-                setToast({
-                    type: 'success',
-                    text: `已匹配到模板: ${res.data.matched_template?.name || '未知模板'}`
-                });
-            } else {
-                setToast({
-                    type: 'info',
-                    text: '未匹配到模板，已进入自动识别模式'
-                });
+            // --- 提示气泡逻辑：仅在非刷新（即上传识别）时显示模板匹配结果 ---
+            if (!isRefresh) {
+                if (res.data.template_found) {
+                    setToast({
+                        type: 'success',
+                        text: `已匹配到模板: ${res.data.matched_template?.name || '未知模板'}`
+                    });
+                } else {
+                    setToast({
+                        type: 'info',
+                        text: '未匹配到模板，已进入自动识别模式'
+                    });
+                }
+                setTimeout(() => setToast(null), 3000);
             }
-            setTimeout(() => setToast(null), 3000);
 
             setStep('review');
             setEditorMode('select');
@@ -799,7 +801,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', borderRadius: '12px' }}>
                                             <div className="loading-spinner" />
                                             <p style={{ color: 'white' }}>
-                                                {analysis === null && regions.length > 0 ? "正在加载模板源文件..." : "正在处理 PDF 单据..."}
+                                                {analysis === null && regions.length > 0 ? "正在加载模板源文件..." : "正在处理上传文件..."}
                                             </p>
                                         </div>
                                     )}

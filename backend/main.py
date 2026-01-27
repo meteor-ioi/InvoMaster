@@ -12,7 +12,7 @@ import pdfplumber
 from typing import List, Optional, Any, Literal
 
 # Local imports
-from utils import pdf_to_images
+from utils import pdf_to_images, document_to_images, is_pdf_file, is_image_file, get_file_type, SUPPORTED_EXTENSIONS
 from inference import get_layout_engine
 from database import db # SQLite integration
 from fingerprint import engine as fp_engine # Enhanced Fingerprinting
@@ -361,10 +361,52 @@ def get_file_fingerprint(file_path):
         buf = f.read()
         hasher.update(buf)
     return hasher.hexdigest()
+def get_page_words_from_image(image_path: str, fingerprint: Optional[str] = None) -> list:
+    """
+    从图片中提取文字信息（用于图片输入场景）。
+    直接使用 OCR 提取文字并返回归一化坐标。
+    优化：使用 cached layout 以确保后续操作能复用结果。
+    """
+    words_data = []
+    try:
+        from PIL import Image
+        from ocr_utils import get_ocr_layout_for_image
+        
+        with Image.open(image_path) as img:
+            img_w, img_h = img.size
+            
+            # 使用带缓存的 OCR
+            ocr_results = get_ocr_layout_for_image(image_path, fingerprint=fingerprint, page_idx=1)
+            
+            if ocr_results:
+                for box, text, confidence in ocr_results:
+                    # box 是四个点的坐标 [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                    if len(box) >= 4:
+                        x_coords = [p[0] for p in box]
+                        y_coords = [p[1] for p in box]
+                        words_data.append({
+                            "text": text,
+                            "x0": min(x_coords) / img_w,
+                            "y0": min(y_coords) / img_h,
+                            "x1": max(x_coords) / img_w,
+                            "y1": max(y_coords) / img_h
+                        })
+    except Exception as e:
+        logger.error(f"Error extracting words from image: {e}")
+    return words_data
+
+
 def get_page_words(file_path, page_idx=0, image_path=None, p_fp=None):
     """
-    Extract words from a PDF page (native or OCR) and return normalized coordinates.
+    Extract words from a PDF page or image (native or OCR) and return normalized coordinates.
+    支持 PDF 和图片输入。
     """
+    # 检查是否为图片文件
+    if is_image_file(file_path):
+        # 对于图片输入，直接使用图片提取文字
+        return get_page_words_from_image(file_path if not image_path else image_path, fingerprint=p_fp)
+    
+    # PDF 文件处理
     words_data = []
     try:
         with pdfplumber.open(file_path) as pdf:
@@ -390,17 +432,180 @@ def get_page_words(file_path, page_idx=0, image_path=None, p_fp=None):
                 })
     except Exception as e:
         logger.error(f"Error extracting words: {e}")
+    except Exception as e:
+        logger.error(f"Error extracting words: {e}")
     return words_data
 
-def extract_text_from_regions(pdf_path, regions: List[Region], image_path: Optional[str] = None, fingerprint: Optional[str] = None):
+# In-memory cache for processed indexed words: {fingerprint: [list_of_words]}
+# This avoids re-calculating centers and normalizing coordinates on every region request.
+_INDEXED_WORDS_CACHE = {}
+
+def _get_indexed_words_cached(image_path: str, fingerprint: Optional[str], img_w: int, img_h: int):
     """
-    Uses pdfplumber to extract text from specific normalized coordinates.
-    Supports high-precision table extraction if region type is 'table'.
-    For scanned PDFs, automatically injects OCR results if no text is found.
+    Helper to get pre-processed indexed words from memory cache or compute them.
     """
-    logger.info(f"Extracting text from regions in {pdf_path}")
+    from ocr_utils import get_ocr_layout_for_image
+    
+    # 1. Try Memory Cache
+    if fingerprint and fingerprint in _INDEXED_WORDS_CACHE:
+        return _INDEXED_WORDS_CACHE[fingerprint]
+
+    # 2. Compute from Disk Cache / Fresh OCR
+    full_page_ocr = get_ocr_layout_for_image(image_path, fingerprint=fingerprint, page_idx=1)
+    
+    if not full_page_ocr:
+        return []
+
+    indexed_words = []
+    for box, text, conf in full_page_ocr:
+        # Calculate geometric center of the word box
+        x_coords = [p[0] for p in box]
+        y_coords = [p[1] for p in box]
+        center_x = sum(x_coords) / len(x_coords)
+        center_y = sum(y_coords) / len(y_coords)
+        
+        # Normalized center coordinates
+        norm_cx = center_x / img_w
+        norm_cy = center_y / img_h
+        
+        indexed_words.append({
+            "text": text,
+            "norm_cx": norm_cx,
+            "norm_cy": norm_cy,
+            "box": box, # Raw pixel box
+            "conf": conf
+        })
+    
+    # 3. Save to Memory Cache (if fingerprint available)
+    if fingerprint:
+        _INDEXED_WORDS_CACHE[fingerprint] = indexed_words
+        # Simple cache size management: limit to 20 documents to prevent leak
+        if len(_INDEXED_WORDS_CACHE) > 20:
+             # Remove oldest (roughly, dict preserves insertion order in modern Python)
+             _INDEXED_WORDS_CACHE.pop(next(iter(_INDEXED_WORDS_CACHE)))
+
+    return indexed_words
+
+def extract_text_from_regions_image(image_path: str, regions: List[Region], fingerprint: Optional[str] = None):
+    """
+    从图片文件中提取区域内容（纯 OCR 方式）。
+    优化版本：使用全页 OCR 缓存布局，无需裁切图片和重复 OCR。
+    二次优化：使用内存缓存预处理后的 indexed_words，避免重复计算。
+    """
+    from PIL import Image
+    from ocr_utils import get_ocr_layout_for_image
+    
+    logger.info(f"Extracting text from regions in image: {image_path}")
     results = []
-    with pdfplumber.open(pdf_path) as pdf:
+    
+    try:
+        # 获取图片尺寸
+        with Image.open(image_path) as img:
+            img_w, img_h = img.size
+            
+        # 获取全页 OCR 布局 (cached) 并预处理
+        indexed_words = _get_indexed_words_cached(image_path, fingerprint, img_w, img_h)
+
+        for reg in regions:
+            content = ""
+            
+            # 跳过零面积区域
+            if reg.width <= 0 or reg.height <= 0:
+                logger.warning(f"Skipping zero-area region {reg.id} ({reg.type})")
+                reg_dict = reg.dict()
+                reg_dict["content"] = ""
+                results.append(reg_dict)
+                continue
+            
+            # 筛选落在此区域内的文字 (基于中心点判定的简单包含关系)
+            reg_x0 = reg.x
+            reg_y0 = reg.y
+            reg_x1 = reg.x + reg.width
+            reg_y1 = reg.y + reg.height
+            
+            # Filter words
+            region_words = []
+            for w in indexed_words:
+                if reg_x0 <= w["norm_cx"] <= reg_x1 and reg_y0 <= w["norm_cy"] <= reg_y1:
+                    region_words.append(w)
+            
+            if region_words:
+                if reg.type.lower() == 'table':
+                    # 表格类型：尝试按行组织数据
+                    lines = []
+                    current_line = []
+                    last_y = None
+                    
+                    # Sort by Y then X
+                    sorted_words = sorted(region_words, key=lambda w: (w["norm_cy"], w["norm_cx"]))
+                    
+                    # 估算行高阈值 (normalize relative height via image height)
+                    # Use average box height from OCR results as heuristic if needed, 
+                    # but simple threshold relative to image height works for now.
+                    # Previous logic used crop height * 0.03. Here we use image height * 0.01 roughly?
+                    # Let's try to infer line height dynamically or use fixed threshold.
+                    # Using 1% of image height as threshold for "same line"
+                    line_threshold = 0.01 
+                    
+                    for w in sorted_words:
+                        y_center = w["norm_cy"]
+                        text = w["text"]
+                        
+                        if last_y is None or abs(y_center - last_y) < line_threshold:
+                            current_line.append(text)
+                        else:
+                            if current_line:
+                                lines.append(current_line)
+                            current_line = [text]
+                            # Start new line group with this word, but don't just set last_y to it directly if it's vastly different? 
+                            # Actually, standard simple clustering:
+                        last_y = y_center
+                    
+                    if current_line:
+                        lines.append(current_line)
+                    
+                    content = lines # Return 2D array for table
+                else:
+                    # 普通文本：按阅读顺序连接
+                    # Sort by Y (major) then X (minor) to reconstruct text flow
+                    # Tolerance for Y alignment is needed for robust text block reconstruction
+                    # Simple sort:
+                    sorted_words = sorted(region_words, key=lambda w: (w["norm_cy"], w["norm_cx"]))
+                    content = " ".join([w["text"] for w in sorted_words])
+                
+                logger.info(f"Layout extraction success for region {reg.id}: {str(content)[:50]}...")
+            else:
+                logger.info(f"No text found in region {reg.id}")
+            
+            reg_dict = reg.dict()
+            reg_dict["content"] = content
+            results.append(reg_dict)
+            
+    except Exception as e:
+        logger.error(f"Error extracting from image (cached layout): {e}")
+        # Fallback to empty results to avoid crashing
+        return [ {**reg.dict(), "content": ""} for reg in regions ]
+    
+    return results
+
+
+def extract_text_from_regions(file_path, regions: List[Region], image_path: Optional[str] = None, fingerprint: Optional[str] = None):
+    """
+    统一的区域文本提取函数，支持 PDF 和图片输入。
+    
+    对于 PDF 文件：使用 pdfplumber 提取文本（支持扫描件 OCR 注入）
+    对于图片文件：直接使用 OCR 提取文本
+    """
+    # 检查是否为图片文件输入
+    if is_image_file(file_path):
+        # 使用图片专用提取函数
+        actual_image_path = image_path if image_path else file_path
+        return extract_text_from_regions_image(actual_image_path, regions, fingerprint)
+    
+    # PDF 文件处理（原有逻辑）
+    logger.info(f"Extracting text from regions in {file_path}")
+    results = []
+    with pdfplumber.open(file_path) as pdf:
         first_page = pdf.pages[0]
         width, height = first_page.width, first_page.height
         page_bbox = first_page.bbox # (x0, top, x1, bottom)
@@ -634,7 +839,7 @@ def analyze_document(
                                 # Ensure images are generated before extraction if needed for OCR
                                 img_subdir = f"images_{fingerprint[:8]}"
                                 img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-                                image_paths = pdf_to_images(file_path, img_save_path)
+                                image_paths = document_to_images(file_path, img_save_path)
                                 
                                 regions_objs = [Region(**r) for r in t_data.get("regions", [])]
                                 matching_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
@@ -648,7 +853,7 @@ def analyze_document(
         # 3. Convert to images
         img_subdir = f"images_{fingerprint[:8]}"
         img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-        image_paths = pdf_to_images(file_path, img_save_path)
+        image_paths = document_to_images(file_path, img_save_path)
         relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
 
         # 4. Use AI (Apply frontend params)
@@ -797,7 +1002,7 @@ def analyze_from_source(template_id: str):
     # 3. Convert to images (as usual)
     img_subdir = f"images_{fingerprint[:8]}"
     img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-    image_paths = pdf_to_images(source_path, img_save_path)
+    image_paths = document_to_images(source_path, img_save_path)
     relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
 
     # 4. Load template regions
@@ -1282,7 +1487,7 @@ def extract_with_custom_template(
         fingerprint = get_file_fingerprint(file_path)
         img_subdir = f"images_{fingerprint[:8]}"
         img_save_path = os.path.join(UPLOAD_DIR, img_subdir)
-        image_paths = pdf_to_images(file_path, img_save_path)
+        image_paths = document_to_images(file_path, img_save_path)
         
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
         extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)

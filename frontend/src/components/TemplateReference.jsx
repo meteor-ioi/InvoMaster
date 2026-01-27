@@ -205,21 +205,25 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
     const processSelectedFiles = (selectedFiles) => {
         if (selectedFiles.length === 0) return;
 
-        // 过滤只保留 PDF 文件
-        const pdfFiles = selectedFiles.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-        if (pdfFiles.length === 0) {
-            alert('请选择 PDF 文件');
+        // 支持的文件格式
+        const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.gif'];
+        const validFiles = selectedFiles.filter(f => {
+            const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
+            return supportedExtensions.includes(ext) || f.type === 'application/pdf' || f.type.startsWith('image/');
+        });
+        if (validFiles.length === 0) {
+            alert('请选择 PDF 或图片文件（支持 JPG, PNG, BMP, TIFF, WEBP, GIF）');
             return;
         }
 
         // 将新文件追加到待处理任务列表
-        setFiles(prev => [...prev, ...pdfFiles]);
+        setFiles(prev => [...prev, ...validFiles]);
 
         // 如果当前没有选中的文件，则默认选中第一个
-        if (!file && pdfFiles.length > 0 && files.length === 0) {
-            setFile(pdfFiles[0]);
-            setIsBatchMode(pdfFiles.length > 1);
-        } else if (files.length > 0 || pdfFiles.length > 1) {
+        if (!file && validFiles.length > 0 && files.length === 0) {
+            setFile(validFiles[0]);
+            setIsBatchMode(validFiles.length > 1);
+        } else if (files.length > 0 || validFiles.length > 1) {
             setIsBatchMode(true);
         }
 
@@ -932,7 +936,7 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                             <button
                                 onClick={() => document.getElementById('ref-upload-collapsed').click()}
                                 style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                                title="上传 PDF（支持多选）"
+                                title="上传文件（支持 PDF 和图片）"
                             >
                                 <Upload size={22} />
                                 <input id="ref-upload-collapsed" type="file" multiple className="hidden" onChange={handleFileUpload} />
@@ -1160,10 +1164,10 @@ export default function TemplateReference({ theme, device, headerCollapsed = fal
                                                     </div>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                         <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                                                            添加 PDF 文件（支持多选）
+                                                            添加文件（支持多选）
                                                         </span>
                                                         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                                            支持拖拽或点击选择
+                                                            支持 PDF 和图片格式
                                                         </span>
                                                     </div>
                                                 </div>

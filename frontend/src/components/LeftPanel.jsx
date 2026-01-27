@@ -125,7 +125,7 @@ const LeftPanel = ({
                     <button
                         onClick={() => document.getElementById('panel-file-upload').click()}
                         style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                        title="上传 PDF 文件"
+                        title="上传文件"
                     >
                         <Upload size={22} />
                     </button>
@@ -183,10 +183,10 @@ const LeftPanel = ({
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                                {dragActive ? '松开即刻上传' : '添加 PDF 文件'}
+                                {dragActive ? '松开即刻上传' : '添加文件'}
                             </span>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                支持拖拽或点击选择
+                                支持 PDF 或图片格式
                             </span>
                         </div>
                         <input
@@ -434,7 +434,7 @@ const LeftPanel = ({
                     </div>
                 </>
             )}
-        </aside>
+        </aside >
     );
 };
 

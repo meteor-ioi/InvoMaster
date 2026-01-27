@@ -190,6 +190,60 @@ def save_ocr_cache(fingerprint: str, page_idx: int, chars: List[Dict[str, Any]])
     except Exception as e:
         logger.error(f"Failed to save OCR cache: {e}")
 
+# --- Raw Layout Cache (for full reuse) ---
+
+def load_ocr_layout_cache(fingerprint: str, page_idx: int) -> Optional[List[Tuple[List[List[float]], str, float]]]:
+    """Load RAW OCR results (layout) from JSON cache if available."""
+    cache_path = os.path.join(OCR_CACHE_DIR, f"{fingerprint}_layout_p{page_idx}.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                # JSON serializes tuples as lists, so we might need to be careful if strict typing is expected,
+                # but valid JSON is enough for our logic.
+                return data
+        except Exception as e:
+            logger.error(f"Failed to load OCR layout cache: {e}")
+    return None
+
+
+def save_ocr_layout_cache(fingerprint: str, page_idx: int, results: List[Tuple[List[List[float]], str, float]]):
+    """Save RAW OCR results to JSON cache."""
+    if not os.path.exists(OCR_CACHE_DIR):
+        os.makedirs(OCR_CACHE_DIR, exist_ok=True)
+    
+    cache_path = os.path.join(OCR_CACHE_DIR, f"{fingerprint}_layout_p{page_idx}.json")
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Failed to save OCR layout cache: {e}")
+
+
+def get_ocr_layout_for_image(
+    image_path: str,
+    fingerprint: Optional[str] = None,
+    page_idx: int = 1
+) -> List[Tuple[List[List[float]], str, float]]:
+    """
+    Get raw OCR results for an image, using cache if available.
+    Returns: List of (box, text, confidence)
+    """
+    if fingerprint:
+        cached = load_ocr_layout_cache(fingerprint, page_idx)
+        if cached:
+            logger.info(f"Loaded OCR layout form cache for {fingerprint} p{page_idx}")
+            return cached
+
+    # Run OCR if not cached
+    ocr_results = run_ocr_on_image(image_path)
+    
+    # Save to cache if fingerprint provided
+    if fingerprint:
+        save_ocr_layout_cache(fingerprint, page_idx, ocr_results)
+        
+    return ocr_results
+
 def get_ocr_chars_for_page(
     image_path: str,
     pdf_width: float,
@@ -216,8 +270,9 @@ def get_ocr_chars_for_page(
     scale_x = pdf_width / img_width
     scale_y = pdf_height / img_height
     
-    # Run OCR
-    ocr_results = run_ocr_on_image(image_path)
+    # Run OCR (using layout cache wrapper to share result)
+    # Replaced direct run_ocr_on_image with get_ocr_layout_for_image to utilize/populate layout cache
+    ocr_results = get_ocr_layout_for_image(image_path, fingerprint, page_idx)
     
     # Offsets from page bbox
     x0_off, y0_off = page_bbox[0], page_bbox[1]
