@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock, Sliders } from 'lucide-react';
+import { Edit3, RotateCcw, RotateCw, Plus, Minus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, Grid, Save, CheckCircle, Sparkles, User, AlignJustify, Type, Box, MousePointer2, Layout, Package, CopyPlus, SaveAll, Lock, Unlock, Sliders, Target } from 'lucide-react';
 import StrategySelect from './StrategySelect';
 
 const RightSidebar = ({
@@ -372,75 +372,186 @@ const RightSidebar = ({
                                 </div>
                             )}
 
-                            {/* Dynamic Positioning Settings */}
-                            {selectedRegion && selectedRegion.positioning && selectedRegion.positioning.enabled && (
-                                <div style={{
-                                    marginTop: '15px',
-                                    padding: '12px',
-                                    background: theme === 'dark' ? 'rgba(51, 65, 85, 0.4)' : 'rgba(248, 250, 252, 0.6)',
-                                    borderRadius: '10px',
-                                    border: '1px solid var(--glass-border)',
-                                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                        <Target size={14} style={{ color: 'var(--accent-color)' }} />
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>锚点搜索范围 (Robustness)</span>
-                                    </div>
-                                    <div style={{ padding: '0 5px' }}>
-                                        <input
-                                            type="range"
-                                            min="0" max="3" step="1"
-                                            className="glass-slider"
-                                            value={(() => {
-                                                const anchors = selectedRegion.positioning.anchors || {};
-                                                const firstTextAnchor = Object.values(anchors).find(a => a.type === 'text');
-                                                if (!firstTextAnchor || !firstTextAnchor.search_area) return 0;
-                                                const w = firstTextAnchor.search_area[2];
-                                                if (w < 0.2) return 3; // Narrow
-                                                if (w < 0.5) return 2; // Medium
-                                                if (w < 0.8) return 1; // Wide
-                                                return 0; // Global
-                                            })()}
-                                            onChange={(e) => {
-                                                const level = parseInt(e.target.value);
-                                                const positioning = { ...selectedRegion.positioning };
-                                                const anchors = { ...positioning.anchors };
+                            {/* Dynamic Positioning Settings - Anchor Card List */}
+                            {selectedRegion && !tableRefining && (() => {
+                                const anchors = selectedRegion.positioning?.anchors || {};
+                                const anchorEntries = Object.entries(anchors).filter(([_, a]) => a.type === 'text');
+                                const cornerLabels = { tl: '左上角', tr: '右上角', bl: '左下角', br: '右下角' };
 
-                                                Object.keys(anchors).forEach(key => {
-                                                    if (anchors[key].type === 'text') {
-                                                        const [ax0, ay0, ax1, ay1] = anchors[key].bounds;
-                                                        const cx = (ax0 + ax1) / 2;
-                                                        const cy = (ay0 + ay1) / 2;
-                                                        let area = null;
-                                                        if (level === 1) area = [Math.max(0, cx - 0.3), Math.max(0, cy - 0.3), 0.6, 0.6];
-                                                        else if (level === 2) area = [Math.max(0, cx - 0.15), Math.max(0, cy - 0.15), 0.3, 0.3];
-                                                        else if (level === 3) area = [Math.max(0, cx - 0.05), Math.max(0, cy - 0.05), 0.1, 0.1];
-                                                        anchors[key] = { ...anchors[key], search_area: area };
-                                                    }
-                                                });
-
-                                                if (updateRegionPositioning) {
-                                                    updateRegionPositioning(selectedRegion.id, { anchors: anchors });
-                                                }
-                                            }}
-                                            style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--accent-color)' }}
-                                        />
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
-                                            <div style={{ textAlign: 'center' }}>
-                                                <span style={{ display: 'block' }}>全页</span>
-                                                <span style={{ fontSize: '9px', opacity: 0.7 }}>Global</span>
-                                            </div>
-                                            <div style={{ textAlign: 'center' }}>
-                                                <span style={{ display: 'block' }}>精准</span>
-                                                <span style={{ fontSize: '9px', opacity: 0.7 }}>Narrow</span>
-                                            </div>
+                                return (
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '12px',
+                                        background: theme === 'dark' ? 'rgba(51, 65, 85, 0.4)' : 'rgba(248, 250, 252, 0.6)',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--glass-border)',
+                                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <Target size={14} style={{ color: 'var(--accent-color)' }} />
+                                            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>动态定位锚点</span>
                                         </div>
+
+                                        {anchorEntries.length === 0 ? (
+                                            /* Empty state guidance */
+                                            <div style={{
+                                                padding: '16px 12px',
+                                                background: theme === 'dark' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
+                                                borderRadius: '8px',
+                                                border: '1px dashed var(--accent-color)',
+                                                textAlign: 'center'
+                                            }}>
+                                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                                                    拖拽区块角落的 <strong style={{ color: 'var(--accent-color)' }}>⚓</strong> 图标到页面文字上，建立定位锚点
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            /* Anchor cards */
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                {anchorEntries.map(([corner, anchor]) => (
+                                                    <div
+                                                        key={corner}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '8px 10px',
+                                                            background: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid rgba(59, 130, 246, 0.3)'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                                                                {cornerLabels[corner] || corner}
+                                                            </span>
+                                                            <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+                                                            <span style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: '500',
+                                                                color: 'var(--primary-color)',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                                maxWidth: '100px'
+                                                            }}>
+                                                                "{anchor.text}"
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (updateRegionPositioning) {
+                                                                    const newAnchors = { ...anchors };
+                                                                    delete newAnchors[corner];
+                                                                    updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                borderRadius: '4px',
+                                                                border: 'none',
+                                                                background: 'rgba(239, 68, 68, 0.2)',
+                                                                color: '#ef4444',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontSize: '14px',
+                                                                fontWeight: 'bold',
+                                                                lineHeight: 1,
+                                                                transition: 'all 0.15s'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = '#ef4444';
+                                                                e.currentTarget.style.color = '#fff';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                                                e.currentTarget.style.color = '#ef4444';
+                                                            }}
+                                                            title="删除此锚点"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {anchorEntries.length > 0 && (
+                                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '10px', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                                💡 拖拽画布上的锚点手柄可微调偏移位置
+                                            </p>
+                                        )}
+
+                                        {/* Advanced Options - Collapsible */}
+                                        {anchorEntries.length > 0 && (
+                                            <details style={{ marginTop: '12px' }}>
+                                                <summary style={{
+                                                    fontSize: '11px',
+                                                    color: 'var(--text-secondary)',
+                                                    cursor: 'pointer',
+                                                    userSelect: 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    <ChevronRight size={12} style={{ transition: 'transform 0.2s' }} className="details-chevron" />
+                                                    高级选项
+                                                </summary>
+                                                <div style={{ marginTop: '10px', paddingLeft: '4px' }}>
+                                                    <label style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        fontSize: '11px',
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: 'pointer'
+                                                    }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={(() => {
+                                                                const firstAnchor = anchorEntries[0]?.[1];
+                                                                return firstAnchor?.search_area != null;
+                                                            })()}
+                                                            onChange={(e) => {
+                                                                if (updateRegionPositioning) {
+                                                                    const newAnchors = { ...anchors };
+                                                                    Object.keys(newAnchors).forEach(key => {
+                                                                        if (newAnchors[key].type === 'text') {
+                                                                            if (e.target.checked) {
+                                                                                // Enable search area - use anchor center with medium range
+                                                                                const [ax0, ay0, ax1, ay1] = newAnchors[key].bounds || [0, 0, 0, 0];
+                                                                                const cx = (ax0 + ax1) / 2;
+                                                                                const cy = (ay0 + ay1) / 2;
+                                                                                newAnchors[key] = {
+                                                                                    ...newAnchors[key],
+                                                                                    search_area: [Math.max(0, cx - 0.15), Math.max(0, cy - 0.15), 0.3, 0.3]
+                                                                                };
+                                                                            } else {
+                                                                                // Disable - remove search_area
+                                                                                const { search_area, ...rest } = newAnchors[key];
+                                                                                newAnchors[key] = rest;
+                                                                            }
+                                                                        }
+                                                                    });
+                                                                    updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                }
+                                                            }}
+                                                            style={{ accentColor: 'var(--accent-color)' }}
+                                                        />
+                                                        限制搜索区域
+                                                    </label>
+                                                    <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '6px', marginLeft: '20px', lineHeight: 1.4 }}>
+                                                        若页面有多个相似文本，启用此选项可提高匹配精度
+                                                    </p>
+                                                </div>
+                                            </details>
+                                        )}
                                     </div>
-                                    <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '10px', fontStyle: 'italic', lineHeight: '1.4' }}>
-                                        提示：若页面有多个相似文本，请尝试降低搜索范围。
-                                    </p>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
                 </>

@@ -204,7 +204,7 @@ const DocumentEditor = ({
 
         const nextRegions = regions.map(r => {
             if (r.id !== selectedRegion.id) return r;
-            const positioning = { ...(r.positioning || {}) };
+            const positioning = { ...(r.positioning || {}), enabled: true };
             const anchors = { ...(positioning.anchors || {}) };
 
             // Calculate relative offset of current corner to anchor word center
