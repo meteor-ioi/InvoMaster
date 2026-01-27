@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
-import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3 } from 'lucide-react';
+import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X } from 'lucide-react';
 
 const TYPE_CONFIG = {
     'title': { label: '标题', color: '#60a5fa', icon: Heading },
@@ -65,16 +65,7 @@ const ConfirmedTextAnchor = ({ corner, word, cornerHandle, flashCount, onFlashEn
 
     const isFlashing = localFlashCount > 0;
 
-    // 根据不同角落生成 L-shape 路径
-    const getLShapePath = () => {
-        const size = 18;
-        const offset = 4;
-        if (corner === 'tl') return `M ${size} ${offset} L ${offset} ${offset} L ${offset} ${size}`;
-        if (corner === 'tr') return `M ${offset} ${offset} L ${size} ${offset} L ${size} ${size}`;
-        if (corner === 'bl') return `M ${size} ${size} L ${offset} ${size} L ${offset} ${offset}`;
-        if (corner === 'br') return `M ${offset} ${size} L ${size} ${size} L ${size} ${offset}`;
-        return `M ${offset} ${offset} L ${size} ${size}`; // fallback
-    };
+
 
     return (
         <>
@@ -131,52 +122,12 @@ const ConfirmedTextAnchor = ({ corner, word, cornerHandle, flashCount, onFlashEn
                     justifyContent: 'center'
                 }}
             >
-                <svg width="24" height="24" viewBox="0 0 24 24">
-                    <path
-                        d={getLShapePath()}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                    />
-                    <circle cx="12" cy="12" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                </svg>
+                <div style={{ color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Anchor size={20} strokeWidth={2.5} />
+                </div>
             </div>
 
-            {/* 确认按钮 */}
-            {!isFlashing && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: `${cornerHandle.x * 100}%`,
-                        top: `${cornerHandle.y * 100}%`,
-                        transform: 'translate(-50%, 30px)',
-                        pointerEvents: 'auto',
-                        zIndex: 90
-                    }}
-                >
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onConfirm();
-                        }}
-                        style={{
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 16px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        ✓ 确认此锚点
-                    </button>
-                </div>
-            )}
+
         </>
     );
 };
@@ -206,25 +157,19 @@ const DocumentEditor = ({
     const viewportRef = useRef(null);
 
     // --- Dynamic Positioning Internal State ---
-    // cornerMode: null, 'selecting_anchor_type', 'picking_text', 'cropping_image'
+    // cornerMode: null, 'picking_text'
     const [posState, setPosState] = useState({
         activeCorner: null, // 'tl', 'tr', 'bl', 'br'
         mode: null,
         hoverWord: null,
         draggingAnchor: null, // { corner, initialX, initialY, initialOffset }
         confirmedAnchor: null, // 已确认的锚点 { word, cornerHandle: {x, y} }
-        flashCount: 0 // 闪烁计数器
+        flashCount: 0, // 闪烁计数器
+        flashingWord: null // 当前正在闪烁确认的单词
     });
 
     // 进入捕获模式（不再放大）
-    const enterCaptureMode = (newMode) => {
-        setPosState(prev => ({
-            ...prev,
-            mode: newMode,
-            confirmedAnchor: null, // 清除之前的确认状态
-            flashCount: 0
-        }));
-    };
+
 
     const exitCaptureMode = () => {
         setPosState(prev => ({
@@ -232,9 +177,24 @@ const DocumentEditor = ({
             mode: null,
             activeCorner: null,
             confirmedAnchor: null,
-            flashCount: 0
+            flashCount: 0,
+            flashingWord: null
         }));
     };
+
+    // 捕获反馈闪烁逻辑
+    useEffect(() => {
+        if (posState.flashCount > 0) {
+            const timer = setTimeout(() => {
+                setPosState(prev => ({ ...prev, flashCount: prev.flashCount - 1 }));
+            }, 100); // 100ms 一次闪烁
+            return () => clearTimeout(timer);
+        } else if (posState.flashingWord) {
+            // 闪烁结束，正式设置锚点
+            handleSetTextAnchor(posState.flashingWord);
+            setPosState(prev => ({ ...prev, flashingWord: null }));
+        }
+    }, [posState.flashCount, posState.flashingWord]);
 
     const selectedRegion = regions.find(r => r.id === selectedId) || (selectedIds.length === 1 ? regions.find(r => r.id === selectedIds[0]) : null);
 
@@ -270,51 +230,7 @@ const DocumentEditor = ({
         if (onHistorySnapshot) onHistorySnapshot(nextRegions);
     };
 
-    const handleSetImageAnchor = (rect) => {
-        if (!selectedRegion || !posState.activeCorner) return;
 
-        // Call backend to capture image
-        const capture = async () => {
-            try {
-                const response = await axios.post(`${API_BASE}/capture_anchor_image`, {
-                    image_path: image.split('/static/')[1],
-                    x0: rect.x,
-                    y0: rect.y,
-                    x1: rect.x + rect.width,
-                    y1: rect.y + rect.height
-                });
-
-                const { image_ref } = response.data;
-
-                const nextRegions = regions.map(r => {
-                    if (r.id !== selectedRegion.id) return r;
-                    const positioning = { ...(r.positioning || {}) };
-                    const anchors = { ...(positioning.anchors || {}) };
-
-                    let cx = r.x, cy = r.y;
-                    if (posState.activeCorner.includes('r')) cx += r.width;
-                    if (posState.activeCorner.includes('b')) cy += r.height;
-
-                    anchors[posState.activeCorner] = {
-                        type: 'image',
-                        image_ref,
-                        bounds: [rect.x, rect.y, rect.x + rect.width, rect.y + rect.height],
-                        offset_x: cx - (rect.x + rect.width / 2),
-                        offset_y: cy - (rect.y + rect.height / 2)
-                    };
-
-                    return { ...r, positioning: { ...positioning, anchors } };
-                });
-
-                setRegions(nextRegions);
-                exitCaptureMode();
-                if (onHistorySnapshot) onHistorySnapshot(nextRegions);
-            } catch (err) {
-                console.error("Failed to capture image anchor:", err);
-            }
-        };
-        capture();
-    };
 
     const getCoordinates = (e) => {
         if (!containerRef.current) return { x: 0, y: 0 };
@@ -330,10 +246,7 @@ const DocumentEditor = ({
         if (tableRefining) return; // Interaction handled by lines if refining
 
         if (positioningMode) {
-            if (posState.mode === 'cropping_image') {
-                setIsDrawing(true);
-                setCurrentRect({ x, y, width: 0, height: 0, type: 'crop_box' });
-            }
+
             return;
         }
 
@@ -590,6 +503,20 @@ const DocumentEditor = ({
             setAddLineHover(null);
         }
 
+        // Handle Anchor Picking Drag
+        if (posState.mode === 'picking_text' && posState.dragStart) {
+            setPosState(prev => ({ ...prev, currentDrag: { x, y } }));
+
+            // Look for OCR word under mouse
+            const hoverWord = words.find(w =>
+                x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1
+            );
+            if (hoverWord !== posState.hoverWord) {
+                setPosState(prev => ({ ...prev, hoverWord }));
+            }
+            return;
+        }
+
         if (!interaction) {
             if (posState.draggingAnchor) {
                 const dx = x - posState.draggingAnchor.initialMouseX;
@@ -728,6 +655,25 @@ const DocumentEditor = ({
     };
 
     const handleMouseUp = useCallback(() => {
+        // Handle Anchor Picking Completion
+        if (posState.mode === 'picking_text' && posState.dragStart) {
+            if (posState.hoverWord) {
+                // Trigger flash feedback before final save
+                setPosState(prev => ({
+                    ...prev,
+                    mode: null,
+                    dragStart: null,
+                    currentDrag: null,
+                    flashingWord: posState.hoverWord,
+                    flashCount: 6 // 6 alternates = 3 full flashes
+                }));
+            } else {
+                // Cancel drag
+                setPosState(prev => ({ ...prev, mode: null, dragStart: null, currentDrag: null, activeCorner: null, hoverWord: null }));
+            }
+            return;
+        }
+
         // Handle Box Selection Finalization
         if (isDrawing && currentRect && editorMode === 'select') {
             const selBox = {
@@ -792,14 +738,7 @@ const DocumentEditor = ({
             setSelectedId(normalized.id);
             if (setSelectedIds) setSelectedIds([normalized.id]);
             if (onHistorySnapshot) onHistorySnapshot(newRegions);
-        } else if (isDrawing && currentRect && posState.mode === 'cropping_image') {
-            const normalized = {
-                x: currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x,
-                y: currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y,
-                width: Math.abs(currentRect.width),
-                height: Math.abs(currentRect.height)
-            };
-            handleSetImageAnchor(normalized);
+            // Image anchor logic removed
         } else if (posState.draggingAnchor) {
             if (onHistorySnapshot) onHistorySnapshot();
             setPosState(prev => ({ ...prev, draggingAnchor: null }));
@@ -809,7 +748,7 @@ const DocumentEditor = ({
         setIsDrawing(false);
         setCurrentRect(null);
         setInteraction(null);
-    }, [isDrawing, currentRect, editorMode, regions, interaction, setRegions, setSelectedId, setSelectedIds, onHistorySnapshot, posState, handleSetImageAnchor]);
+    }, [isDrawing, currentRect, editorMode, regions, interaction, setRegions, setSelectedId, setSelectedIds, onHistorySnapshot, posState, handleSetTextAnchor, selectedRegion]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -894,7 +833,7 @@ const DocumentEditor = ({
                 <svg style={{
                     position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
                     pointerEvents: 'none',
-                    opacity: (showRegions && !(positioningMode && (posState.mode === 'picking_text' || posState.mode === 'cropping_image'))) ? 1 : 0,
+                    opacity: (showRegions && !(positioningMode && posState.mode === 'picking_text')) ? 1 : 0,
                     transition: 'opacity 0.2s'
                 }}>
                     {regions.map(reg => {
@@ -1285,19 +1224,15 @@ const DocumentEditor = ({
                     <div
                         style={{
                             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                            pointerEvents: (posState.mode === 'picking_text' || posState.mode === 'cropping_image' || posState.confirmedAnchor) ? 'auto' : 'none',
-                            background: (posState.mode === 'picking_text' || posState.confirmedAnchor) ? 'transparent' : 'rgba(0,0,0,0.5)',
+                            pointerEvents: (posState.mode === 'picking_text' || posState.confirmedAnchor) ? 'auto' : 'none',
+                            background: 'transparent',
                             zIndex: 50
                         }}
                         onMouseDown={(e) => {
                             // 阻止冒泡到容器的 handleMouseDown
                             e.stopPropagation();
                             // 如果是图像框选模式，开始框选
-                            if (posState.mode === 'cropping_image') {
-                                const { x, y } = getCoordinates(e);
-                                setIsDrawing(true);
-                                setCurrentRect({ x, y, width: 0, height: 0, type: 'crop_box' });
-                            }
+
                         }}
                     >
                         <style>{`
@@ -1316,6 +1251,16 @@ const DocumentEditor = ({
                                 pointer-events: auto;
                                 cursor: pointer;
                             }
+                            .anchor-circle .anchor-icon {
+                                opacity: 0;
+                                transition: opacity 0.2s;
+                            }
+                            .anchor-circle:hover .anchor-icon {
+                                opacity: 1;
+                            }
+                            .anchor-circle:hover .anchor-dot {
+                                opacity: 0;
+                            }
                             .anchor-flashing {
                                 animation: anchor-flash 0.3s ease-in-out;
                             }
@@ -1329,22 +1274,16 @@ const DocumentEditor = ({
                             boxShadow: '0 4px 12px rgba(0,0,0,0.4)', zIndex: 200, pointerEvents: 'auto'
                         }}>
                             {posState.mode === null && (
-                                <span>点击角落圆圈选择锚点类型</span>
-                            )}
-                            {posState.mode === 'selecting_anchor_type' && (
-                                <span>选择锚点类型：文本或图像</span>
+                                <span>按住角点并拖拽至目标文本以建立锚点</span>
                             )}
                             {posState.mode === 'picking_text' && (
-                                <span style={{ color: '#3b82f6' }}>📌 文本拾取模式 - 按住 Ctrl/Cmd 点击词条</span>
-                            )}
-                            {posState.mode === 'cropping_image' && (
-                                <span style={{ color: '#f59e0b' }}>🖼️ 图像框选模式 - 拖拽绘制选框</span>
+                                <span style={{ color: '#3b82f6' }}>📌 正在拖拽定位锚点...</span>
                             )}
                             <button
                                 onClick={() => {
-                                    if (posState.mode === 'picking_text' || posState.mode === 'cropping_image') {
-                                        // 从捕获模式返回，恢复缩放
-                                        exitCaptureMode();
+                                    if (posState.mode === 'picking_text') {
+                                        // 取消当前拖拽
+                                        setPosState(prev => ({ ...prev, mode: null, activeCorner: null }));
                                     } else if (posState.mode) {
                                         // 从选择类型模式返回
                                         setPosState(prev => ({ ...prev, mode: null, activeCorner: null }));
@@ -1390,14 +1329,14 @@ const DocumentEditor = ({
                         </div>
 
                         {/* Corner Breathing Circles */}
-                        {(posState.mode === null || posState.mode === 'selecting_anchor_type') && ['tl', 'tr', 'bl', 'br'].map(corner => {
+                        {posState.mode === null && ['tl', 'tr', 'bl', 'br'].map(corner => {
 
                             let cx = selectedRegion.x;
                             let cy = selectedRegion.y;
                             if (corner.includes('r')) cx += selectedRegion.width;
                             if (corner.includes('b')) cy += selectedRegion.height;
 
-                            const isActive = posState.activeCorner === corner && posState.mode === 'selecting_anchor_type';
+                            const isActive = false;
 
                             return (
                                 <div key={corner} style={{ position: 'absolute', left: `${cx * 100}%`, top: `${cy * 100}%`, pointerEvents: 'none' }}>
@@ -1405,10 +1344,17 @@ const DocumentEditor = ({
                                     {(posState.mode === null || isActive) && (
                                         <div
                                             className="anchor-circle"
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            onClick={(e) => {
+                                            onMouseDown={(e) => {
                                                 e.stopPropagation();
-                                                setPosState(prev => ({ ...prev, activeCorner: corner, mode: 'selecting_anchor_type' }));
+                                                // 准备开始拖拽拾取
+                                                const { x, y } = getCoordinates(e);
+                                                setPosState(prev => ({
+                                                    ...prev,
+                                                    activeCorner: corner,
+                                                    mode: 'picking_text',
+                                                    dragStart: { x, y },
+                                                    currentDrag: { x, y }
+                                                }));
                                             }}
                                             style={{
                                                 position: 'absolute', left: '-12px', top: '-12px',
@@ -1416,56 +1362,51 @@ const DocumentEditor = ({
                                                 background: '#fff', border: '3px solid var(--accent-color)',
                                                 boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                zIndex: isActive ? 101 : 100
+                                                zIndex: isActive ? 101 : 100,
+                                                cursor: 'crosshair',
+                                                pointerEvents: 'auto'
                                             }}
                                         >
-                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                                            <div
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: 'var(--accent-color)',
+                                                    pointerEvents: 'none'
+                                                }}
+                                            >
+                                                <Anchor size={14} />
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Anchor Type Selection Popover */}
-                                    {isActive && (
-                                        <div style={{
-                                            position: 'absolute', top: '30px', left: '-50px',
-                                            background: 'rgba(30, 30, 30, 0.95)', border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '8px', padding: '6px', zIndex: 110,
-                                            display: 'flex', flexDirection: 'column', gap: '4px',
-                                            boxShadow: '0 10px 20px rgba(0,0,0,0.4)', pointerEvents: 'auto'
-                                        }}>
-                                            {[
-                                                { id: 'picking_text', label: '文本锚点', icon: <Type size={14} /> },
-                                                { id: 'cropping_image', label: '图像锚点', icon: <Image size={14} /> }
-                                            ].map(opt => (
-                                                <button
-                                                    key={opt.id}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        enterCaptureMode(opt.id);
-                                                    }}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                                        padding: '6px 12px', border: 'none', background: 'transparent',
-                                                        color: '#fff', cursor: 'pointer', borderRadius: '4px',
-                                                        fontSize: '12px', whiteSpace: 'nowrap'
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                >
-                                                    {opt.icon} {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+
                                 </div>
                             );
                         })}
+
+                        {/* Dragging Preview Line */}
+                        {posState.mode === 'picking_text' && posState.dragStart && posState.currentDrag && (
+                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 55 }}>
+                                <line
+                                    x1={`${posState.dragStart.x * 100}%`}
+                                    y1={`${posState.dragStart.y * 100}%`}
+                                    x2={`${posState.currentDrag.x * 100}%`}
+                                    y2={`${posState.currentDrag.y * 100}%`}
+                                    stroke="var(--accent-color)" strokeWidth={2} strokeDasharray="5 5"
+                                />
+                                <circle
+                                    cx={`${posState.currentDrag.x * 100}%`}
+                                    cy={`${posState.currentDrag.y * 100}%`}
+                                    r={4} fill="var(--accent-color)"
+                                />
+                            </svg>
+                        )}
 
                         {/* Text OCR Hover Layer */}
                         {posState.mode === 'picking_text' && !posState.confirmedAnchor && (
                             <>
                                 {/* 可交互的词条层 - 红色悬停框 */}
                                 {words.map((w, idx) => {
-                                    // 使用坐标和文本比较，避免因父组件重渲染导致的对象引用失效
                                     const isHovered = posState.hoverWord &&
                                         posState.hoverWord.x0 === w.x0 &&
                                         posState.hoverWord.y0 === w.y0 &&
@@ -1474,43 +1415,42 @@ const DocumentEditor = ({
                                     return (
                                         <div
                                             key={`word-${idx}`}
-                                            onMouseEnter={() => setPosState(prev => ({ ...prev, hoverWord: w }))}
-                                            onMouseLeave={() => setPosState(prev => ({ ...prev, hoverWord: null }))}
-                                            onClick={(e) => {
-                                                if (e.ctrlKey || e.metaKey) {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    // 进入确认模式，开始闪烁动画
-                                                    const cornerX = selectedRegion.x + (posState.activeCorner?.includes('r') ? selectedRegion.width : 0);
-                                                    const cornerY = selectedRegion.y + (posState.activeCorner?.includes('b') ? selectedRegion.height : 0);
-                                                    setPosState(prev => ({
-                                                        ...prev,
-                                                        confirmedAnchor: {
-                                                            word: w,
-                                                            cornerHandle: { x: cornerX, y: cornerY }
-                                                        },
-                                                        flashCount: 3
-                                                    }));
-                                                }
-                                            }}
+                                            // onMouseEnter/Leave handled by handleMouseMove for drag consistency
                                             style={{
                                                 position: 'absolute',
                                                 left: `${w.x0 * 100}%`,
                                                 top: `${w.y0 * 100}%`,
                                                 width: `${(w.x1 - w.x0) * 100}%`,
                                                 height: `${(w.y1 - w.y0) * 100}%`,
-                                                pointerEvents: 'auto',
-                                                cursor: 'crosshair',
-                                                background: isHovered ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 0, 0, 0.05)',
-                                                border: isHovered ? '2px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
-                                                boxShadow: isHovered ? '0 0 10px rgba(239, 68, 68, 0.8)' : 'none',
+                                                pointerEvents: 'none', // During drag, transparency to mouse events is better? No, MouseMove handles it.
+                                                background: isHovered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0, 0, 0, 0.02)',
+                                                border: isHovered ? '2px solid var(--accent-color)' : '1px solid rgba(59, 130, 246, 0.1)',
+                                                borderRadius: '2px',
                                                 zIndex: 60,
-                                                transition: 'all 0.1s'
                                             }}
                                         />
                                     );
                                 })}
                             </>
+                        )}
+
+                        {/* 捕获反馈闪烁框 */}
+                        {posState.flashingWord && posState.flashCount % 2 === 0 && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: `${posState.flashingWord.x0 * 100}%`,
+                                    top: `${posState.flashingWord.y0 * 100}%`,
+                                    width: `${(posState.flashingWord.x1 - posState.flashingWord.x0) * 100}%`,
+                                    height: `${(posState.flashingWord.y1 - posState.flashingWord.y0) * 100}%`,
+                                    border: '3px solid var(--accent-color)',
+                                    background: 'rgba(59, 130, 246, 0.3)',
+                                    borderRadius: '4px',
+                                    boxShadow: '0 0 15px var(--accent-color)',
+                                    zIndex: 1000,
+                                    pointerEvents: 'none'
+                                }}
+                            />
                         )}
 
                         {/* 确认的文本锚点：闪烁动画 + 蓝色虚线框 + 可移动外框 */}
@@ -1575,27 +1515,13 @@ const DocumentEditor = ({
                             />
                         )}
 
-                        {/* Cropping Image Visualization */}
-                        {posState.mode === 'cropping_image' && isDrawing && currentRect && (
-                            <div style={{
-                                position: 'absolute',
-                                left: `${(currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x) * 100}%`,
-                                top: `${(currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y) * 100}%`,
-                                width: `${Math.abs(currentRect.width) * 100}%`,
-                                height: `${Math.abs(currentRect.height) * 100}%`,
-                                background: 'transparent',
-                                border: '3px solid #f59e0b',
-                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5), 0 0 12px rgba(245, 158, 11, 0.8), inset 0 0 20px rgba(245, 158, 11, 0.3)',
-                                pointerEvents: 'none',
-                                zIndex: 100
-                            }} />
-                        )}
+
                     </div>
                 )}
 
                 {/* Drawn Anchors Visualization Layer (Visible when positioningMode is on) */}
                 {positioningMode && selectedRegion && (
-                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
+                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 60 }}>
                         {Object.entries(selectedRegion.positioning?.anchors || {}).map(([corner, anchor]) => {
                             if (!anchor.bounds) return null;
                             const [ax0, ay0, ax1, ay1] = anchor.bounds;
@@ -1606,66 +1532,98 @@ const DocumentEditor = ({
                             const cx = ax + anchor.offset_x;
                             const cy = ay + anchor.offset_y;
 
+                            // 删除锚点处理函数
+                            const handleDeleteAnchor = (e) => {
+                                e.stopPropagation();
+                                const nextAnchors = { ...(selectedRegion.positioning?.anchors || {}) };
+                                delete nextAnchors[corner];
+                                const nextRegions = regions.map(r => r.id === selectedRegion.id ? {
+                                    ...r,
+                                    positioning: {
+                                        ...r.positioning,
+                                        anchors: nextAnchors
+                                    }
+                                } : r);
+                                setRegions(nextRegions);
+                                if (onHistorySnapshot) onHistorySnapshot(nextRegions);
+                            };
+
                             return (
                                 <g key={corner}>
                                     {/* Anchor Bounds Visual */}
                                     <rect
                                         x={`${ax0 * 100}%`} y={`${ay0 * 100}%`}
                                         width={`${(ax1 - ax0) * 100}%`} height={`${(ay1 - ay0) * 100}%`}
-                                        fill="none" stroke={anchor.type === 'text' ? "#3b82f6" : "#f59e0b"}
-                                        strokeWidth={2} strokeDasharray={anchor.type === 'text' ? "5 5" : "none"}
+                                        fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6"
+                                        strokeWidth={2} strokeDasharray="5 5"
                                     />
+
+                                    {/* Delete Button at top-right of anchor bounds */}
+                                    <foreignObject
+                                        x={`calc(${ax1 * 100}% - 10px)`}
+                                        y={`calc(${ay0 * 100}% - 10px)`}
+                                        width="20" height="20"
+                                        style={{ overflow: 'visible' }}
+                                    >
+                                        <div
+                                            onClick={handleDeleteAnchor}
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                                borderRadius: '50%',
+                                                background: '#ef4444',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                pointerEvents: 'auto',
+                                                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                                transition: 'transform 0.15s, background 0.15s'
+                                            }}
+                                            onMouseEnter={(e) => { e.target.style.transform = 'scale(1.15)'; e.target.style.background = '#dc2626'; }}
+                                            onMouseLeave={(e) => { e.target.style.transform = 'scale(1)'; e.target.style.background = '#ef4444'; }}
+                                        >
+                                            <X size={12} />
+                                        </div>
+                                    </foreignObject>
 
                                     {/* Connection Line */}
                                     <line
                                         x1={`${ax * 100}%`} y1={`${ay * 100}%`}
                                         x2={`${cx * 100}%`} y2={`${cy * 100}%`}
-                                        stroke="rgba(255,255,255,0.4)" strokeWidth={1} strokeDasharray="4 4"
+                                        stroke="var(--accent-color)" strokeWidth={1.5} strokeDasharray="4 4"
                                     />
 
-                                    {/* Right Angle Indicator (The Corner Handle) */}
+                                    {/* Corner Dot (Draggable to re-pick) */}
                                     <g
                                         onMouseDown={(e) => {
                                             e.stopPropagation();
-                                            const { x: mousX, y: mousY } = getCoordinates(e);
+                                            const { x, y } = getCoordinates(e);
                                             setPosState(prev => ({
                                                 ...prev,
-                                                draggingAnchor: {
-                                                    corner,
-                                                    initialMouseX: mousX,
-                                                    initialMouseY: mousY,
-                                                    initialOffsetX: anchor.offset_x,
-                                                    initialOffsetY: anchor.offset_y
-                                                }
+                                                activeCorner: corner,
+                                                mode: 'picking_text',
+                                                dragStart: { x, y },
+                                                currentDrag: { x, y }
                                             }));
                                         }}
-                                        style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                                        style={{ pointerEvents: 'auto', cursor: 'crosshair' }}
                                     >
-                                        <path
-                                            d={(() => {
-                                                const size = 2.0; // zoom normalized to handle coordinates? No, using viewBox coords is easier but here it's normalized 0-1.
-                                                // Let's use relative percentage coordinates for simplicity
-                                                const s = 1.8; // percentage size
-                                                const dx = corner.includes('r') ? -s : s;
-                                                const dy = corner.includes('b') ? -s : s;
-
-                                                const x = cx * 100;
-                                                const y = cy * 100;
-
-                                                // L-shape logic to match ConfirmedTextAnchor
-                                                // tl: horizontal(top) + vertical(left)
-                                                if (corner === 'tl') return `M ${(cx + s) * 100} ${y} L ${x} ${y} L ${x} ${(cy + s) * 100}`;
-                                                if (corner === 'tr') return `M ${(cx - s) * 100} ${y} L ${x} ${y} L ${x} ${(cy + s) * 100}`;
-                                                if (corner === 'bl') return `M ${(cx + s) * 100} ${y} L ${x} ${y} L ${x} ${(cy - s) * 100}`;
-                                                if (corner === 'br') return `M ${(cx - s) * 100} ${y} L ${x} ${y} L ${x} ${(cy - s) * 100}`;
-                                                return '';
-                                            })()}
-                                            fill="none"
-                                            stroke={anchor.type === 'text' ? "#3b82f6" : "#f59e0b"}
-                                            strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
-                                        />
-                                        <circle cx={`${cx * 100}%`} cy={`${cy * 100}%`} r={6} fill={anchor.type === 'text' ? "#3b82f6" : "#f59e0b"} stroke="white" strokeWidth={1} />
+                                        <circle cx={`${cx * 100}%`} cy={`${cy * 100}%`} r={8} fill="white" stroke="var(--accent-color)" strokeWidth={2} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+                                        <foreignObject
+                                            x={`calc(${cx * 100}% - 8px)`}
+                                            y={`calc(${cy * 100}% - 8px)`}
+                                            width="16" height="16"
+                                        >
+                                            <div style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Anchor size={10} />
+                                            </div>
+                                        </foreignObject>
                                     </g>
+
+                                    {/* Anchor Point on Text (Small circle) */}
+                                    <circle cx={`${ax * 100}%`} cy={`${ay * 100}%`} r={4} fill="var(--accent-color)" />
                                 </g>
                             );
                         })}
