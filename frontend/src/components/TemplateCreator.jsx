@@ -400,6 +400,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             setStep('review');
             setEditorMode('select');
             setTableRefining(null);
+            setPositioningMode(false);
+            setSearchAreaEditMode(false);
+            setActiveSearchAnchor(null);
         } catch (err) {
             console.error(err);
             const detail = err.response?.data?.detail || "";
@@ -442,6 +445,9 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
             setRegions(mappedRegions);
             setFile(null); // Clear local file as we are using server source
             setTableRefining(null);
+            setPositioningMode(false);
+            setSearchAreaEditMode(false);
+            setActiveSearchAnchor(null);
         } catch (err) {
             console.error('从源文件库加载失败', err);
             alert('加载模板源文件失败，可能是源文件已被移除');

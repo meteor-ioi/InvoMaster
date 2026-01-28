@@ -381,16 +381,30 @@ def get_page_words_from_image(image_path: str, fingerprint: Optional[str] = None
             if ocr_results:
                 for box, text, confidence in ocr_results:
                     # box 是四个点的坐标 [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                    if len(box) >= 4:
+                    if len(box) >= 4 and len(text) > 0:
                         x_coords = [p[0] for p in box]
                         y_coords = [p[1] for p in box]
-                        words_data.append({
-                            "text": text,
-                            "x0": min(x_coords) / img_w,
-                            "y0": min(y_coords) / img_h,
-                            "x1": max(x_coords) / img_w,
-                            "y1": max(y_coords) / img_h
-                        })
+                        
+                        min_x, max_x = min(x_coords), max(x_coords)
+                        min_y, max_y = min(y_coords), max(y_coords)
+                        width = max_x - min_x
+                        height = max_y - min_y
+                        
+                        # Granularity Enhancement: Split line into characters
+                        # Interpolate x-coordinates for each character
+                        char_width = width / len(text)
+                        
+                        for i, char in enumerate(text):
+                            c_x0 = min_x + (i * char_width)
+                            c_x1 = c_x0 + char_width
+                            
+                            words_data.append({
+                                "text": char,
+                                "x0": c_x0 / img_w,
+                                "y0": min_y / img_h,
+                                "x1": c_x1 / img_w,
+                                "y1": max_y / img_h
+                            })
     except Exception as e:
         logger.error(f"Error extracting words from image: {e}")
     return words_data
@@ -1492,7 +1506,11 @@ def extract_with_custom_template(
         regions_objs = [Region(**r) for r in t_data.get("regions", [])]
         extracted_regions = extract_text_from_regions(file_path, regions_objs, image_path=image_paths[0] if image_paths else None, fingerprint=fingerprint)
         
-        # 4. Format Output
+        # 4. Words Extraction (Unified)
+        # Use simple get_page_words which internally handles PDF/Image and OCR if needed
+        words_data = get_page_words(file_path, page_idx=0, image_path=image_paths[0] if image_paths else None, p_fp=fingerprint)
+
+        # 5. Format Output
         # Sort extracted_regions spatially
         extracted_regions = sort_regions_spatially(extracted_regions)
         
@@ -1505,9 +1523,12 @@ def extract_with_custom_template(
                 **meta
             }
             
-        # 5. Log to OLD History (keep for compatibility)
+        # 6. Log to OLD History (keep for compatibility)
         import datetime
         timestamp = datetime.datetime.now().isoformat()
+        
+        relative_images = [os.path.join(img_subdir, os.path.basename(p)) for p in image_paths]
+        
         append_history({
             "timestamp": timestamp,
             "filename": file.filename,
@@ -1519,11 +1540,18 @@ def extract_with_custom_template(
             
         base_response = {
             "status": "success",
+            "id": fingerprint[:12],
+            "fingerprint": fingerprint,
             "filename": file.filename,
             "template_name": t_data.get("name"),
             "mode": t_record['mode'],
+            "images": relative_images,
+            "regions": extracted_regions, # Return raw regions for UI rendering
             "data": result_map,
-            "raw_regions": extracted_regions
+            "raw_regions": extracted_regions,
+            "words": words_data, # FIXED: Return words for anchoring
+            "template_found": True,
+            "matched_template": {"id": template_id, "name": t_data.get("name")}
         }
 
         # 6. Update Task Status
