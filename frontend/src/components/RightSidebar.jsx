@@ -49,9 +49,70 @@ const RightSidebar = ({
     setSearchAreaEditMode,
     activeSearchAnchor,
     setActiveSearchAnchor,
-    positioningMode
+    positioningMode,
+    pickingGranularity, // [NEW]
+    setPickingGranularity // [NEW]
 }) => {
     const [isHoveringToggle, setIsHoveringToggle] = useState(false);
+
+    // 辅助组件：粒度选择按钮
+    const GranularitySelector = () => (
+        <div style={{ marginBottom: '0' }}>
+            <div style={{ borderTop: '1px dashed var(--glass-border)', margin: '5px 0 3px 0', opacity: 0.5 }} />
+            <div style={{ height: '12px' }} />
+            <div style={{
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                marginBottom: '10px'
+            }}>
+                锚点精度
+            </div>
+            <div style={{
+                display: 'flex',
+                background: 'var(--input-bg)',
+                borderRadius: '8px',
+                padding: '2px',
+                border: '1px solid var(--glass-border)'
+            }}>
+                {[
+                    { id: 'char', label: '字', icon: Type },
+                    { id: 'word', label: '词', icon: Box },
+                    { id: 'line', label: '行', icon: AlignJustify }
+                ].map(opt => {
+                    const Icon = opt.icon;
+                    const isDisabled = !positioningMode;
+                    return (
+                        <button
+                            key={opt.id}
+                            onClick={() => !isDisabled && setPickingGranularity(opt.id)}
+                            disabled={isDisabled}
+                            style={{
+                                flex: 1,
+                                padding: '4px 0',
+                                fontSize: '11px',
+                                border: 'none',
+                                background: pickingGranularity === opt.id ? 'var(--primary-color)' : 'transparent',
+                                color: pickingGranularity === opt.id ? '#fff' : 'var(--text-secondary)',
+                                borderRadius: '6px',
+                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.2s',
+                                fontWeight: pickingGranularity === opt.id ? 'bold' : 'normal',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                opacity: isDisabled ? 0.5 : 1
+                            }}
+                        >
+                            <Icon size={12} />
+                            {opt.label}
+                        </button>
+                    );
+                })}
+            </div>
+            <div style={{ height: '12px' }} />
+        </div >
+    );
 
     return (
         <aside
@@ -136,7 +197,7 @@ const RightSidebar = ({
                     <button
                         onClick={() => setCollapsed(false)}
                         style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary-color)', transition: 'all 0.2s' }}
-                        title="动态定位锚点"
+                        title="动态定位"
                     >
                         <Anchor size={22} />
                     </button>
@@ -397,105 +458,136 @@ const RightSidebar = ({
 
                                 return (
                                     <div style={{ marginTop: '15px' }}>
-                                        <div style={{ padding: '0 4px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <Anchor size={16} color="var(--primary-color)" />
-                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>动态定位锚点</span>
+
+                                        {/* Granularity Selector */}
+                                        <GranularitySelector />
+
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: 'var(--text-secondary)',
+                                            marginBottom: '10px',
+                                            padding: '0 4px'
+                                        }}>
+                                            锚点信息
                                         </div>
 
-                                        {anchorEntries.length === 0 ? (
-                                            /* Empty state guidance */
-                                            <div style={{
-                                                padding: '16px 12px',
-                                                background: theme === 'dark' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
-                                                borderRadius: '8px',
-                                                border: '1px dashed var(--accent-color)',
-                                                textAlign: 'center'
-                                            }}>
-                                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                                                    激活动态定位功能后，拖拽区块角落的 <strong style={{ color: 'var(--accent-color)' }}>⚓</strong> 图标到页面文字上建立定位锚点
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            /* Anchor cards */
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                {anchorEntries.map(([corner, anchor]) => {
-                                                    const CornerIcon = {
-                                                        tl: MoveUpLeft,
-                                                        tr: MoveUpRight,
-                                                        bl: MoveDownLeft,
-                                                        br: MoveDownRight
-                                                    }[corner] || Target;
+                                        {/* 2x2 Anchor Matrix Grid */}
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: '1fr 1fr',
+                                            gap: '10px',
+                                            marginBottom: '15px'
+                                        }}>
+                                            {[
+                                                { id: 'tl', label: '左上', icon: '⌜' },
+                                                { id: 'tr', label: '右上', icon: '⌝' },
+                                                { id: 'bl', label: '左下', icon: '⌞' },
+                                                { id: 'br', label: '右下', icon: '⌟' }
+                                            ].map(corner => {
+                                                const anchor = anchors[corner.id];
+                                                const isActive = activeSearchAnchor?.corner === corner.id;
+                                                const isOccupied = !!anchor;
 
-                                                    return (
-                                                        <div
-                                                            key={corner}
-                                                            onClick={() => {
-                                                                if (searchAreaEditMode && setActiveSearchAnchor) {
-                                                                    setActiveSearchAnchor({ corner });
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                padding: '10px',
-                                                                borderRadius: '10px',
-                                                                background: activeSearchAnchor?.corner === corner ? 'rgba(59, 130, 246, 0.1)' : 'var(--input-bg)',
-                                                                border: activeSearchAnchor?.corner === corner ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
-                                                                cursor: searchAreaEditMode ? 'pointer' : 'default',
-                                                                transition: 'all 0.2s',
-                                                                display: 'flex',
-                                                                gap: '8px',
-                                                                alignItems: 'flex-start'
-                                                            }}
-                                                            className="list-item-hover"
-                                                        >
-                                                            <div style={{ marginTop: '2px', color: 'var(--accent-color)' }}>
-                                                                <CornerIcon size={14} />
+                                                return (
+                                                    <div
+                                                        key={corner.id}
+                                                        onClick={() => {
+                                                            if (!positioningMode || !isOccupied) return;
+                                                            if (isActive) {
+                                                                setActiveSearchAnchor(null);
+                                                            } else {
+                                                                setActiveSearchAnchor({ corner: corner.id });
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            padding: '12px 10px',
+                                                            borderRadius: '12px',
+                                                            background: isActive ? 'rgba(59, 130, 246, 0.1)' : (isOccupied ? 'var(--input-bg)' : 'transparent'),
+                                                            border: isActive
+                                                                ? '2px solid var(--primary-color)'
+                                                                : (isOccupied ? '1px solid var(--glass-border)' : '1px dashed var(--glass-border)'),
+                                                            cursor: (positioningMode && isOccupied) ? 'pointer' : 'default',
+                                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                            position: 'relative',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '6px',
+                                                            height: '64px',
+                                                            minHeight: '64px',
+                                                            overflow: 'hidden',
+                                                            opacity: (positioningMode) ? 1 : 0.6
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span style={{
+                                                                    fontSize: '16px',
+                                                                    fontWeight: 'bold',
+                                                                    color: isActive || isOccupied ? 'var(--primary-color)' : 'var(--text-tertiary)',
+                                                                    lineHeight: 1
+                                                                }}>
+                                                                    {corner.icon}
+                                                                </span>
+                                                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
+                                                                    {corner.label}
+                                                                </span>
                                                             </div>
-                                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                                                        {cornerLabels[corner] || corner}
-                                                                    </span>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            if (updateRegionPositioning) {
-                                                                                const newAnchors = { ...anchors };
-                                                                                delete newAnchors[corner];
-                                                                                updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
-                                                                            }
-                                                                        }}
-                                                                        style={{
-                                                                            background: 'none',
-                                                                            border: 'none',
-                                                                            padding: '2px',
-                                                                            color: 'var(--text-tertiary)',
-                                                                            cursor: 'pointer',
-                                                                            borderRadius: '4px',
-                                                                            transition: 'all 0.2s',
-                                                                            marginLeft: '4px'
-                                                                        }}
-                                                                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                                                                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                                                                        title="删除锚点"
-                                                                    >
-                                                                        <Trash2 size={12} />
-                                                                    </button>
-                                                                </div>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                                                        "{anchor.text}"
-                                                                    </span>
-                                                                </div>
-                                                            </div>
+                                                            {isOccupied && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (updateRegionPositioning) {
+                                                                            const newAnchors = { ...anchors };
+                                                                            delete newAnchors[corner.id];
+                                                                            updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
+                                                                            if (isActive) setActiveSearchAnchor(null);
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        background: 'none',
+                                                                        border: 'none',
+                                                                        padding: '2px',
+                                                                        color: 'var(--text-tertiary)',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        opacity: 0.6
+                                                                    }}
+                                                                    onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                                                    onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
 
-                                        {anchorEntries.length > 0 && (
-                                            <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '8px', opacity: 0.6 }}>注：点击列表项可在编辑模式下激活该锚点</p>
-                                        )}
+                                                        <div style={{
+                                                            fontSize: '10px',
+                                                            color: isOccupied ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                                            fontStyle: isOccupied ? 'normal' : 'italic',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            marginTop: '2px'
+                                                        }}>
+                                                            {isOccupied ? `"${anchor.text}"` : '暂无信息'}
+                                                        </div>
+
+                                                        {isActive && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                bottom: '-4px',
+                                                                left: '50%',
+                                                                transform: 'translateX(-50%)',
+                                                                width: '4px',
+                                                                height: '4px',
+                                                                borderRadius: '50%',
+                                                                background: 'var(--primary-color)'
+                                                            }} />
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
 
                                         {/* Advanced Options - Custom Collapsible */}
                                         {anchorEntries.length > 0 && (
@@ -513,15 +605,15 @@ const RightSidebar = ({
                                                         const newMode = !searchAreaEditMode;
                                                         if (setSearchAreaEditMode) setSearchAreaEditMode(newMode);
 
-                                                        if (newMode && anchorEntries.length > 0) {
-                                                            const [corner, anchor] = anchorEntries[0];
-                                                            if (setActiveSearchAnchor) setActiveSearchAnchor({ corner });
-                                                            if (!anchor.search_area && updateRegionPositioning) {
+                                                        if (newMode && activeSearchAnchor) {
+                                                            const corner = activeSearchAnchor.corner;
+                                                            const anchor = selectedRegion.positioning?.anchors?.[corner];
+                                                            if (anchor && !anchor.search_area && updateRegionPositioning) {
                                                                 const [ax0, ay0, ax1, ay1] = anchor.bounds || [0, 0, 0, 0];
                                                                 const padding = 0.03;
                                                                 const anchorW = ax1 - ax0;
                                                                 const anchorH = ay1 - ay0;
-                                                                const newAnchors = { ...regions.find(r => r.id === selectedRegion.id)?.positioning?.anchors };
+                                                                const newAnchors = { ...selectedRegion.positioning.anchors };
                                                                 newAnchors[corner] = {
                                                                     ...anchor,
                                                                     search_area: [
@@ -533,8 +625,6 @@ const RightSidebar = ({
                                                                 };
                                                                 updateRegionPositioning(selectedRegion.id, { anchors: newAnchors });
                                                             }
-                                                        } else {
-                                                            if (setActiveSearchAnchor) setActiveSearchAnchor(null);
                                                         }
                                                     }}
                                                     style={{

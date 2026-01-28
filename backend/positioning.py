@@ -119,58 +119,79 @@ def find_text_position(locator: Any, pdf_page: Any) -> Optional[Tuple[float, flo
     if not words:
         return None
     
-    # 合并单词成行或寻找目标
-    full_text = " ".join([w['text'] for w in words])
+    # Normalize query for robust matching: 
+    # 1. Remove excess whitespace for comparison
+    # 2. Convert to a pattern that allows flexible spacing (\s*) between characters if needed,
+    #    but primarily focuses on sequence order.
+    query_norm = re.sub(r'\s+', '', locator.text_query)
     
-    match = None
+    # Simple strategy: Concatenate all words in the search area and find the query.
+    # To handle spaces in original text, we match against both spaced and unspaced versions.
+    full_text_spaced = " ".join([w['text'] for w in words])
+    full_text_unspaced = "".join([w['text'] for w in words])
+    
+    match_start_idx = -1
+    matched_len = 0
+    
     if locator.is_regex:
-        matches = list(re.finditer(locator.text_query, full_text))
+        matches = list(re.finditer(locator.text_query, full_text_spaced))
         if len(matches) > locator.text_match_index:
             match = matches[locator.text_match_index]
+            match_start_idx = match.start()
+            matched_len = match.end() - match.start()
     else:
-        # 简单包含匹配
-        if locator.text_query in full_text:
-            # 这里简单实现：找到第一个出现的单词作为定位点
-            # 更完善的实现需要记录每个单词的 index
-            pass
+        # Whitespace-insensitive matching logic
+        # We find the query in the unspaced text, then map back to words
+        if query_norm in full_text_unspaced:
+            # Find the match index-th occurrence
+            occ_count = -1
+            curr_pos = -1
+            while occ_count < locator.text_match_index:
+                curr_pos = full_text_unspaced.find(query_norm, curr_pos + 1)
+                if curr_pos == -1: break
+                occ_count += 1
             
-    # 完善实现：寻找匹配的具体字符位置
-    # 为简化起见，我们直接遍历单词寻找匹配
-    matched_words = []
-    current_idx = 0
-    pattern = re.compile(locator.text_query) if locator.is_regex else None
-    
-    for word in words:
-        if pattern:
-             if pattern.search(word['text']):
-                 matched_words.append(word)
-        elif locator.text_query in word['text']:
-             matched_words.append(word)
-             
-    if not matched_words or len(matched_words) <= locator.text_match_index:
-        return None
-    
-    target_word = matched_words[locator.text_match_index]
-    
-    # 计算归一化坐标
-    # text_position: start, end, center
-    res_x = target_word['x0']
-    res_y = target_word['top']
-    
-    if hasattr(locator, 'text_position'):
-        if locator.text_position == "end":
-            res_x = target_word['x1']
-            res_y = target_word['bottom']
-        elif locator.text_position == "center":
-            res_x = (target_word['x0'] + target_word['x1']) / 2
-            res_y = (target_word['top'] + target_word['bottom']) / 2
-            
-    # 加上偏移量 (归一化偏移)
-    pw, ph = float(pdf_page.width), float(pdf_page.height)
-    res_x = (res_x / pw) + (getattr(locator, 'text_offset_x', 0))
-    res_y = (res_y / ph) + (getattr(locator, 'text_offset_y', 0))
-    
-    return res_x, res_y
+            if curr_pos != -1:
+                # Map curr_pos (unspaced) back to words array
+                char_count = 0
+                target_word_indices = []
+                for i, w in enumerate(words):
+                    w_text = w['text']
+                    w_len = len(w_text)
+                    # Does this word overlap with [curr_pos, curr_pos + len(query_norm)]?
+                    w_start = char_count
+                    w_end = char_count + w_len
+                    
+                    if not (w_end <= curr_pos or w_start >= curr_pos + len(query_norm)):
+                        target_word_indices.append(i)
+                    
+                    char_count += w_len
+                
+                if target_word_indices:
+                    # We use the first word of the match as the anchor point
+                    target_word = words[target_word_indices[0]]
+                    
+                    # For multi-word anchors, 'center' or 'end' might need the whole span
+                    last_word = words[target_word_indices[-1]]
+                    
+                    res_x = target_word['x0']
+                    res_y = target_word['top']
+                    
+                    if hasattr(locator, 'text_position'):
+                        if locator.text_position == "end":
+                            res_x = last_word['x1']
+                            res_y = last_word['bottom']
+                        elif locator.text_position == "center":
+                            res_x = (target_word['x0'] + last_word['x1']) / 2
+                            res_y = (target_word['top'] + last_word['bottom']) / 2
+                    
+                    # Apply offsets and normalize
+                    pw, ph = float(pdf_page.width), float(pdf_page.height)
+                    res_x = (res_x / pw) + (getattr(locator, 'text_offset_x', 0))
+                    res_y = (res_y / ph) + (getattr(locator, 'text_offset_y', 0))
+                    return res_x, res_y
+
+    return None
 
 def find_image_position(locator: Any, image_path: str) -> Optional[Tuple[float, float]]:
     """

@@ -201,6 +201,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
 
     const [selectedId, setSelectedId] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]); // Multiple selection support
+    const [pickingGranularity, setPickingGranularity] = useState('word'); // 'char', 'word', 'line'
     const [confidence, setConfidence] = useState(0.25);
     const [zoom, setZoom] = useState(1.0);
     const [showRegions, setShowRegions] = useState(true);
@@ -928,6 +929,7 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                                                         setActiveSearchAnchor={setActiveSearchAnchor}
                                                         words={analysis?.words || []}
                                                         theme={theme}
+                                                        pickingGranularity={pickingGranularity}
                                                     />
                                                 </div>
 
@@ -1097,6 +1099,8 @@ export default function TemplateCreator({ theme, setTheme, device, headerCollaps
                     activeSearchAnchor={activeSearchAnchor}
                     setActiveSearchAnchor={setActiveSearchAnchor}
                     positioningMode={positioningMode}
+                    pickingGranularity={pickingGranularity}
+                    setPickingGranularity={setPickingGranularity}
                 />
             </main>
 

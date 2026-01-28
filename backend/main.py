@@ -996,12 +996,27 @@ def analyze_from_source(template_id: str):
     Re-analyze a document using the preserved source PDF in the library.
     """
     # 1. Look for the source file
-    source_path = os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.pdf")
-    if not os.path.exists(source_path):
+    import glob
+    # Support multiple extensions (png, jpg, pdf, etc.)
+    source_candidates = glob.glob(os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.*"))
+    source_path = None
+    
+    if source_candidates:
+        source_path = source_candidates[0] # Pick the first one
+        
+    if not source_path:
         # Fallback to check if a template exists and try to find its recorded filename in uploads (less reliable)
         t_path = os.path.join(TEMPLATES_DIR, f"{template_id}.json")
         if not os.path.exists(t_path):
+             # Try subdirs explicitly if DB missed it or file was manually placed
+             if os.path.exists(os.path.join(TEMPLATES_AUTO_DIR, f"{template_id}.json")):
+                 t_path = os.path.join(TEMPLATES_AUTO_DIR, f"{template_id}.json")
+             elif os.path.exists(os.path.join(TEMPLATES_CUSTOM_DIR, f"{template_id}.json")):
+                 t_path = os.path.join(TEMPLATES_CUSTOM_DIR, f"{template_id}.json")
+
+        if not os.path.exists(t_path):
             raise HTTPException(status_code=404, detail="Template not found")
+            
         with open(t_path, "r", encoding="utf-8") as f:
             t_data = json.load(f)
             filename = t_data.get("filename")
@@ -1327,7 +1342,12 @@ def save_template(template: Template):
     # 4. Preserved PDF source library
     if template.filename:
         # Check if it already exists in source library
-        dest_filename = f"{template.id}.pdf"
+        # MODIFIED: Preserve original extension to avoid "opening specific format as PDF" issues
+        ext = os.path.splitext(template.filename)[1].lower()
+        if not ext:
+            ext = ".pdf" # Default fallback
+            
+        dest_filename = f"{template.id}{ext}"
         dest_path = os.path.join(TEMPLATES_SOURCE_DIR, dest_filename)
         
         if not os.path.exists(dest_path):
@@ -1368,10 +1388,15 @@ async def delete_template(template_id: str):
         if os.path.exists(p):
             os.remove(p)
 
-    # Delete Source PDF
-    source_pdf = os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.pdf")
-    if os.path.exists(source_pdf):
-        os.remove(source_pdf)
+    # Delete Source PDF (or Image) - Handle all extensions
+    import glob
+    source_pattern = os.path.join(TEMPLATES_SOURCE_DIR, f"{template_id}.*")
+    for source_file in glob.glob(source_pattern):
+        try:
+            os.remove(source_file)
+            print(f"Deleted source file: {source_file}")
+        except Exception as e:
+            print(f"Error deleting source file {source_file}: {e}")
 
     return {"status": "success", "message": f"Template {template_id} deleted"}
 

@@ -471,10 +471,15 @@ const LeftPanel = ({
 
                         {/* 底部保存区域 */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
-                                    <Save size={16} color="var(--primary-color)" />
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>保存模板</span>
+                            <div style={{ borderTop: '1px dashed var(--glass-border)', margin: '5px 0 3px 0', opacity: 0.5 }} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div style={{
+                                    fontSize: '11px',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '10px',
+                                    paddingLeft: '4px'
+                                }}>
+                                    保存模板
                                 </div>
                                 <input
                                     type="text"

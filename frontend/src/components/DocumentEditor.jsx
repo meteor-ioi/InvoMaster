@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
 import { Heading, Grid3X3, AlignLeft, Type, Ban, Image, List, PanelTop, PanelBottom, Sigma, TextSelect, MessageSquareText, BoxSelect, Edit3, Anchor, X, Target, Sliders, Check, Save, Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -288,10 +288,113 @@ const DocumentEditor = ({
     setSearchAreaEditMode = null,
     activeSearchAnchor = null,
     setActiveSearchAnchor = null,
+    pickingGranularity = 'char', // [NEW] Default to char
+    updateRegionPositioning,
     words = [],
     theme = 'light'
 }) => {
 
+    // --- Dynamic Text Grouping Logic (Split-then-Regroup Strategy) ---
+    const groupedWords = useMemo(() => {
+        if (!words || words.length === 0) return [];
+
+        // Initialize Intl.Segmenter (available in all modern browsers - Baseline 2024)
+        const segmenterWord = new Intl.Segmenter('zh-CN', { granularity: 'word' });
+        const segmenterChar = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' });
+
+        // Step 1: Semantic Atomization
+        // Instead of character splitting, we split into semantic units (words, spaces, punct)
+        const allAtoms = words.flatMap(w => {
+            if (!w.text) return [];
+            const isWord = pickingGranularity === 'word';
+            const segments = Array.from(isWord ? segmenterWord.segment(w.text) : segmenterChar.segment(w.text));
+
+            const totalWidth = w.x1 - w.x0;
+            const textLen = w.text.length;
+
+            return segments.map(seg => {
+                // Calculate geometric bounds proportionally
+                const startIdx = seg.index;
+                const segText = seg.segment;
+                const endIdx = startIdx + segText.length;
+
+                const atomX0 = w.x0 + (startIdx / textLen) * totalWidth;
+                const atomX1 = w.x0 + (endIdx / textLen) * totalWidth;
+
+                return {
+                    ...w,
+                    text: segText,
+                    x0: atomX0,
+                    x1: atomX1,
+                    isSpace: /^\s+$/.test(segText),
+                    isPunct: /^[^\w\s\u4e00-\u9fa5]+$/.test(segText)
+                };
+            });
+        });
+
+        if (pickingGranularity === 'char') return allAtoms;
+        if (pickingGranularity === 'word') {
+            // In Word mode, we use the atoms directly as words, but filter out independent space atoms
+            // so they don't show up as separate selectable blocks.
+            return allAtoms.filter(atom => !atom.isSpace);
+        }
+
+        // Step 2: Regroup based on granularity thresholds (ONLY for 'line' mode now)
+        // Sort for consistent grouping
+        const sorted = [...allAtoms].sort((a, b) => {
+            if (Math.abs(a.y0 - b.y0) > 0.005) return a.y0 - b.y0;
+            return a.x0 - b.x0;
+        });
+
+        const groups = [];
+        let current = null;
+
+        for (const atom of sorted) {
+            // In Word mode, we might want to skip displaying independent space blocks
+            // but keep them in the content when merged.
+            if (!current) {
+                current = { ...atom };
+                continue;
+            }
+
+            const h1 = current.y1 - current.y0;
+            const h2 = atom.y1 - atom.y0;
+            const overlap = Math.max(0, Math.min(current.y1, atom.y1) - Math.max(current.y0, atom.y0));
+            const isSameLine = (overlap / Math.min(h1, h2)) > 0.45;
+
+            const gap = atom.x0 - current.x1;
+
+            // Logic for merging in 'line' mode:
+            // Merge if gap is reasonable (e.g. within 0.5 of height).
+            // This allows merging across words but stops at distant columns.
+            const MAX_GAP = h1 * 0.5;
+            const shouldMerge = isSameLine && gap < MAX_GAP;
+
+            if (shouldMerge) {
+                // Smart Space: If there's a geometric gap but no space character, add one
+                const needsSpace = gap > (h1 * 0.12) && !current.text.endsWith(' ') && !atom.text.startsWith(' ');
+
+                current.x1 = atom.x1;
+                current.y0 = Math.min(current.y0, atom.y0);
+                current.y1 = Math.max(current.y1, atom.y1);
+
+                if (needsSpace) {
+                    current.text += ' ';
+                }
+                current.text += atom.text;
+            } else {
+                groups.push(current);
+                current = { ...atom };
+            }
+        }
+        if (current) groups.push(current);
+
+        // Final Filter: If in word mode, we typically don't want to highlight JUST a space area
+        if (pickingGranularity === 'word') {
+            return groups.filter(g => !/^\s+$/.test(g.text));
+        }
+        return groups;
+    }, [words, pickingGranularity]);
     const [interaction, setInteraction] = useState(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentRect, setCurrentRect] = useState(null);
@@ -311,6 +414,21 @@ const DocumentEditor = ({
         flashCount: 0, // 闪烁计数器
         flashingWord: null // 当前正在闪烁确认的单词
     });
+
+    // --- 双向同步锚点选中状态 (侧边栏与预览画面联动) ---
+    useEffect(() => {
+        const extCorner = activeSearchAnchor?.corner || null;
+        if (extCorner !== posState.activeCorner) {
+            setPosState(prev => ({ ...prev, activeCorner: extCorner }));
+        }
+    }, [activeSearchAnchor]);
+
+    useEffect(() => {
+        const extCorner = activeSearchAnchor?.corner || null;
+        if (posState.activeCorner !== extCorner) {
+            setActiveSearchAnchor?.(posState.activeCorner ? { corner: posState.activeCorner } : null);
+        }
+    }, [posState.activeCorner]);
 
     // 进入捕获模式（不再放大）
 
@@ -659,8 +777,8 @@ const DocumentEditor = ({
         if (posState.mode === 'picking_text' && posState.dragStart) {
             setPosState(prev => ({ ...prev, currentDrag: { x, y } }));
 
-            // Look for OCR word under mouse
-            const hoverWord = words.find(w =>
+            // Look for OCR word under mouse (Using groupedWords!)
+            const hoverWord = groupedWords.find(w =>
                 x >= w.x0 && x <= w.x1 && y >= w.y0 && y <= w.y1
             );
             if (hoverWord !== posState.hoverWord) {
@@ -1656,8 +1774,8 @@ const DocumentEditor = ({
                             {/* Text OCR Hover Layer */}
                             {posState.mode === 'picking_text' && !posState.confirmedAnchor && (
                                 <>
-                                    {/* 可交互的词条层 - 红色悬停框 */}
-                                    {words.map((w, idx) => {
+                                    {/* 可交互的词条层 - 红色悬停框 (Using groupedWords) */}
+                                    {groupedWords.map((w, idx) => {
                                         const isHovered = posState.hoverWord &&
                                             posState.hoverWord.x0 === w.x0 &&
                                             posState.hoverWord.y0 === w.y0 &&
@@ -1808,8 +1926,8 @@ const DocumentEditor = ({
                                         const currentHeight = ay1 - ay0;
                                         const currentCenterX = (ax0 + ax1) / 2;
 
-                                        // Filter words on same line (heuristic)
-                                        const lineWords = words.filter(w => {
+                                        // Filter words on same line (heuristic) - Using groupedWords!
+                                        const lineWords = groupedWords.filter(w => {
                                             const wCenterY = (w.y0 + w.y1) / 2;
                                             return Math.abs(wCenterY - currentCenterY) < currentHeight * 0.5;
                                         });
@@ -1890,7 +2008,12 @@ const DocumentEditor = ({
                                         }
 
                                         if (targetWord) {
-                                            const newText = direction === 'prev' ? `${targetWord.text} ${anchor?.text || ''}` : `${anchor?.text || ''} ${targetWord.text}`;
+                                            const dist = direction === 'prev' ? (ax0 - targetWord.x1) : (targetWord.x0 - ax1);
+                                            // Only add space if the geometric gap is significant (e.g. > 0.5 of a char height)
+                                            const needsSpace = dist > (currentHeight * 0.25);
+                                            const separator = needsSpace ? ' ' : '';
+
+                                            const newText = direction === 'prev' ? `${targetWord.text}${separator}${anchor?.text || ''}` : `${anchor?.text || ''}${separator}${targetWord.text}`;
                                             const newBounds = [
                                                 Math.min(ax0, targetWord.x0),
                                                 Math.min(ay0, targetWord.y0),
